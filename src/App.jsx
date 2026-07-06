@@ -2,6 +2,7 @@ import React from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import VISTAHome from './VISTAHome';
 import VISTAAuth from './VISTAAuth';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // Creamos un sub-componente para poder "sintonizar" el contexto
 function MainApp() {
@@ -16,6 +17,7 @@ function App() {
     // AuthProvider envuelve todo el edificio
     <AuthProvider>
       <MainApp />
+      <SpeedInsights />
     </AuthProvider>
   );
 }
