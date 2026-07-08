@@ -26,6 +26,7 @@ const locationOptions = [
 
 const inferAssetType = (file) => {
   if (file.type.startsWith('video/')) return 'video';
+  if (file.type.startsWith('audio/')) return 'audio';
   if (file.name.toLowerCase().endsWith('.glb')) return 'modelo_3d';
   if (file.type === 'application/pdf') return 'documento';
   if (file.type.startsWith('image/')) return 'poster';
@@ -358,12 +359,12 @@ export default function CampaniasTab() {
             <label className="flex flex-col items-center justify-center gap-3 p-6 border border-dashed border-white/20 rounded-2xl bg-black/30 cursor-pointer hover:bg-white/5 transition-colors text-center">
               <UploadCloud className="text-[#0066FF]" />
               <span className="text-xs font-bold uppercase tracking-widest">
-                {assetFiles.length > 0 ? `${assetFiles.length} asset(s) seleccionados` : 'Assets opcionales: posters, videos, PDF o GLB'}
+                {assetFiles.length > 0 ? `${assetFiles.length} asset(s) seleccionados` : 'Assets opcionales: posters, videos, audio, PDF o GLB'}
               </span>
               <input
                 type="file"
                 multiple
-                accept="image/*,video/*,.pdf,.glb"
+                accept="image/*,video/*,audio/*,.pdf,.glb"
                 onChange={(e) => setAssetFiles(Array.from(e.target.files || []))}
                 className="hidden"
               />

@@ -3,8 +3,8 @@ import { useContent } from '../hooks/useContent';
 import { useCampaigns } from '../hooks/useCampaigns';
 import { useLibrary } from '../hooks/useLibrary';
 import ContentRow from '../components/ContentRow';
-import { CampaignDetailInline, getCampaignPrimaryAsset, getCampaignVideoAsset } from '../components/campaigns/CampaignShowcase';
-import { ArrowUpRight, Film, Megaphone, Play, Plus, Check, Info } from 'lucide-react';
+import { CampaignDetailInline, CampaignLikeButton, getCampaignAudioAsset, getCampaignPrimaryAsset, getCampaignVideoAsset } from '../components/campaigns/CampaignShowcase';
+import { ArrowUpRight, Film, Megaphone, Music, Play, Plus, Check, Info } from 'lucide-react';
 
 // ==========================================
 // HERO SECTION (Inmersivo, debajo del Sidebar)
@@ -137,11 +137,45 @@ const HeroSection = ({ movie, onPlay, onSelectMovie }) => {
 const CampaignHeroSection = ({ campaign, onOpen }) => {
   const imageAsset = getCampaignPrimaryAsset(campaign);
   const videoAsset = getCampaignVideoAsset(campaign);
+  const audioAsset = getCampaignAudioAsset(campaign);
+  const heroRef = useRef(null);
+  const audioRef = useRef(null);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+
+  useEffect(() => {
+    if (!audioAsset?.url || !heroRef.current || !audioRef.current) return undefined;
+
+    const audio = audioRef.current;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && entry.intersectionRatio > 0.45) {
+        audio.play().catch(() => {});
+      } else {
+        audio.pause();
+      }
+    }, { threshold: [0, 0.45, 0.8] });
+
+    observer.observe(heroRef.current);
+
+    return () => {
+      observer.disconnect();
+      audio.pause();
+    };
+  }, [audioAsset?.url]);
+
+  const toggleAudio = (e) => {
+    e.stopPropagation();
+    if (!audioRef.current) return;
+
+    const nextEnabled = !audioEnabled;
+    audioRef.current.muted = !nextEnabled;
+    setAudioEnabled(nextEnabled);
+    if (nextEnabled) audioRef.current.play().catch(() => {});
+  };
 
   if (!campaign) return null;
 
   return (
-    <div className="relative w-screen md:w-[100vw] md:-ml-24 h-[72vh] min-h-[560px] overflow-hidden bg-[#0a0a0a] shadow-2xl">
+    <div ref={heroRef} className="relative w-screen md:w-[100vw] md:-ml-24 h-[88vh] min-h-[640px] overflow-hidden bg-[#0a0a0a] shadow-2xl">
       {videoAsset?.url ? (
         <video
           key={videoAsset.id || videoAsset.url}
@@ -193,6 +227,11 @@ const CampaignHeroSection = ({ campaign, onOpen }) => {
               {campaign.linkedContent.length} edición(es)
             </span>
           )}
+          {audioAsset && (
+            <span className="bg-white/15 backdrop-blur-md text-white px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+              <Music size={12} /> Audio
+            </span>
+          )}
         </div>
 
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-5 text-white drop-shadow-2xl leading-[1.05]">
@@ -205,13 +244,29 @@ const CampaignHeroSection = ({ campaign, onOpen }) => {
           </p>
         )}
 
-        <button
-          onClick={onOpen}
-          className="bg-white text-[#1d1d1f] px-8 md:px-10 py-4 rounded-full font-bold inline-flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
-        >
-          {campaign.cta_texto || 'Ver campaña'} <ArrowUpRight size={18} />
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={onOpen}
+            className="bg-white text-[#1d1d1f] px-8 md:px-10 py-4 rounded-full font-bold inline-flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
+          >
+            {campaign.cta_texto || 'Ver campaña'} <ArrowUpRight size={18} />
+          </button>
+          <CampaignLikeButton campaign={campaign} />
+          {audioAsset && (
+            <button
+              type="button"
+              onClick={toggleAudio}
+              className="bg-white/10 text-white border border-white/20 px-5 py-4 rounded-full font-bold inline-flex items-center gap-2 hover:bg-white/20 transition-colors"
+            >
+              <Music size={18} /> {audioEnabled ? 'Audio activo' : 'Activar audio'}
+            </button>
+          )}
+        </div>
       </div>
+
+      {audioAsset && (
+        <audio ref={audioRef} src={audioAsset.url} loop muted preload="metadata" />
+      )}
     </div>
   );
 };

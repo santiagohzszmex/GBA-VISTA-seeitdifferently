@@ -116,12 +116,57 @@ export function useCampaigns() {
     }
   }, [user?.id]);
 
+  const toggleCampaignLike = useCallback(async (campaignId, liked) => {
+    if (!campaignId) return { success: false };
+    if (!user?.id) return { success: false };
+
+    try {
+      const { data, error: rpcError } = await supabase.rpc('toggle_campania_like', {
+        p_campania_id: campaignId,
+        p_usuario_id: user.id,
+        p_liked: liked
+      });
+
+      if (rpcError) throw rpcError;
+
+      const result = Array.isArray(data) ? data[0] : data;
+      return {
+        success: true,
+        likesCount: typeof result?.likes_count === 'number' ? result.likes_count : undefined
+      };
+    } catch (err) {
+      console.error('No se pudo registrar like de campaña:', err);
+      return { success: false, error: err };
+    }
+  }, [user?.id]);
+
+  const checkCampaignLikeStatus = useCallback(async (campaignId) => {
+    if (!campaignId || !user?.id) return false;
+
+    try {
+      const { data, error: queryError } = await supabase
+        .from('campania_likes')
+        .select('campania_id')
+        .eq('campania_id', campaignId)
+        .eq('usuario_id', user.id)
+        .maybeSingle();
+
+      if (queryError) throw queryError;
+      return Boolean(data);
+    } catch (err) {
+      console.error('No se pudo consultar like de campaña:', err);
+      return false;
+    }
+  }, [user?.id]);
+
   return {
     loading,
     error,
     campaigns,
     fetchActiveCampaigns,
     fetchAllCampaigns,
-    trackCampaignEvent
+    trackCampaignEvent,
+    toggleCampaignLike,
+    checkCampaignLikeStatus
   };
 }

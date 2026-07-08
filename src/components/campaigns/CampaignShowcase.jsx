@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, ChevronUp, Film, Image as ImageIcon, Layers, Newspaper } from 'lucide-react';
+import { ArrowUpRight, ChevronUp, Film, Heart, Image as ImageIcon, Layers, Music, Newspaper } from 'lucide-react';
 import { useCampaigns } from '../../hooks/useCampaigns';
 
 export const getCampaignPrimaryAsset = (campaign) => (
@@ -8,10 +8,74 @@ export const getCampaignPrimaryAsset = (campaign) => (
 );
 
 export const getCampaignVideoAsset = (campaign) => campaign.assets?.find(asset => asset.tipo === 'video');
+export const getCampaignAudioAsset = (campaign) => campaign.assets?.find(asset => asset.tipo === 'audio');
+
+export function CampaignLikeButton({ campaign }) {
+  const { checkCampaignLikeStatus, toggleCampaignLike } = useCampaigns();
+  const [likesCount, setLikesCount] = useState(campaign.likes_count || 0);
+  const [isLiked, setIsLiked] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLikesCount(campaign.likes_count || 0);
+    setIsLiked(false);
+
+    checkCampaignLikeStatus(campaign.id).then((liked) => {
+      if (!cancelled) setIsLiked(liked);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [campaign.id, campaign.likes_count, checkCampaignLikeStatus]);
+
+  const handleLike = async (e) => {
+    e.stopPropagation();
+    if (saving) return;
+
+    setSaving(true);
+    const prevLiked = isLiked;
+    const prevCount = likesCount;
+    const nextLiked = !prevLiked;
+    const nextCount = nextLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+    setIsLiked(nextLiked);
+    setLikesCount(nextCount);
+
+    const result = await toggleCampaignLike(campaign.id, nextLiked);
+    if (!result.success) {
+      setIsLiked(prevLiked);
+      setLikesCount(prevCount);
+    } else if (typeof result.likesCount === 'number') {
+      setLikesCount(result.likesCount);
+    }
+
+    setSaving(false);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleLike}
+      disabled={saving}
+      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-black uppercase tracking-widest transition-colors ${
+        isLiked
+          ? 'bg-red-500/20 text-red-300 border-red-500/40'
+          : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
+      }`}
+    >
+      <Heart size={14} className={isLiked ? 'fill-red-400 text-red-400' : ''} />
+      {likesCount}
+    </button>
+  );
+}
 
 export function CampaignDetailInline({ campaign, onClose }) {
   const { trackCampaignEvent } = useCampaigns();
   const videoAsset = getCampaignVideoAsset(campaign);
+  const audioAsset = getCampaignAudioAsset(campaign);
 
   const handleAssetClick = (asset) => {
     if (asset.tipo === 'video') {
@@ -28,6 +92,9 @@ export function CampaignDetailInline({ campaign, onClose }) {
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#0066FF] mb-3">Campaña VISTA</p>
             <h2 className="text-3xl md:text-5xl font-serif italic tracking-tight">{campaign.titulo}</h2>
+            <div className="mt-5">
+              <CampaignLikeButton campaign={campaign} />
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -48,6 +115,21 @@ export function CampaignDetailInline({ campaign, onClose }) {
               controls
               className="w-full rounded-2xl bg-black shadow-2xl"
               onPlay={() => handleAssetClick(videoAsset)}
+            />
+          </div>
+        )}
+
+        {audioAsset && (
+          <div className="px-6 md:px-10 pb-6 md:pb-10 border-b border-white/10">
+            <div className="flex items-center gap-3 mb-3 text-neutral-400">
+              <Music size={16} className="text-[#0066FF]" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Audio de campaña</span>
+            </div>
+            <audio
+              src={audioAsset.url}
+              controls
+              className="w-full"
+              onPlay={() => handleAssetClick(audioAsset)}
             />
           </div>
         )}
