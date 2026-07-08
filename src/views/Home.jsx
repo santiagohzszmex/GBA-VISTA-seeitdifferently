@@ -3,8 +3,8 @@ import { useContent } from '../hooks/useContent';
 import { useCampaigns } from '../hooks/useCampaigns';
 import { useLibrary } from '../hooks/useLibrary';
 import ContentRow from '../components/ContentRow';
-import CampaignShowcase from '../components/campaigns/CampaignShowcase';
-import { Play, Plus, Check, Info } from 'lucide-react';
+import { CampaignDetailInline, getCampaignPrimaryAsset, getCampaignVideoAsset } from '../components/campaigns/CampaignShowcase';
+import { ArrowUpRight, Film, Megaphone, Play, Plus, Check, Info } from 'lucide-react';
 
 // ==========================================
 // HERO SECTION (Inmersivo, debajo del Sidebar)
@@ -134,18 +134,105 @@ const HeroSection = ({ movie, onPlay, onSelectMovie }) => {
   );
 };
 
+const CampaignHeroSection = ({ campaign, onOpen }) => {
+  const imageAsset = getCampaignPrimaryAsset(campaign);
+  const videoAsset = getCampaignVideoAsset(campaign);
+
+  if (!campaign) return null;
+
+  return (
+    <div className="relative w-screen md:w-[100vw] md:-ml-24 h-[72vh] min-h-[560px] overflow-hidden bg-[#0a0a0a] shadow-2xl">
+      {videoAsset?.url ? (
+        <video
+          key={videoAsset.id || videoAsset.url}
+          src={videoAsset.url}
+          poster={videoAsset.thumbnail_url || imageAsset?.url || undefined}
+          className="absolute inset-0 w-full h-full object-cover opacity-80"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+        />
+      ) : imageAsset?.url ? (
+        <img
+          src={imageAsset.url}
+          className="absolute inset-0 w-full h-full object-cover opacity-80"
+          alt={campaign.titulo}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-white/20">
+          <Megaphone size={96} strokeWidth={1.2} />
+        </div>
+      )}
+
+      <div className="absolute inset-0 bg-gradient-to-t from-[#fbfbfd] via-black/45 to-black/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/35 to-transparent pointer-events-none" />
+
+      <div className="absolute top-8 left-6 md:left-32 z-20 pointer-events-none">
+        <h2
+          className="text-3xl md:text-4xl italic tracking-tight text-white/90 drop-shadow-xl"
+          style={{ fontFamily: "'Playfair Display', serif" }}
+        >
+          See it differently.
+        </h2>
+      </div>
+
+      <div className="absolute bottom-20 left-6 md:left-32 max-w-3xl z-20 animate-in slide-in-from-bottom-8 fade-in duration-700">
+        <div className="flex flex-wrap items-center gap-3 mb-5">
+          <span className="bg-[#0066FF] text-white px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shadow-sm">
+            Campaña Oficial
+          </span>
+          {videoAsset && (
+            <span className="bg-white/15 backdrop-blur-md text-white px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+              <Film size={12} /> Video
+            </span>
+          )}
+          {campaign.linkedContent?.length > 0 && (
+            <span className="bg-white/15 backdrop-blur-md text-white px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">
+              {campaign.linkedContent.length} edición(es)
+            </span>
+          )}
+        </div>
+
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-5 text-white drop-shadow-2xl leading-[1.05]">
+          {campaign.titulo}
+        </h1>
+
+        {campaign.descripcion && (
+          <p className="text-lg md:text-xl text-neutral-300 mb-9 line-clamp-3 font-medium drop-shadow-md max-w-2xl leading-relaxed">
+            {campaign.descripcion}
+          </p>
+        )}
+
+        <button
+          onClick={onOpen}
+          className="bg-white text-[#1d1d1f] px-8 md:px-10 py-4 rounded-full font-bold inline-flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
+        >
+          {campaign.cta_texto || 'Ver campaña'} <ArrowUpRight size={18} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ==========================================
 // VISTA HOME PRINCIPAL (Controlador)
 // ==========================================
 export default function Home({ onSelectMovie, onPlay }) {
   const { getAllContent, getTop10, loading } = useContent();
-  const { fetchActiveCampaigns } = useCampaigns();
+  const { fetchActiveCampaigns, trackCampaignEvent } = useCampaigns();
   const [featuredMovies, setFeaturedMovies] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [top10, setTop10] = useState([]);
   const [moviesByGenre, setMoviesByGenre] = useState({});
   const [campaigns, setCampaigns] = useState([]);
+  const [expandedCampaign, setExpandedCampaign] = useState(null);
   const intervalRef = useRef(null);
+  const heroItems = [
+    ...campaigns.map(campaign => ({ type: 'campaign', id: `campaign-${campaign.id}`, campaign })),
+    ...featuredMovies.map(movie => ({ type: 'movie', id: `movie-${movie.id}`, movie }))
+  ];
 
   useEffect(() => {
     const loadData = async () => {
@@ -190,11 +277,11 @@ export default function Home({ onSelectMovie, onPlay }) {
   // Reinicia el temporizador del carrusel (usado por autoplay y por clics manuales)
   const resetInterval = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    if (featuredMovies.length <= 1) return;
+    if (heroItems.length <= 1) return;
     intervalRef.current = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % featuredMovies.length);
+      setCurrentIndex((prev) => (prev + 1) % heroItems.length);
     }, 12000);
-  }, [featuredMovies.length]);
+  }, [heroItems.length]);
 
   useEffect(() => {
     resetInterval();
@@ -221,6 +308,20 @@ export default function Home({ onSelectMovie, onPlay }) {
     resetInterval(); // evita que el auto-avance se dispare casi inmediatamente después del clic
   }, [resetInterval]);
 
+  useEffect(() => {
+    if (currentIndex >= heroItems.length) {
+      setCurrentIndex(0);
+    }
+  }, [currentIndex, heroItems.length]);
+
+  const currentHeroItem = heroItems[currentIndex];
+
+  const openCampaign = useCallback((campaign) => {
+    if (!campaign) return;
+    trackCampaignEvent(campaign.id, 'click');
+    setExpandedCampaign(campaign);
+  }, [trackCampaignEvent]);
+
   if (loading) {
     return (
       <div className="w-full min-h-[80vh] flex flex-col items-center justify-center font-sans">
@@ -242,10 +343,17 @@ export default function Home({ onSelectMovie, onPlay }) {
   return (
     <div className="animate-in fade-in duration-1000 pb-20 relative font-sans">
 
-      {/* 1. HERO ROTATIVO — sin key en el componente, para no destruir/reconstruir el DOM en cada rotación */}
-      {featuredMovies.length > 0 && (
+      {/* 1. HERO ROTATIVO — campañas oficiales primero, después contenido editorial */}
+      {currentHeroItem?.type === 'campaign' && (
+        <CampaignHeroSection
+          campaign={currentHeroItem.campaign}
+          onOpen={() => openCampaign(currentHeroItem.campaign)}
+        />
+      )}
+
+      {currentHeroItem?.type === 'movie' && (
         <HeroSection
-          movie={featuredMovies[currentIndex]}
+          movie={currentHeroItem.movie}
           onPlay={onPlay}
           onSelectMovie={onSelectMovie}
         />
@@ -253,11 +361,11 @@ export default function Home({ onSelectMovie, onPlay }) {
 
       <div className="w-screen md:w-[100vw] md:-ml-24 h-48 bg-gradient-to-b from-[#fbfbfd] to-transparent absolute z-0 -translate-y-24 pointer-events-none" />
 
-      {featuredMovies.length > 1 && (
+      {heroItems.length > 1 && (
         <div className="flex justify-center gap-2.5 -mt-8 mb-12 relative z-30">
-          {featuredMovies.map((_, idx) => (
+          {heroItems.map((item, idx) => (
             <button
-              key={idx}
+              key={item.id}
               onClick={() => handleDotClick(idx)}
               className={`h-1.5 rounded-full transition-all duration-500 ease-out ${
                 idx === currentIndex ? 'w-12 bg-[#1d1d1f]' : 'w-2 bg-[#d2d2d7] hover:bg-[#86868b]'
@@ -267,7 +375,9 @@ export default function Home({ onSelectMovie, onPlay }) {
         </div>
       )}
 
-      <CampaignShowcase campaigns={campaigns} />
+      {expandedCampaign && (
+        <CampaignDetailInline campaign={expandedCampaign} onClose={() => setExpandedCampaign(null)} />
+      )}
 
       {/* 2. CONTENIDO (Filas Editoriales) */}
       <div className="px-6 md:px-12 space-y-16 mt-8 relative z-20">

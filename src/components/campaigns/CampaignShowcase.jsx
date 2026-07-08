@@ -1,17 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, Film, Image as ImageIcon, Layers, Newspaper, X } from 'lucide-react';
+import { ArrowUpRight, ChevronUp, Film, Image as ImageIcon, Layers, Newspaper } from 'lucide-react';
 import { useCampaigns } from '../../hooks/useCampaigns';
 
-const getPrimaryAsset = (campaign) => (
+export const getCampaignPrimaryAsset = (campaign) => (
   campaign.assets?.find(asset => asset.tipo === 'banner')
   || campaign.assets?.find(asset => asset.tipo === 'poster')
 );
 
-const getVideoAsset = (campaign) => campaign.assets?.find(asset => asset.tipo === 'video');
+export const getCampaignVideoAsset = (campaign) => campaign.assets?.find(asset => asset.tipo === 'video');
 
-function CampaignDetail({ campaign, onClose }) {
+export function CampaignDetailInline({ campaign, onClose }) {
   const { trackCampaignEvent } = useCampaigns();
-  const videoAsset = getVideoAsset(campaign);
+  const videoAsset = getCampaignVideoAsset(campaign);
 
   const handleAssetClick = (asset) => {
     if (asset.tipo === 'video') {
@@ -22,20 +22,21 @@ function CampaignDetail({ campaign, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-xl flex items-center justify-center p-4 md:p-8">
-      <button
-        onClick={onClose}
-        className="absolute top-6 right-6 z-50 w-11 h-11 rounded-full bg-white/10 border border-white/10 text-white flex items-center justify-center hover:bg-white hover:text-black transition-colors"
-      >
-        <X size={20} />
-      </button>
-
-      <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-[#101010] text-white rounded-3xl border border-white/10 shadow-2xl">
-        <div className="p-6 md:p-10 border-b border-white/10">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#0066FF] mb-3">Campaña VISTA</p>
-          <h2 className="text-4xl md:text-6xl font-serif italic tracking-tight">{campaign.titulo}</h2>
+    <section className="relative z-30 px-6 md:px-12 -mt-4 mb-16 animate-in slide-in-from-top-4 fade-in duration-500">
+      <div className="w-full bg-[#101010] text-white rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+        <div className="p-6 md:p-10 border-b border-white/10 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#0066FF] mb-3">Campaña VISTA</p>
+            <h2 className="text-3xl md:text-5xl font-serif italic tracking-tight">{campaign.titulo}</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="self-start px-5 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold uppercase tracking-widest text-xs flex items-center gap-2 transition-all border border-white/10 active:scale-95"
+          >
+            <ChevronUp size={16} strokeWidth={3} /> Cerrar
+          </button>
           {campaign.descripcion && (
-            <p className="text-neutral-400 max-w-3xl mt-4 text-base md:text-lg leading-relaxed">{campaign.descripcion}</p>
+            <p className="text-neutral-400 md:max-w-2xl text-base leading-relaxed">{campaign.descripcion}</p>
           )}
         </div>
 
@@ -113,7 +114,7 @@ function CampaignDetail({ campaign, onClose }) {
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -152,8 +153,8 @@ export default function CampaignShowcase({ campaigns = [] }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {visibleCampaigns.map((campaign) => {
-          const asset = getPrimaryAsset(campaign);
-          const videoAsset = getVideoAsset(campaign);
+          const asset = getCampaignPrimaryAsset(campaign);
+          const videoAsset = getCampaignVideoAsset(campaign);
           const hasVideo = Boolean(videoAsset);
 
           return (
@@ -201,7 +202,7 @@ export default function CampaignShowcase({ campaigns = [] }) {
       </div>
 
       {selectedCampaign && (
-        <CampaignDetail campaign={selectedCampaign} onClose={() => setSelectedCampaign(null)} />
+        <CampaignDetailInline campaign={selectedCampaign} onClose={() => setSelectedCampaign(null)} />
       )}
     </section>
   );
