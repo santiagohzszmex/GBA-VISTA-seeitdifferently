@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useContent } from '../hooks/useContent';
+import { useCampaigns } from '../hooks/useCampaigns';
 import { useLibrary } from '../hooks/useLibrary';
 import ContentRow from '../components/ContentRow';
+import CampaignShowcase from '../components/campaigns/CampaignShowcase';
 import { Play, Plus, Check, Info } from 'lucide-react';
 
 // ==========================================
@@ -137,10 +139,12 @@ const HeroSection = ({ movie, onPlay, onSelectMovie }) => {
 // ==========================================
 export default function Home({ onSelectMovie, onPlay }) {
   const { getAllContent, getTop10, loading } = useContent();
+  const { fetchActiveCampaigns } = useCampaigns();
   const [featuredMovies, setFeaturedMovies] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [top10, setTop10] = useState([]);
   const [moviesByGenre, setMoviesByGenre] = useState({});
+  const [campaigns, setCampaigns] = useState([]);
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -148,8 +152,10 @@ export default function Home({ onSelectMovie, onPlay }) {
       try {
         const all = await getAllContent() || [];
         const top = await getTop10() || [];
+        const activeCampaigns = await fetchActiveCampaigns();
 
         setTop10(top.filter(m => m && m.es_comunidad !== true));
+        setCampaigns(activeCampaigns);
 
         const heroContent = all.filter(m => m && m.en_hero === true && m.es_comunidad !== true);
 
@@ -224,7 +230,7 @@ export default function Home({ onSelectMovie, onPlay }) {
     );
   }
 
-  if (featuredMovies.length === 0 && top10.length === 0) {
+  if (featuredMovies.length === 0 && top10.length === 0 && campaigns.length === 0) {
     return (
       <div className="w-full min-h-[80vh] flex flex-col items-center justify-center pt-24 px-6 text-center font-sans">
         <h2 className="text-4xl font-serif italic text-[#1d1d1f] mb-4">Ecosistema en preparación.</h2>
@@ -260,6 +266,8 @@ export default function Home({ onSelectMovie, onPlay }) {
           ))}
         </div>
       )}
+
+      <CampaignShowcase campaigns={campaigns} />
 
       {/* 2. CONTENIDO (Filas Editoriales) */}
       <div className="px-6 md:px-12 space-y-16 mt-8 relative z-20">

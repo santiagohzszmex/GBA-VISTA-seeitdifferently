@@ -2,7 +2,7 @@
  * Motor de carga centralizado para Cloudinary (Ecosistema VISTA)
  * Permite subir imágenes, portadas y documentos PDF de forma segura desde el frontend.
  */
-export const uploadToCloudinary = async (file) => {
+export const uploadToCloudinary = async (file, folderPath = '') => {
   if (!file) {
     console.error("No se proporcionó ningún archivo para subir.");
     return null;
@@ -21,10 +21,11 @@ export const uploadToCloudinary = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', uploadPreset);
+  if (folderPath) formData.append('folder', folderPath);
 
   try {
     // Disparamos la petición directa a la API de Cloudinary
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
       method: 'POST',
       body: formData,
     });

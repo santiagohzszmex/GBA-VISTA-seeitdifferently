@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Monitor, Film, Newspaper, ShieldCheck, Cpu } from 'lucide-react';
+import { Monitor, Film, Newspaper, ShieldCheck, Cpu, Megaphone } from 'lucide-react';
 
 // Importamos los submódulos subiendo un nivel en la estructura de carpetas (../)
 import VideosTab from '../mothership/VideosTab';
 import NoticiasTab from '../mothership/NoticiasTab';
 import AduanaTab from '../mothership/AduanaTab';
 import GBAForgeTab from '../mothership/GBAForgeTab'; // <-- Importación del Laboratorio
+import CampaniasTab from '../mothership/CampaniasTab';
 
 export default function Mothership() {
   const [activeSection, setActiveSection] = useState('videos');
@@ -21,6 +22,8 @@ export default function Mothership() {
         return <AduanaTab />;
       case 'forge': // <-- Ruta para GBA Forge
         return <GBAForgeTab />;
+      case 'campanias':
+        return <CampaniasTab />;
       default:
         return <VideosTab />;
     }
@@ -64,6 +67,15 @@ export default function Mothership() {
             }`}
           >
             <Newspaper size={16} /> GIMG Noticias
+          </button>
+
+          <button
+            onClick={() => setActiveSection('campanias')}
+            className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all whitespace-nowrap ${
+              activeSection === 'campanias' ? 'bg-[#0066FF] text-white shadow-lg shadow-[#0066FF]/20' : 'text-neutral-500 hover:text-white'
+            }`}
+          >
+            <Megaphone size={16} /> Campañas
           </button>
 
           <button 
