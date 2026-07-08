@@ -12,6 +12,9 @@ const nowIsWithinRange = (campaign) => {
   return true;
 };
 
+const CAMPAIGNS_WITH_CONTENT_SELECT = '*, campania_assets(*), contenido(*)';
+const CAMPAIGNS_BASE_SELECT = '*, campania_assets(*)';
+
 export function useCampaigns() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -20,7 +23,8 @@ export function useCampaigns() {
 
   const normalizeCampaigns = (rows = []) => rows.map((campaign) => ({
     ...campaign,
-    assets: [...(campaign.campania_assets || [])].sort((a, b) => (a.orden || 0) - (b.orden || 0))
+    assets: [...(campaign.campania_assets || [])].sort((a, b) => (a.orden || 0) - (b.orden || 0)),
+    linkedContent: [...(campaign.contenido || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   }));
 
   const fetchActiveCampaigns = useCallback(async () => {
@@ -28,12 +32,24 @@ export function useCampaigns() {
     setError('');
 
     try {
-      const { data, error: queryError } = await supabase
+      let { data, error: queryError } = await supabase
         .from('campanias')
-        .select('*, campania_assets(*)')
+        .select(CAMPAIGNS_WITH_CONTENT_SELECT)
         .eq('estado', 'activa')
         .order('prioridad', { ascending: false })
         .order('created_at', { ascending: false });
+
+      if (queryError) {
+        const fallback = await supabase
+          .from('campanias')
+          .select(CAMPAIGNS_BASE_SELECT)
+          .eq('estado', 'activa')
+          .order('prioridad', { ascending: false })
+          .order('created_at', { ascending: false });
+
+        data = fallback.data;
+        queryError = fallback.error;
+      }
 
       if (queryError) throw queryError;
 
@@ -55,10 +71,20 @@ export function useCampaigns() {
     setError('');
 
     try {
-      const { data, error: queryError } = await supabase
+      let { data, error: queryError } = await supabase
         .from('campanias')
-        .select('*, campania_assets(*)')
+        .select(CAMPAIGNS_WITH_CONTENT_SELECT)
         .order('created_at', { ascending: false });
+
+      if (queryError) {
+        const fallback = await supabase
+          .from('campanias')
+          .select(CAMPAIGNS_BASE_SELECT)
+          .order('created_at', { ascending: false });
+
+        data = fallback.data;
+        queryError = fallback.error;
+      }
 
       if (queryError) throw queryError;
 

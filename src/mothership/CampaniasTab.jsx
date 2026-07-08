@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, Megaphone, Pause, Play, Save, Trash2, UploadCloud } from 'lucide-react';
+import { Calendar, FileText, Megaphone, Pause, Play, Save, Trash2, UploadCloud } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { uploadToCloudinary } from '../cloudinary';
 import { useCampaigns } from '../hooks/useCampaigns';
@@ -53,12 +53,46 @@ export default function CampaniasTab() {
   const { campaigns, fetchAllCampaigns, loading, error } = useCampaigns();
   const [formData, setFormData] = useState(initialForm);
   const [assetFiles, setAssetFiles] = useState([]);
+  const [newsOptions, setNewsOptions] = useState([]);
+  const [linkedContentIds, setLinkedContentIds] = useState([]);
+  const [selectedContentByCampaign, setSelectedContentByCampaign] = useState({});
   const [status, setStatus] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchAllCampaigns();
+    fetchNewsOptions();
   }, [fetchAllCampaigns]);
+
+  const fetchNewsOptions = async () => {
+    let { data, error: newsError } = await supabase
+      .from('contenido')
+      .select('id, titulo, categoria, sello_editorial, estado_publicacion, created_at, campania_id')
+      .in('categoria', ['Noticia', 'Periódico'])
+      .eq('estado_publicacion', 'aprobado')
+      .order('created_at', { ascending: false })
+      .limit(40);
+
+    if (newsError) {
+      const fallback = await supabase
+        .from('contenido')
+        .select('id, titulo, categoria, sello_editorial, estado_publicacion, created_at')
+        .in('categoria', ['Noticia', 'Periódico'])
+        .eq('estado_publicacion', 'aprobado')
+        .order('created_at', { ascending: false })
+        .limit(40);
+
+      data = fallback.data;
+      newsError = fallback.error;
+    }
+
+    if (newsError) {
+      console.error('Error al cargar ediciones para campañas:', newsError);
+      return;
+    }
+
+    setNewsOptions(data || []);
+  };
 
   const handleChange = (e) => {
     const value = e.target.type === 'number' ? Number(e.target.value) : e.target.value;
@@ -79,7 +113,16 @@ export default function CampaniasTab() {
   const resetForm = () => {
     setFormData(initialForm);
     setAssetFiles([]);
+    setLinkedContentIds([]);
     setStatus(null);
+  };
+
+  const toggleLinkedContent = (contentId) => {
+    setLinkedContentIds(prev => (
+      prev.includes(contentId)
+        ? prev.filter(id => id !== contentId)
+        : [...prev, contentId]
+    ));
   };
 
   const handleSubmit = async (e) => {
@@ -137,9 +180,19 @@ export default function CampaniasTab() {
         if (assetsError) throw assetsError;
       }
 
+      if (linkedContentIds.length > 0) {
+        const { error: linkError } = await supabase
+          .from('contenido')
+          .update({ campania_id: campaign.id })
+          .in('id', linkedContentIds);
+
+        if (linkError) throw linkError;
+      }
+
       setStatus({ type: 'success', msg: 'Campaña creada correctamente.' });
       resetForm();
       fetchAllCampaigns();
+      fetchNewsOptions();
     } catch (err) {
       console.error('Error al crear campaña:', err);
       setStatus({ type: 'error', msg: err.message || 'No se pudo crear la campaña.' });
@@ -176,6 +229,42 @@ export default function CampaniasTab() {
     }
 
     fetchAllCampaigns();
+  };
+
+  const linkContentToCampaign = async (campaign) => {
+    const contentId = selectedContentByCampaign[campaign.id];
+    if (!contentId) return;
+
+    const { error: linkError } = await supabase
+      .from('contenido')
+      .update({ campania_id: campaign.id })
+      .eq('id', contentId);
+
+    if (linkError) {
+      setStatus({ type: 'error', msg: 'No se pudo vincular la edición.' });
+      return;
+    }
+
+    setSelectedContentByCampaign(prev => ({ ...prev, [campaign.id]: '' }));
+    setStatus({ type: 'success', msg: 'Edición vinculada a la campaña.' });
+    fetchAllCampaigns();
+    fetchNewsOptions();
+  };
+
+  const unlinkContentFromCampaign = async (contentId) => {
+    const { error: unlinkError } = await supabase
+      .from('contenido')
+      .update({ campania_id: null })
+      .eq('id', contentId);
+
+    if (unlinkError) {
+      setStatus({ type: 'error', msg: 'No se pudo desvincular la edición.' });
+      return;
+    }
+
+    setStatus({ type: 'success', msg: 'Edición desvinculada. Sigue disponible en Noticias.' });
+    fetchAllCampaigns();
+    fetchNewsOptions();
   };
 
   return (
@@ -269,7 +358,7 @@ export default function CampaniasTab() {
             <label className="flex flex-col items-center justify-center gap-3 p-6 border border-dashed border-white/20 rounded-2xl bg-black/30 cursor-pointer hover:bg-white/5 transition-colors text-center">
               <UploadCloud className="text-[#0066FF]" />
               <span className="text-xs font-bold uppercase tracking-widest">
-                {assetFiles.length > 0 ? `${assetFiles.length} asset(s) seleccionados` : 'Subir posters, videos, PDF o GLB'}
+                {assetFiles.length > 0 ? `${assetFiles.length} asset(s) seleccionados` : 'Assets opcionales: posters, videos, PDF o GLB'}
               </span>
               <input
                 type="file"
@@ -279,6 +368,37 @@ export default function CampaniasTab() {
                 className="hidden"
               />
             </label>
+
+            <div className="p-4 bg-black/40 rounded-2xl border border-white/5">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold flex items-center gap-1.5">
+                  <FileText size={12} /> Ediciones vinculadas
+                </p>
+                <span className="text-[10px] text-neutral-600 font-bold">{linkedContentIds.length} seleccionada(s)</span>
+              </div>
+              <div className="space-y-2 max-h-44 overflow-y-auto custom-scrollbar pr-1">
+                {newsOptions.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => toggleLinkedContent(item.id)}
+                    className={`w-full text-left p-3 rounded-xl border transition-colors ${
+                      linkedContentIds.includes(item.id)
+                        ? 'bg-[#0066FF]/20 border-[#0066FF] text-white'
+                        : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    <span className="block text-xs font-bold line-clamp-1">{item.titulo}</span>
+                    <span className="block text-[9px] uppercase tracking-widest mt-1 text-neutral-500">
+                      {item.categoria} {item.sello_editorial ? `• ${item.sello_editorial}` : ''}
+                    </span>
+                  </button>
+                ))}
+                {newsOptions.length === 0 && (
+                  <p className="text-xs text-neutral-600 text-center py-4">No hay ediciones aprobadas para vincular.</p>
+                )}
+              </div>
+            </div>
 
             {status && (
               <div className={`p-3 rounded-xl text-xs text-center font-bold border ${
@@ -332,6 +452,9 @@ export default function CampaniasTab() {
                       {visibilityLabel}
                     </span>
                     <span className="bg-black/60 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">{campaign.assets?.length || 0} assets</span>
+                    {campaign.linkedContent?.length > 0 && (
+                      <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">{campaign.linkedContent.length} notas</span>
+                    )}
                   </div>
                 </div>
                 <div className="p-5">
@@ -343,6 +466,45 @@ export default function CampaniasTab() {
                     <span>→</span>
                     <span>{campaign.fecha_fin ? new Date(campaign.fecha_fin).toLocaleDateString('es-MX') : 'Sin cierre'}</span>
                   </div>
+
+                  {campaign.linkedContent?.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {campaign.linkedContent.map(item => (
+                        <div key={item.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/5 border border-white/10 p-2">
+                          <span className="text-[11px] text-neutral-300 font-bold line-clamp-1">{item.titulo}</span>
+                          <button
+                            type="button"
+                            onClick={() => unlinkContentFromCampaign(item.id)}
+                            className="text-[9px] text-red-400 hover:text-red-300 uppercase tracking-widest font-black"
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-[1fr_auto] gap-2 mt-4">
+                    <select
+                      value={selectedContentByCampaign[campaign.id] || ''}
+                      onChange={(e) => setSelectedContentByCampaign(prev => ({ ...prev, [campaign.id]: e.target.value }))}
+                      className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-neutral-300 outline-none [&>option]:bg-[#1d1d1f]"
+                    >
+                      <option value="">Vincular edición...</option>
+                      {newsOptions.map(item => (
+                        <option key={item.id} value={item.id}>{item.titulo}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => linkContentToCampaign(campaign)}
+                      disabled={!selectedContentByCampaign[campaign.id]}
+                      className="bg-[#0066FF] disabled:opacity-30 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                    >
+                      Añadir
+                    </button>
+                  </div>
+
                   <div className="flex gap-2 mt-5">
                     <button onClick={() => updateCampaignStatus(campaign, campaign.estado === 'activa' ? 'pausada' : 'activa')} className="flex-1 bg-white/10 hover:bg-white hover:text-black text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2">
                       {campaign.estado === 'activa' ? <Pause size={14} /> : <Play size={14} />}

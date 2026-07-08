@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, Film, Image as ImageIcon, Layers, X } from 'lucide-react';
+import { ArrowUpRight, Film, Image as ImageIcon, Layers, Newspaper, X } from 'lucide-react';
 import { useCampaigns } from '../../hooks/useCampaigns';
 
 const getPrimaryAsset = (campaign) => (
@@ -76,6 +76,42 @@ function CampaignDetail({ campaign, onClose }) {
             </a>
           ))}
         </div>
+
+        {campaign.linkedContent?.length > 0 && (
+          <div className="p-6 md:p-10 border-t border-white/10">
+            <div className="flex items-center gap-2 mb-5">
+              <Newspaper size={18} className="text-[#0066FF]" />
+              <h3 className="text-xl font-serif italic">Ediciones periodísticas de la campaña</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {campaign.linkedContent.map((item) => (
+                <a
+                  key={item.id}
+                  href="#news"
+                  onClick={() => trackCampaignEvent(campaign.id, 'click')}
+                  className="group flex gap-4 rounded-2xl bg-white/5 border border-white/10 p-3 hover:border-white/30 transition-colors"
+                >
+                  <div className="w-20 h-24 rounded-xl overflow-hidden bg-black flex-shrink-0">
+                    {item.poster_url || item.banner_url ? (
+                      <img src={item.poster_url || item.banner_url} alt={item.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white/30">
+                        <Newspaper size={24} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex flex-col justify-center">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-[#0066FF] mb-1">{item.categoria || 'Noticia'}</span>
+                    <h4 className="font-bold text-white line-clamp-2">{item.titulo}</h4>
+                    {item.descripcion && (
+                      <p className="text-xs text-neutral-500 line-clamp-2 mt-1">{item.descripcion}</p>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
