@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Save, Edit3, PlusCircle, X, Trash2, Eye } from 'lucide-react';
+import { VIDEO_CATEGORIES } from '../utils/contentTypes';
 
 export default function VideosTab() {
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,7 @@ export default function VideosTab() {
     const { data } = await supabase
       .from('contenido')
       .select('*, reparto(*)')
-      .neq('categoria', 'Periódico')
+      .in('categoria', VIDEO_CATEGORIES)
       .order('created_at', { ascending: false });
       
     if (data) setContentList(data);

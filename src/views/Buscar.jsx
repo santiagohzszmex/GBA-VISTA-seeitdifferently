@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Search as SearchIcon, X, Film, Newspaper, Globe, ChevronRight } from 'lucide-react';
+import { isVideoContent } from '../utils/contentTypes';
 
 export default function Buscar({ onSelectMovie }) {
   const [query, setQuery] = useState('');
@@ -31,7 +32,7 @@ export default function Buscar({ onSelectMovie }) {
           if (data) {
             // Filtro de Inteligencia: Clasificamos los resultados por su origen y tipo
             setVideosResult(data.filter(item => 
-              item.categoria === 'PELICULA' || item.categoria === 'SERIE' || item.categoria === 'ORIGINAL'
+              isVideoContent(item)
             ));
             
             setNoticiasResult(data.filter(item => 

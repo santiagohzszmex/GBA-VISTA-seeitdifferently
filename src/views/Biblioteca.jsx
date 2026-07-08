@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { PlayCircle, Trash2, Info } from 'lucide-react';
+import { isVideoContent } from '../utils/contentTypes';
 
 export default function Biblioteca({ onSelectMovie, onPlay }) {
   const { user } = useAuth();
@@ -103,58 +104,64 @@ export default function Biblioteca({ onSelectMovie, onPlay }) {
       {/* CUADRÍCULA DE CONTENIDO */}
       {library.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
-          {library.map((movie) => (
-            <div 
-              key={movie.id} 
-              onClick={() => onSelectMovie && onSelectMovie(movie)}
-              className="group relative aspect-[4/5] bg-[#f5f5f7] rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl border border-[#d2d2d7]/50 hover:-translate-y-2 transition-all duration-500 cursor-pointer"
-            >
-              
-              <img 
-                src={getCleanImg(movie.poster_url || movie.banner_url)} 
-                alt={movie.titulo}
-                className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 z-10"
-              />
-              
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300 z-20" />
-              
-              {/* Botón de Borrar Rápido (Esquina superior derecha) */}
-              <button 
-                onClick={(e) => removeFromLibrary(e, movie.id)}
-                className="absolute top-4 right-4 z-30 p-2 bg-black/40 backdrop-blur-md rounded-full text-white/70 hover:text-red-500 hover:bg-white transition-all opacity-0 group-hover:opacity-100 shadow-md"
-                title="Quitar de mi lista"
-              >
-                <Trash2 size={16} />
-              </button>
+          {library.map((movie) => {
+            const canPlay = isVideoContent(movie) && Boolean(movie.youtube_id);
 
-              {/* Botón de Play Overlay */}
-              <div 
-                className="absolute inset-0 z-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                onClick={(e) => {
-                  e.stopPropagation(); // Evita abrir el modal
-                  if (onPlay) onPlay(movie.youtube_id); // Reproduce directo
-                }}
+            return (
+              <div
+                key={movie.id}
+                onClick={() => onSelectMovie && onSelectMovie(movie)}
+                className="group relative aspect-[4/5] bg-[#f5f5f7] rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl border border-[#d2d2d7]/50 hover:-translate-y-2 transition-all duration-500 cursor-pointer"
               >
-                <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 hover:scale-110 hover:bg-white hover:text-black transition-all">
-                  <PlayCircle size={32} />
-                </div>
-              </div>
-              
-              {/* Info Inferior */}
-              <div className="absolute bottom-0 left-0 w-full p-5 z-30 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                <p className="text-white font-bold text-lg leading-tight mb-1 drop-shadow-md">
-                  {movie.titulo}
-                </p>
-                <div className="flex justify-between items-center">
-                   <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider">
-                     {movie.categoria || 'Original'}
-                   </p>
-                   <Info size={14} className="text-white/50 group-hover:text-white transition-colors" />
-                </div>
-              </div>
 
-            </div>
-          ))}
+                <img
+                  src={getCleanImg(movie.poster_url || movie.banner_url)}
+                  alt={movie.titulo}
+                  className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 z-10"
+                />
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300 z-20" />
+
+                {/* Botón de Borrar Rápido (Esquina superior derecha) */}
+                <button
+                  onClick={(e) => removeFromLibrary(e, movie.id)}
+                  className="absolute top-4 right-4 z-30 p-2 bg-black/40 backdrop-blur-md rounded-full text-white/70 hover:text-red-500 hover:bg-white transition-all opacity-0 group-hover:opacity-100 shadow-md"
+                  title="Quitar de mi lista"
+                >
+                  <Trash2 size={16} />
+                </button>
+
+                {/* Botón de Play Overlay */}
+                {canPlay && (
+                  <div
+                    className="absolute inset-0 z-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Evita abrir el modal
+                      if (onPlay) onPlay(movie.youtube_id); // Reproduce directo
+                    }}
+                  >
+                    <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 hover:scale-110 hover:bg-white hover:text-black transition-all">
+                      <PlayCircle size={32} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Info Inferior */}
+                <div className="absolute bottom-0 left-0 w-full p-5 z-30 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                  <p className="text-white font-bold text-lg leading-tight mb-1 drop-shadow-md">
+                    {movie.titulo}
+                  </p>
+                  <div className="flex justify-between items-center">
+                     <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider">
+                       {movie.categoria || 'Original'}
+                     </p>
+                     <Info size={14} className="text-white/50 group-hover:text-white transition-colors" />
+                  </div>
+                </div>
+
+              </div>
+            );
+          })}
         </div>
       ) : (
         /* ESTADO VACÍO */

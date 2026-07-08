@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, Play, Plus, Check } from 'lucide-react';
 import { useLibrary } from '../../hooks/useLibrary';
+import { isVideoContent } from '../../utils/contentTypes';
 
 export default function ContentDetailModal({ movie, onClose, onPlay }) {
   // Conectamos el hook de biblioteca para que el botón "+" funcione aquí también
@@ -15,6 +16,8 @@ export default function ContentDetailModal({ movie, onClose, onPlay }) {
   }, []);
 
   if (!movie) return null;
+
+  const canPlay = isVideoContent(movie) && Boolean(movie.youtube_id);
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 font-sans">
@@ -52,15 +55,17 @@ export default function ContentDetailModal({ movie, onClose, onPlay }) {
             
             {/* Botones de Acción dentro del modal */}
             <div className="flex items-center gap-3">
-              <button 
-                onClick={() => {
-                  onClose(); // Cerramos el modal
-                  if (onPlay) onPlay(movie.youtube_id); // Y disparamos el video
-                }} 
-                className="bg-white text-black px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-transform"
-              >
-                <Play fill="currentColor" size={18} /> Reproducir
-              </button>
+              {canPlay && (
+                <button
+                  onClick={() => {
+                    onClose(); // Cerramos el modal
+                    if (onPlay) onPlay(movie.youtube_id); // Y disparamos el video
+                  }}
+                  className="bg-white text-black px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-transform"
+                >
+                  <Play fill="currentColor" size={18} /> Reproducir
+                </button>
+              )}
               
               <button 
                 onClick={toggleLibrary} 
@@ -111,7 +116,7 @@ export default function ContentDetailModal({ movie, onClose, onPlay }) {
               </div>
               <div>
                 <span className="text-[#86868b] block mb-1 font-bold">Estado:</span>
-                <span className="text-white">{movie.youtube_id ? 'Disponible' : 'Próximamente'}</span>
+                <span className="text-white">{canPlay ? 'Disponible' : 'Lectura'}</span>
               </div>
             </div>
           </div>

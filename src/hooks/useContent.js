@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { VIDEO_CATEGORIES } from '../utils/contentTypes';
 
 export function useContent() {
   const [loading, setLoading] = useState(false);
@@ -11,6 +12,7 @@ export function useContent() {
         .from('contenido')
         .select('*')
         .eq('estado_publicacion', 'aprobado')
+        .in('categoria', VIDEO_CATEGORIES)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -30,6 +32,7 @@ export function useContent() {
         .from('contenido')
         .select('*')
         .eq('estado_publicacion', 'aprobado')
+        .in('categoria', VIDEO_CATEGORIES)
         .order('vistas', { ascending: false }) // Ajustado para ordenar por vistas reales
         .limit(10);
 
