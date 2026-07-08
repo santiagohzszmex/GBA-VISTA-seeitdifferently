@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, ChevronLeft, ArrowRight, Loader2, AlertCircle, KeyRound, AtSign } from 'lucide-react';
 import { supabase } from './supabaseClient';
@@ -39,9 +39,12 @@ export default function VISTAAuth({ onLogin }) {
   const [discordId, setDiscordId] = useState('');
   const [frase, setFrase] = useState('');
   const [pin, setPin] = useState('');
+  const pinInputRef = useRef(null);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const normalizePin = (value) => value.replace(/\D/g, '').slice(0, 4);
 
   // Limpiar errores si el usuario se mueve entre pantallas
   useEffect(() => {
@@ -59,6 +62,16 @@ export default function VISTAAuth({ onLogin }) {
       procesarPIN();
     }
   }, [pin, step]);
+
+  useEffect(() => {
+    if (step !== 'pin' || loading) return;
+
+    const focusTimer = window.setTimeout(() => {
+      pinInputRef.current?.focus({ preventScroll: true });
+    }, 80);
+
+    return () => window.clearTimeout(focusTimer);
+  }, [step, loading, error]);
 
   // ==========================================
   // EL "ROUTER" DE PANTALLAS
@@ -167,7 +180,7 @@ export default function VISTAAuth({ onLogin }) {
       else if (flow === 'recover') {
         const { data: exito, error: rpcError } = await supabase.rpc('reset_pin_seguro', {
           p_nombre: nombre.trim(),
-          p_frase: frase,
+          p_frase: frase.trim().toLowerCase(),
           p_nuevo_pin: pin
         });
 
@@ -352,16 +365,29 @@ export default function VISTAAuth({ onLogin }) {
               <p className="text-sm text-[#86868b] font-medium">
                 GBA ID: <span className="text-[#1d1d1f] font-bold">{nombre}</span>
               </p>
-              <PinIndicators length={pin.length} />
-              <input 
-                type="password" maxLength={4}
-                className="absolute opacity-0 w-1 h-1 pointer-events-none"
-                value={pin} onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '');
-                  if (val.length <= 4) setPin(val);
-                }}
-                disabled={loading} autoFocus required
-              />
+              <div
+                className="relative w-full cursor-text"
+                onClick={() => pinInputRef.current?.focus({ preventScroll: true })}
+              >
+                <PinIndicators length={pin.length} />
+                <input
+                  ref={pinInputRef}
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  name="gba-pin"
+                  aria-label="Clave de seguridad de 4 dígitos"
+                  autoComplete={flow === 'login' ? 'current-password' : 'new-password'}
+                  enterKeyHint="done"
+                  className="absolute inset-0 h-full w-full cursor-text opacity-0"
+                  value={pin}
+                  onChange={(e) => setPin(normalizePin(e.target.value))}
+                  disabled={loading}
+                  autoFocus
+                  required
+                />
+              </div>
               {loading && <Loader2 className="animate-spin text-[#86868b] mt-2" size={24} />}
               {error && <div className="flex items-center gap-2 text-red-500 text-sm font-medium mt-4"><AlertCircle size={16} /> {error}</div>}
               
