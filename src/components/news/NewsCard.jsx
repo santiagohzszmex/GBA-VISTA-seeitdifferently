@@ -1,20 +1,16 @@
-import React, { useEffect, useState, useRef, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useRef, useLayoutEffect, useCallback } from 'react';
 import { Heart, Eye, ShieldCheck, FileText, ChevronUp, Layers } from 'lucide-react';
 import { useLikes } from '../../hooks/useLikes';
 
 const FLIP_DURATION = 700; // ms — una sola fuente de verdad para JS y CSS
 
 export default function NewsCard({ item, onRead, onNavigateProfile }) {
-  const { isLiked, likesCount, checkLikeStatus, toggleLike } = useLikes(item.id);
+  const { isLiked, likesCount, toggleLike } = useLikes(item.id);
   const [isFlipped, setIsFlipped] = useState(false);
   const [contentHeight, setContentHeight] = useState(480);
 
   const cardRef = useRef(null);   // wrapper completo (para scroll)
   const backRef = useRef(null);   // contenido trasero (para medir su altura real)
-
-  useEffect(() => {
-    checkLikeStatus();
-  }, [checkLikeStatus]);
 
   // Mide la altura REAL del contenido trasero en vez de usar un max-height arbitrario.
   // Así el grid solo recalcula una vez, con el valor final correcto, sin "temblores".

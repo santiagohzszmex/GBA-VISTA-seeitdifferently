@@ -208,13 +208,7 @@ function CoverflowSlide({ item, isActive, isPrev, isNext, onOpen }) {
 // BOTÓN DE LIKE RÁPIDO PARA EL KIOSCO
 // ==========================================
 function QuickLikeButton({ itemId }) {
-  // 1. Extraemos checkLikeStatus del hook
-  const { isLiked, checkLikeStatus, toggleLike } = useLikes(itemId);
-
-  // 2. Le decimos al botón que consulte la base de datos en cuanto nazca
-  useEffect(() => {
-    checkLikeStatus();
-  }, [checkLikeStatus]);
+  const { isLiked, toggleLike } = useLikes(itemId);
 
   return (
     <button
