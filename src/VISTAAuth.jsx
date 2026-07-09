@@ -215,9 +215,9 @@ export default function VISTAAuth({ onLogin }) {
   // ==========================================
   const getTitles = () => {
     if (step === 'username') {
-      if (flow === 'login') return { title: 'Accede a VISTA con tu GBA ID.', subtitle: 'Tu GBA ID (Nombre de usuario)' };
-      if (flow === 'register') return { title: 'Crea tu GBA ID.', subtitle: 'Tu GBA ID (Nombre de usuario)' };
-      if (flow === 'recover') return { title: 'Recuperación de Acceso.', subtitle: 'Ingresa tu GBA ID' };
+      if (flow === 'login') return { title: 'Accede a VISTA con tu GBA ID.', subtitle: 'Tu GBA ID (Nombre de usuario)', note: 'Un solo GBA ID abre tu acceso a VISTA y a las herramientas del ecosistema GlobalBank.' };
+      if (flow === 'register') return { title: 'Crea tu GBA ID.', subtitle: 'Tu GBA ID (Nombre de usuario)', note: 'Tu GBA ID será tu identidad de acceso a VISTA, la plataforma de contenido para servidores geopolíticos dentro de Minecraft.' };
+      if (flow === 'recover') return { title: 'Recuperación de Acceso.', subtitle: 'Ingresa tu GBA ID', note: 'Usa tu GBA ID para recuperar el acceso a VISTA.' };
     }
     if (step === 'discord') {
       return { title: 'Vincula tu usuario de Discord.' };
@@ -283,6 +283,11 @@ export default function VISTAAuth({ onLogin }) {
           <h1 className="font-serif italic text-3xl md:text-4xl text-[#1d1d1f] mb-10 tracking-tight leading-tight">
             {titles.title}
           </h1>
+          {titles.note && (
+            <p className="-mt-6 mb-8 text-sm text-[#86868b] leading-relaxed font-medium">
+              {titles.note}
+            </p>
+          )}
 
           {/* ESTADO 1: PANTALLA DE USUARIO */}
           {step === 'username' && (

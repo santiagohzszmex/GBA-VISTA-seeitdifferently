@@ -4,7 +4,7 @@ import { useCampaigns } from '../hooks/useCampaigns';
 import { useLibrary } from '../hooks/useLibrary';
 import ContentRow from '../components/ContentRow';
 import { CampaignDetailInline, CampaignLikeButton, getCampaignAudioAsset, getCampaignPrimaryAsset, getCampaignVideoAsset } from '../components/campaigns/CampaignShowcase';
-import { ArrowUpRight, Film, Megaphone, Music, Play, Plus, Check, Info } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, Film, Megaphone, Music, Play, Plus, Check, Info, Volume2, VolumeX } from 'lucide-react';
 
 // ==========================================
 // HERO SECTION (Inmersivo, debajo del Sidebar)
@@ -136,7 +136,7 @@ const HeroSection = ({ movie, onPlay, onSelectMovie, showBrandLine = true }) => 
   );
 };
 
-const CampaignHeroSection = ({ campaign, onOpen }) => {
+const CampaignHeroSection = ({ campaign, onOpen, onScrollNext, isOpen }) => {
   const imageAsset = getCampaignPrimaryAsset(campaign);
   const videoAsset = getCampaignVideoAsset(campaign);
   const audioAsset = getCampaignAudioAsset(campaign);
@@ -202,6 +202,10 @@ const CampaignHeroSection = ({ campaign, onOpen }) => {
         </div>
       )}
 
+      {isOpen && (
+        <div className="absolute inset-0 bg-black/20 backdrop-saturate-50 pointer-events-none transition-opacity duration-500 z-10" />
+      )}
+
       <div className="absolute inset-0 bg-gradient-to-t from-[#fbfbfd] via-black/45 to-black/10 pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/35 to-transparent pointer-events-none" />
 
@@ -215,6 +219,12 @@ const CampaignHeroSection = ({ campaign, onOpen }) => {
       </div>
 
       <div className="absolute bottom-20 left-6 md:left-32 max-w-3xl z-20 animate-in slide-in-from-bottom-8 fade-in duration-700">
+        {isOpen && (
+          <div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-white text-[#1d1d1f] text-[10px] font-black uppercase tracking-widest shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <Check size={14} strokeWidth={3} /> Campaña abierta
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-3 mb-5">
           <span className="bg-[#0066FF] text-white px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shadow-sm">
             Campaña Oficial
@@ -249,9 +259,11 @@ const CampaignHeroSection = ({ campaign, onOpen }) => {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={onOpen}
-            className="bg-white text-[#1d1d1f] px-8 md:px-10 py-4 rounded-full font-bold inline-flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
+            className={`px-8 md:px-10 py-4 rounded-full font-bold inline-flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] ${
+              isOpen ? 'bg-[#0066FF] text-white' : 'bg-white text-[#1d1d1f]'
+            }`}
           >
-            {campaign.cta_texto || 'Ver campaña'} <ArrowUpRight size={18} />
+            {isOpen ? 'Campaña abierta' : (campaign.cta_texto || 'Ver campaña')} <ArrowUpRight size={18} />
           </button>
           <CampaignLikeButton campaign={campaign} />
           {audioAsset && (
@@ -260,11 +272,21 @@ const CampaignHeroSection = ({ campaign, onOpen }) => {
               onClick={toggleAudio}
               className="bg-white/10 text-white border border-white/20 px-5 py-4 rounded-full font-bold inline-flex items-center gap-2 hover:bg-white/20 transition-colors"
             >
-              <Music size={18} /> {audioEnabled ? 'Audio activo' : 'Activar audio'}
+              {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+              {audioEnabled ? 'Audio activo' : 'Activar audio'}
             </button>
           )}
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={onScrollNext}
+        className="absolute bottom-7 left-1/2 z-20 -translate-x-1/2 inline-flex flex-col items-center gap-2 text-white/80 hover:text-white transition-colors"
+      >
+        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Desliza para ver VISTA</span>
+        <ChevronDown size={24} className="animate-bounce" />
+      </button>
 
       {audioAsset && (
         <audio ref={audioRef} src={audioAsset.url} loop muted preload="metadata" />
@@ -285,7 +307,10 @@ export default function Home({ onSelectMovie, onPlay }) {
   const [moviesByGenre, setMoviesByGenre] = useState({});
   const [campaigns, setCampaigns] = useState([]);
   const [expandedCampaign, setExpandedCampaign] = useState(null);
+  const [showCampaignReturn, setShowCampaignReturn] = useState(false);
   const campaignDetailRef = useRef(null);
+  const campaignHeroAnchorRef = useRef(null);
+  const editorialHeroRef = useRef(null);
   const intervalRef = useRef(null);
   const featuredCampaign = campaigns[0] || null;
 
@@ -371,14 +396,38 @@ export default function Home({ onSelectMovie, onPlay }) {
 
   const currentMovie = featuredMovies[currentIndex];
 
+  useEffect(() => {
+    if (!featuredCampaign) return undefined;
+
+    const handleScroll = () => {
+      setShowCampaignReturn(window.scrollY > window.innerHeight * 1.2);
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [featuredCampaign]);
+
+  useEffect(() => {
+    if (!expandedCampaign) return;
+    window.requestAnimationFrame(() => {
+      campaignDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [expandedCampaign]);
+
   const openCampaign = useCallback((campaign) => {
     if (!campaign) return;
     trackCampaignEvent(campaign.id, 'click');
     setExpandedCampaign(campaign);
-    window.requestAnimationFrame(() => {
-      campaignDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
   }, [trackCampaignEvent]);
+
+  const scrollToCampaign = useCallback(() => {
+    campaignHeroAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const scrollToEditorialHero = useCallback(() => {
+    editorialHeroRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   if (loading) {
     return (
@@ -404,10 +453,14 @@ export default function Home({ onSelectMovie, onPlay }) {
       {/* 1. HERO DE CAMPAÑA — separado del hero editorial */}
       {featuredCampaign && (
         <>
-          <CampaignHeroSection
-            campaign={featuredCampaign}
-            onOpen={() => openCampaign(featuredCampaign)}
-          />
+          <div ref={campaignHeroAnchorRef}>
+            <CampaignHeroSection
+              campaign={featuredCampaign}
+              onOpen={() => openCampaign(featuredCampaign)}
+              onScrollNext={scrollToEditorialHero}
+              isOpen={expandedCampaign?.id === featuredCampaign.id}
+            />
+          </div>
           {expandedCampaign && (
             <div ref={campaignDetailRef}>
               <CampaignDetailInline campaign={expandedCampaign} onClose={() => setExpandedCampaign(null)} />
@@ -418,12 +471,14 @@ export default function Home({ onSelectMovie, onPlay }) {
 
       {/* 2. HERO ROTATIVO — contenido editorial / videos */}
       {currentMovie && (
-        <HeroSection
-          movie={currentMovie}
-          onPlay={onPlay}
-          onSelectMovie={onSelectMovie}
-          showBrandLine={!featuredCampaign}
-        />
+        <div ref={editorialHeroRef}>
+          <HeroSection
+            movie={currentMovie}
+            onPlay={onPlay}
+            onSelectMovie={onSelectMovie}
+            showBrandLine={!featuredCampaign}
+          />
+        </div>
       )}
 
       <div className="w-screen md:w-[100vw] md:-ml-24 h-48 bg-gradient-to-b from-transparent via-[#fbfbfd]/80 to-transparent absolute z-0 -translate-y-24 pointer-events-none" />
@@ -444,6 +499,16 @@ export default function Home({ onSelectMovie, onPlay }) {
 
       {!featuredCampaign && expandedCampaign && (
         <CampaignDetailInline campaign={expandedCampaign} onClose={() => setExpandedCampaign(null)} />
+      )}
+
+      {featuredCampaign && showCampaignReturn && (
+        <button
+          type="button"
+          onClick={scrollToCampaign}
+          className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 inline-flex items-center gap-2 rounded-full bg-[#1d1d1f] text-white border border-white/10 px-4 md:px-5 py-3 text-[10px] md:text-xs font-black uppercase tracking-widest shadow-2xl hover:bg-black active:scale-95 transition-all"
+        >
+          <Megaphone size={16} /> Volver a campaña
+        </button>
       )}
 
       {/* 2. CONTENIDO (Filas Editoriales) */}

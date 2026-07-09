@@ -161,37 +161,77 @@ export function CampaignDetailInline({ campaign, onClose }) {
         </div>
 
         {campaign.linkedContent?.length > 0 && (
-          <div className="p-6 md:p-10 border-t border-white/10">
-            <div className="flex items-center gap-2 mb-5">
-              <Newspaper size={18} className="text-[#0066FF]" />
-              <h3 className="text-xl font-serif italic">Ediciones periodísticas de la campaña</h3>
+          <div className="p-6 md:p-10 border-t border-white/10 bg-white/[0.02]">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Newspaper size={18} className="text-[#0066FF]" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#0066FF]">Cobertura editorial</p>
+                </div>
+                <h3 className="text-3xl md:text-5xl font-serif italic tracking-tight">Lee la campaña como edición.</h3>
+              </div>
+              <p className="text-sm text-neutral-400 max-w-sm leading-relaxed">
+                Piezas periodísticas vinculadas para seguir el contexto, los actores y las consecuencias de esta campaña.
+              </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {campaign.linkedContent.map((item) => (
+
+            <div className="grid grid-cols-1 xl:grid-cols-[1.35fr_0.9fr] gap-5">
+              {campaign.linkedContent.slice(0, 1).map((item) => (
                 <a
                   key={item.id}
                   href="#news"
                   onClick={() => trackCampaignEvent(campaign.id, 'click')}
-                  className="group flex gap-4 rounded-2xl bg-white/5 border border-white/10 p-3 hover:border-white/30 transition-colors"
+                  className="group relative min-h-[420px] overflow-hidden rounded-3xl bg-black border border-white/10 hover:border-white/30 transition-colors"
                 >
-                  <div className="w-20 h-24 rounded-xl overflow-hidden bg-black flex-shrink-0">
-                    {item.poster_url || item.banner_url ? (
-                      <img src={item.poster_url || item.banner_url} alt={item.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white/30">
-                        <Newspaper size={24} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex flex-col justify-center">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-[#0066FF] mb-1">{item.categoria || 'Noticia'}</span>
-                    <h4 className="font-bold text-white line-clamp-2">{item.titulo}</h4>
+                  {item.banner_url || item.poster_url ? (
+                    <img src={item.banner_url || item.poster_url} alt={item.titulo} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:scale-105 transition-transform duration-700" />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-white/20">
+                      <Newspaper size={70} strokeWidth={1.2} />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-6 md:p-8">
+                    <span className="inline-flex items-center gap-2 bg-white text-black px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
+                      Edición principal <ArrowUpRight size={13} />
+                    </span>
+                    <h4 className="text-3xl md:text-5xl font-serif italic leading-tight text-white max-w-3xl">{item.titulo}</h4>
                     {item.descripcion && (
-                      <p className="text-xs text-neutral-500 line-clamp-2 mt-1">{item.descripcion}</p>
+                      <p className="text-sm md:text-base text-white/75 line-clamp-3 mt-4 max-w-2xl leading-relaxed">{item.descripcion}</p>
                     )}
                   </div>
                 </a>
               ))}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4">
+                {campaign.linkedContent.slice(1, 5).map((item, idx) => (
+                  <a
+                    key={item.id}
+                    href="#news"
+                    onClick={() => trackCampaignEvent(campaign.id, 'click')}
+                    className="group flex gap-4 rounded-2xl bg-white/5 border border-white/10 p-3 hover:bg-white/10 hover:border-white/30 transition-colors"
+                  >
+                    <div className="w-24 h-28 rounded-xl overflow-hidden bg-black flex-shrink-0">
+                      {item.poster_url || item.banner_url ? (
+                        <img src={item.poster_url || item.banner_url} alt={item.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-white/30">
+                          <Newspaper size={24} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex flex-col justify-center">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-[#0066FF] mb-2">
+                        Capítulo {idx + 2}
+                      </span>
+                      <h4 className="font-bold text-white line-clamp-2 leading-snug">{item.titulo}</h4>
+                      {item.descripcion && (
+                        <p className="text-xs text-neutral-500 line-clamp-2 mt-2">{item.descripcion}</p>
+                      )}
+                    </div>
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
         )}
