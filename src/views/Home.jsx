@@ -9,7 +9,7 @@ import { ArrowUpRight, Film, Megaphone, Music, Play, Plus, Check, Info } from 'l
 // ==========================================
 // HERO SECTION (Inmersivo, debajo del Sidebar)
 // ==========================================
-const HeroSection = ({ movie, onPlay, onSelectMovie }) => {
+const HeroSection = ({ movie, onPlay, onSelectMovie, showBrandLine = true }) => {
   // Los hooks SIEMPRE se llaman, sin condicionales antes.
   // useLibrary debe tolerar movie undefined/null internamente (id undefined -> no-op).
   const { isInLibrary, toggleLibrary, loading } = useLibrary(movie);
@@ -61,18 +61,20 @@ const HeroSection = ({ movie, onPlay, onSelectMovie }) => {
       )}
 
       {/* Degradados Cinemáticos */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#fbfbfd] via-[#0a0a0a]/50 to-transparent pointer-events-none opacity-90" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a]/95 via-[#0a0a0a]/50 to-transparent pointer-events-none opacity-90" />
       <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/90 via-[#0a0a0a]/30 to-transparent pointer-events-none" />
 
       {/* Título Insignia */}
-      <div className="absolute top-8 left-6 md:left-32 z-50 pointer-events-none">
-         <h2
-           className="text-3xl md:text-4xl italic tracking-tight text-white/90 drop-shadow-xl"
-           style={{ fontFamily: "'Playfair Display', serif" }}
-         >
-           See it differently.
-         </h2>
-      </div>
+      {showBrandLine && (
+        <div className="absolute top-8 left-6 md:left-32 z-50 pointer-events-none">
+           <h2
+             className="text-3xl md:text-4xl italic tracking-tight text-white/90 drop-shadow-xl"
+             style={{ fontFamily: "'Playfair Display', serif" }}
+           >
+             See it differently.
+           </h2>
+        </div>
+      )}
 
       {/* Info del Hero */}
       <div
@@ -283,6 +285,7 @@ export default function Home({ onSelectMovie, onPlay }) {
   const [moviesByGenre, setMoviesByGenre] = useState({});
   const [campaigns, setCampaigns] = useState([]);
   const [expandedCampaign, setExpandedCampaign] = useState(null);
+  const campaignDetailRef = useRef(null);
   const intervalRef = useRef(null);
   const featuredCampaign = campaigns[0] || null;
 
@@ -372,6 +375,9 @@ export default function Home({ onSelectMovie, onPlay }) {
     if (!campaign) return;
     trackCampaignEvent(campaign.id, 'click');
     setExpandedCampaign(campaign);
+    window.requestAnimationFrame(() => {
+      campaignDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }, [trackCampaignEvent]);
 
   if (loading) {
@@ -397,10 +403,17 @@ export default function Home({ onSelectMovie, onPlay }) {
 
       {/* 1. HERO DE CAMPAÑA — separado del hero editorial */}
       {featuredCampaign && (
-        <CampaignHeroSection
-          campaign={featuredCampaign}
-          onOpen={() => openCampaign(featuredCampaign)}
-        />
+        <>
+          <CampaignHeroSection
+            campaign={featuredCampaign}
+            onOpen={() => openCampaign(featuredCampaign)}
+          />
+          {expandedCampaign && (
+            <div ref={campaignDetailRef}>
+              <CampaignDetailInline campaign={expandedCampaign} onClose={() => setExpandedCampaign(null)} />
+            </div>
+          )}
+        </>
       )}
 
       {/* 2. HERO ROTATIVO — contenido editorial / videos */}
@@ -409,10 +422,11 @@ export default function Home({ onSelectMovie, onPlay }) {
           movie={currentMovie}
           onPlay={onPlay}
           onSelectMovie={onSelectMovie}
+          showBrandLine={!featuredCampaign}
         />
       )}
 
-      <div className="w-screen md:w-[100vw] md:-ml-24 h-48 bg-gradient-to-b from-[#fbfbfd] to-transparent absolute z-0 -translate-y-24 pointer-events-none" />
+      <div className="w-screen md:w-[100vw] md:-ml-24 h-48 bg-gradient-to-b from-transparent via-[#fbfbfd]/80 to-transparent absolute z-0 -translate-y-24 pointer-events-none" />
 
       {featuredMovies.length > 1 && (
         <div className="flex justify-center gap-2.5 -mt-8 mb-12 relative z-30">
@@ -428,7 +442,7 @@ export default function Home({ onSelectMovie, onPlay }) {
         </div>
       )}
 
-      {expandedCampaign && (
+      {!featuredCampaign && expandedCampaign && (
         <CampaignDetailInline campaign={expandedCampaign} onClose={() => setExpandedCampaign(null)} />
       )}
 

@@ -220,7 +220,7 @@ export default function VISTAAuth({ onLogin }) {
       if (flow === 'recover') return { title: 'Recuperación de Acceso.', subtitle: 'Ingresa tu GBA ID' };
     }
     if (step === 'discord') {
-      return { title: 'Vincula tu cuenta de Discord.' };
+      return { title: 'Vincula tu usuario de Discord.' };
     }
     if (step === 'phrase') {
       if (flow === 'register') return { title: 'Configura tu Frase de Seguridad.' };
@@ -336,8 +336,8 @@ export default function VISTAAuth({ onLogin }) {
             <form onSubmit={handleNextStep} className="space-y-6 text-left">
               <p className="text-sm text-[#86868b] mb-4">
                 {flow === 'register' 
-                  ? "Escribe una palabra o frase corta que solo tú conozcas. Esta será tu única forma de recuperar tu cuenta si olvidas el PIN."
-                  : "Ingresa la Frase de Seguridad que configuraste al crear tu cuenta para verificar tu identidad."}
+                  ? "Escribe una palabra o frase corta que solo tú conozcas. Esta será tu única forma de recuperar tu GBA ID si olvidas el PIN."
+                  : "Ingresa la Frase de Seguridad que configuraste al crear tu GBA ID para verificar tu identidad."}
               </p>
               <div className="relative border-b border-[#d2d2d7] focus-within:border-[#1d1d1f] transition-colors pb-1">
                 <KeyRound className="absolute left-0 top-3 text-[#86868b]" size={20} strokeWidth={1.5} />
@@ -425,7 +425,7 @@ export default function VISTAAuth({ onLogin }) {
               disabled={loading}
               className="mt-10 text-sm text-[#86868b] hover:text-[#1d1d1f] transition-colors font-medium border-b border-transparent hover:border-[#1d1d1f] pb-0.5"
             >
-              {flow === 'login' ? '¿No tienes cuenta? Crea tu GBA ID' : '¿Ya tienes un GBA ID? Inicia sesión'}
+              {flow === 'login' ? '¿No tienes GBA ID? Crea uno' : '¿Ya tienes un GBA ID? Inicia sesión'}
             </button>
           )}
         </motion.div>

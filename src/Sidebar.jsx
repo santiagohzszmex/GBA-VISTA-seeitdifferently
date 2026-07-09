@@ -184,7 +184,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         >
           {/* IDENTIDAD */}
           <div className="p-5 bg-gradient-to-b from-white to-[#f5f5f7]/50 rounded-[2rem] border border-[#d2d2d7]/30 shadow-sm mb-2">
-            <p className="text-[9px] font-black text-[#86868b] uppercase tracking-widest mb-3 opacity-50">Credenciales VISTA</p>
+            <p className="text-[9px] font-black text-[#86868b] uppercase tracking-widest mb-3 opacity-50">GBA ID</p>
             <div className="overflow-hidden">
                 <p className="font-bold text-lg truncate tracking-tight text-[#1d1d1f]">{user?.nombre || 'GBA ID'}</p>
                 <p className="text-[10px] font-bold text-[#0066FF] mt-0.5 tracking-wider uppercase">ID: {user?.id?.split('-')[0] || 'GUEST-ID'}</p>

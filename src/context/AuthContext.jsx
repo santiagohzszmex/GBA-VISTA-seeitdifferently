@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
           .single();
 
         // 🚨 EL DETECTOR DE FANTASMAS
-        // Si hay error o no existe userData, significa que la cuenta fue eliminada.
+        // Si hay error o no existe userData, significa que el GBA ID fue eliminado.
         if (error || !userData) {
           console.warn("Sesión fantasma detectada. Destruyendo token...");
           await supabase.auth.signOut();

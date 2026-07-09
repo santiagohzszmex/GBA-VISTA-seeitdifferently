@@ -159,7 +159,7 @@ export default function AduanaTab() {
   };
 
   const handleRechazarSello = async (req) => {
-    if (!window.confirm("¿Rechazar credenciales editoriales de este usuario?")) return;
+    if (!window.confirm("¿Rechazar la solicitud editorial de este GBA ID?")) return;
     
     const estadoPrevio = [...pendingRequests];
     setPendingRequests(prev => prev.filter(r => r.id !== req.id));

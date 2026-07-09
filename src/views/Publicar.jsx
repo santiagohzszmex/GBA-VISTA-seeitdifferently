@@ -321,7 +321,7 @@ export default function Publicar() {
               <Clock className="text-[#0066FF] mb-4 animate-pulse" size={36} />
               <h3 className="text-xl font-serif italic text-[#1d1d1f] mb-2">Estatus: En Revisión</h3>
               <p className="text-[#86868b] text-sm leading-relaxed font-medium">
-                Mothership Command recibió tus credenciales y propuesta editorial. Permisos en proceso de acreditación por la aduana del panel administrativo.
+                Mothership Command recibió tu solicitud y propuesta editorial. Permisos en proceso de acreditación por la aduana del panel administrativo.
               </p>
             </div>
           ) : (
@@ -347,7 +347,7 @@ export default function Publicar() {
                 />
               </div>
               <button type="submit" disabled={procesandoSolicitud} className={`w-full bg-[#1d1d1f] hover:bg-black text-white font-bold py-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-sm uppercase tracking-wider ${procesandoSolicitud ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                {procesandoSolicitud ? 'Estableciendo Enlace...' : <><Send size={16} /> Solicitar Credenciales Editoriales</>}
+                {procesandoSolicitud ? 'Estableciendo Enlace...' : <><Send size={16} /> Solicitar Sello Editorial</>}
               </button>
             </form>
           )}
