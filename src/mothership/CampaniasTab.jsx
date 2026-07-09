@@ -20,6 +20,7 @@ const initialForm = {
 const locationOptions = [
   { value: 'home_banner', label: 'Home Banner' },
   { value: 'home_hero', label: 'Home Hero' },
+  { value: 'news_banner', label: 'Noticias Banner' },
   { value: 'spotlight_modal', label: 'Spotlight' },
   { value: 'campaign_center', label: 'Centro' }
 ];
@@ -29,7 +30,11 @@ const inferAssetType = (file) => {
   if (file.type.startsWith('audio/')) return 'audio';
   if (file.name.toLowerCase().endsWith('.glb')) return 'modelo_3d';
   if (file.type === 'application/pdf') return 'documento';
-  if (file.type.startsWith('image/')) return 'poster';
+  if (file.type.startsWith('image/')) {
+    const fileName = file.name.toLowerCase();
+    if (/(banner|horizontal|wide|franja|strip)/.test(fileName)) return 'banner';
+    return 'poster';
+  }
   return 'otro';
 };
 

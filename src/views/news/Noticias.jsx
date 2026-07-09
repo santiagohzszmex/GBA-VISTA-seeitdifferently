@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useCallback, useState } from 'react';
 import { useNews } from '../../hooks/useNews';
+import { useCampaigns } from '../../hooks/useCampaigns';
 import NewsCoverflow from '../../components/news/NewsCoverflow';
 import NewsCard from '../../components/news/NewsCard';
-import { Radio, Newspaper, Activity, Crown } from 'lucide-react';
+import { CampaignDetailInline, getCampaignPrimaryAsset } from '../../components/campaigns/CampaignShowcase';
+import { Radio, Newspaper, Activity, Crown, Megaphone, ArrowUpRight } from 'lucide-react';
 
 // Clave de localStorage donde guardamos qué noticias ya registró este navegador/usuario
 const VISTAS_KEY = 'vista_gimg_registradas';
@@ -27,21 +29,41 @@ function guardarVistasRegistradas(set) {
 
 export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNewsId }) {
   const { loading, allNews, fetchGlobalNews, registrarVisita } = useNews();
+  const { fetchActiveCampaigns, trackCampaignEvent } = useCampaigns();
+  const [activeCampaigns, setActiveCampaigns] = useState([]);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [localFocusedNewsId, setLocalFocusedNewsId] = useState(focusedNewsId || null);
 
   useEffect(() => {
     fetchGlobalNews();
   }, [fetchGlobalNews]);
 
+  useEffect(() => {
+    if (focusedNewsId) setLocalFocusedNewsId(focusedNewsId);
+  }, [focusedNewsId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchActiveCampaigns().then((campaigns) => {
+      if (!cancelled) setActiveCampaigns(campaigns || []);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchActiveCampaigns]);
+
   const prioritizeFocusedNews = useCallback(
     (items) => {
-      if (!focusedNewsId) return items;
+      if (!localFocusedNewsId) return items;
       return [...items].sort((a, b) => {
-        if (a.id === focusedNewsId) return -1;
-        if (b.id === focusedNewsId) return 1;
+        if (a.id === localFocusedNewsId) return -1;
+        if (b.id === localFocusedNewsId) return 1;
         return 0;
       });
     },
-    [focusedNewsId]
+    [localFocusedNewsId]
   );
 
   const gimgNews = useMemo(
@@ -61,8 +83,21 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
   );
 
   const focusedNews = useMemo(
-    () => allNews.find(item => item.id === focusedNewsId),
-    [allNews, focusedNewsId]
+    () => allNews.find(item => item.id === localFocusedNewsId),
+    [allNews, localFocusedNewsId]
+  );
+
+  const newsCampaigns = useMemo(
+    () => activeCampaigns
+      .filter(campaign => {
+        const locations = campaign.ubicaciones || [];
+        return locations.includes('news_banner')
+          || locations.includes('news')
+          || locations.includes('home_banner')
+          || locations.includes('home_hero');
+      })
+      .slice(0, 4),
+    [activeCampaigns]
   );
 
   const handleNavigateProfile = useCallback(
@@ -89,6 +124,29 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
     },
     [registrarVisita]
   );
+
+  const handleCampaignClick = useCallback(
+    (campaign) => {
+      trackCampaignEvent(campaign.id, 'click');
+
+      if (campaign.cta_tipo === 'url' && campaign.cta_target) {
+        window.open(campaign.cta_target, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      setSelectedCampaign(campaign);
+    },
+    [trackCampaignEvent]
+  );
+
+  const handleCampaignNewsFocus = useCallback((item) => {
+    if (!item?.id) return;
+    setLocalFocusedNewsId(item.id);
+    setSelectedCampaign(null);
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }, []);
 
   if (loading && allNews.length === 0) {
     return (
@@ -122,6 +180,79 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
         )}
       </div>
 
+      {newsCampaigns.length > 0 && (
+        <section className="px-6 md:px-12 max-w-[1800px] mx-auto mb-14">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-2 text-[#1d1d1f]">
+              <Megaphone size={18} className="text-[#0066FF]" />
+              <h2 className="text-xs font-black uppercase tracking-[0.25em]">Campañas abiertas</h2>
+            </div>
+            <span className="hidden md:inline text-xs font-bold text-[#86868b]">
+              Convocatorias, colaboraciones y señales oficiales
+            </span>
+          </div>
+
+          <div className="flex gap-4 overflow-x-auto pb-2 snap-x">
+            {newsCampaigns.map((campaign) => {
+              const asset = getCampaignPrimaryAsset(campaign);
+
+              return (
+                <button
+                  key={campaign.id}
+                  type="button"
+                  onClick={() => handleCampaignClick(campaign)}
+                  className="group relative h-28 md:h-32 min-w-[86vw] md:min-w-[520px] lg:min-w-[620px] overflow-hidden rounded-2xl bg-[#101010] text-left snap-start border border-black/5 shadow-sm"
+                >
+                  {asset?.url ? (
+                    <img
+                      src={asset.url}
+                      alt={campaign.titulo}
+                      className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-white/20">
+                      <Megaphone size={42} strokeWidth={1.3} />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/10" />
+                  <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between gap-4 p-5 md:p-6 text-white">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="bg-[#0066FF] text-white px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
+                          Campaña
+                        </span>
+                        {campaign.linkedContent?.length > 0 && (
+                          <span className="text-[9px] font-black uppercase tracking-widest text-white/60">
+                            {campaign.linkedContent.length} edición(es)
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-serif italic text-2xl md:text-3xl leading-tight truncate">{campaign.titulo}</h3>
+                      {campaign.descripcion && (
+                        <p className="text-xs md:text-sm text-white/70 line-clamp-1 mt-1 max-w-2xl">{campaign.descripcion}</p>
+                      )}
+                    </div>
+                    <div className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white text-[#1d1d1f] px-4 py-2 text-[10px] font-black uppercase tracking-widest flex-shrink-0">
+                      {campaign.cta_texto || 'Ver campaña'} <ArrowUpRight size={14} />
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedCampaign && (
+            <div className="mt-6">
+              <CampaignDetailInline
+                campaign={selectedCampaign}
+                onClose={() => setSelectedCampaign(null)}
+                onNavigateNews={handleCampaignNewsFocus}
+              />
+            </div>
+          )}
+        </section>
+      )}
+
       {/* NIVEL 1: ESCAPARATE OFICIAL */}
       {gimgNews.length > 0 && (
         <div className="mb-24 animate-in fade-in duration-1000 delay-200 fill-mode-forwards">
@@ -134,7 +265,7 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
             news={gimgNews}
             onRead={handleRegisterView}
             onNavigateProfile={handleNavigateProfile}
-            focusedNewsId={focusedNewsId}
+            focusedNewsId={localFocusedNewsId}
           />
         </div>
       )}
