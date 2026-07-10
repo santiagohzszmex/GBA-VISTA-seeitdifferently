@@ -60,9 +60,9 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
     if (!item.enlace_pdf) return [];
     try {
       const parsed = JSON.parse(item.enlace_pdf);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : [item.poster_url || item.banner_url];
+      return Array.isArray(parsed) ? parsed : [item.poster_url || item.banner_url].filter(Boolean);
     } catch {
-      return [item.poster_url || item.banner_url];
+      return [item.poster_url || item.banner_url].filter(Boolean);
     }
   };
 

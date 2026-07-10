@@ -12,10 +12,130 @@ import {
   Globe, 
   BookOpen,
   Image as ImageIcon,
-  FileImage,
   Plus,
-  Languages // <-- Añadido para la UI de traducciones
+  Languages,
+  ChevronUp,
+  ChevronDown,
+  Maximize2,
+  Replace,
+  Images
 } from 'lucide-react';
+
+const parseStoredPages = (value) => {
+  if (!value) return [];
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+};
+
+const existingPages = (urls = []) => (Array.isArray(urls) ? urls : []).map((url) => ({
+  id: `existing-${url}`,
+  type: 'existing',
+  url,
+  preview: url,
+  name: url.split('/').pop() || 'Pagina publicada'
+}));
+
+const filePage = (file) => ({
+  id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  type: 'file',
+  file,
+  preview: URL.createObjectURL(file),
+  name: file.name
+});
+
+function PagesEditor({ pages, onChange, onPreview, label, accent = 'blue' }) {
+  const accentClasses = accent === 'green'
+    ? 'text-green-400 border-green-500/30 hover:bg-green-500/10'
+    : 'text-blue-400 border-blue-500/30 hover:bg-blue-500/10';
+
+  const removePage = (index) => {
+    const page = pages[index];
+    if (page?.type === 'file') URL.revokeObjectURL(page.preview);
+    onChange(pages.filter((_, pageIndex) => pageIndex !== index));
+  };
+
+  const movePage = (index, direction) => {
+    const target = index + direction;
+    if (target < 0 || target >= pages.length) return;
+    const next = [...pages];
+    [next[index], next[target]] = [next[target], next[index]];
+    onChange(next);
+  };
+
+  const addFiles = (files) => {
+    const additions = Array.from(files || []).map(filePage);
+    if (additions.length > 0) onChange([...pages, ...additions]);
+  };
+
+  const replacePage = (index, file) => {
+    if (!file) return;
+    const current = pages[index];
+    if (current?.type === 'file') URL.revokeObjectURL(current.preview);
+    const next = [...pages];
+    next[index] = filePage(file);
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[10px] text-neutral-400 font-bold uppercase">{label}</p>
+        <span className="text-[9px] text-neutral-500 font-mono">{pages.length} {pages.length === 1 ? 'pagina' : 'paginas'}</span>
+      </div>
+
+      {pages.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          {pages.map((page, index) => (
+            <div key={page.id} className="group/page overflow-hidden rounded-xl border border-white/10 bg-black/30">
+              <button
+                type="button"
+                onClick={() => onPreview({ src: page.preview, title: `Pagina ${index + 1}` })}
+                className="relative block w-full aspect-[3/4] overflow-hidden bg-neutral-900"
+                title={`Ver pagina ${index + 1}`}
+              >
+                <img src={page.preview} alt={`Vista previa de la pagina ${index + 1}`} className="w-full h-full object-cover" />
+                <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover/page:bg-black/45 transition-colors">
+                  <Maximize2 size={20} className="text-white opacity-0 group-hover/page:opacity-100 transition-opacity" />
+                </span>
+                <span className="absolute top-2 left-2 bg-black/75 px-2 py-1 rounded-md text-[9px] font-black">{index + 1}</span>
+                {page.type === 'file' && <span className="absolute top-2 right-2 bg-blue-500 px-2 py-1 rounded-md text-[8px] font-black uppercase">Nueva</span>}
+              </button>
+
+              <div className="p-2 space-y-2">
+                <p className="text-[9px] text-neutral-400 truncate" title={page.name}>{page.name}</p>
+                <div className="grid grid-cols-4 gap-1">
+                  <button type="button" onClick={() => movePage(index, -1)} disabled={index === 0} className="h-8 rounded-md bg-white/5 hover:bg-white/10 disabled:opacity-25 flex items-center justify-center" title="Mover antes"><ChevronUp size={13}/></button>
+                  <button type="button" onClick={() => movePage(index, 1)} disabled={index === pages.length - 1} className="h-8 rounded-md bg-white/5 hover:bg-white/10 disabled:opacity-25 flex items-center justify-center" title="Mover despues"><ChevronDown size={13}/></button>
+                  <label className="h-8 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center cursor-pointer" title="Reemplazar pagina">
+                    <Replace size={13}/>
+                    <input type="file" accept="image/*" onChange={(event) => replacePage(index, event.target.files?.[0])} className="hidden" />
+                  </label>
+                  <button type="button" onClick={() => removePage(index)} className="h-8 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center" title="Eliminar solo esta pagina"><Trash2 size={13}/></button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {pages.length === 0 && (
+        <div className="py-7 border border-dashed border-white/10 rounded-xl flex flex-col items-center gap-2 text-neutral-600">
+          <Images size={22}/>
+          <span className="text-[10px] font-bold uppercase">Sin paginas</span>
+        </div>
+      )}
+
+      <label className={`flex items-center justify-center gap-2 w-full py-3 border border-dashed rounded-xl text-xs font-bold cursor-pointer transition-colors ${accentClasses}`}>
+        <Plus size={14} /> Añadir paginas
+        <input type="file" accept="image/*" multiple onChange={(event) => addFiles(event.target.files)} className="hidden"/>
+      </label>
+    </div>
+  );
+}
 
 export default function NoticiasTab() {
   const [loading, setLoading] = useState(false);
@@ -26,7 +146,8 @@ export default function NoticiasTab() {
 
   // Estados para archivos físicos (Idioma Base)
   const [portadaArchivo, setPortadaArchivo] = useState(null);
-  const [paginasArchivos, setPaginasArchivos] = useState([]);
+  const [paginas, setPaginas] = useState([]);
+  const [previewPage, setPreviewPage] = useState(null);
 
   // NUEVO: Estado para gestionar Múltiples Idiomas Simultáneos
   const [traducciones, setTraducciones] = useState([]);
@@ -71,10 +192,13 @@ export default function NoticiasTab() {
 
   // ================= MANEJADORES DE TRADUCCIÓN =================
   const addTraduccion = () => {
-    setTraducciones([...traducciones, { lang: 'en', titulo: '', descripcion: '', portadaArchivo: null, paginasArchivos: [], hasExistingPoster: false, existingPagesCount: 0 }]);
+    setTraducciones([...traducciones, { lang: 'en', titulo: '', descripcion: '', portadaArchivo: null, paginas: [], hasExistingPoster: false }]);
   };
 
   const removeTraduccion = (index) => {
+    traducciones[index]?.paginas?.forEach((page) => {
+      if (page.type === 'file') URL.revokeObjectURL(page.preview);
+    });
     setTraducciones(traducciones.filter((_, i) => i !== index));
   };
 
@@ -84,10 +208,9 @@ export default function NoticiasTab() {
     setTraducciones(newTrads);
   };
 
-  const handleTraduccionPagina = (index, file) => {
-    if (!file) return;
+  const updateTraduccionPaginas = (index, pages) => {
     const newTrads = [...traducciones];
-    newTrads[index].paginasArchivos.push(file);
+    newTrads[index] = { ...newTrads[index], paginas: pages };
     setTraducciones(newTrads);
   };
   // ==============================================================
@@ -95,6 +218,9 @@ export default function NoticiasTab() {
   const handleEdit = (item) => {
     setEditingItem(item);
     const baseLang = item.idioma_original || 'es';
+    const storedBasePages = Object.prototype.hasOwnProperty.call(item.paginas_i18n || {}, baseLang)
+      ? item.paginas_i18n[baseLang]
+      : parseStoredPages(item.enlace_pdf);
 
     setFormData({
       titulo: item.titulo || '',
@@ -115,9 +241,8 @@ export default function NoticiasTab() {
             titulo: item.titulo_i18n[l] || '',
             descripcion: item.descripcion_i18n?.[l] || '',
             portadaArchivo: null,
-            paginasArchivos: [],
+            paginas: existingPages(item.paginas_i18n?.[l] || []),
             hasExistingPoster: !!item.poster_i18n?.[l],
-            existingPagesCount: item.paginas_i18n?.[l]?.length || 0
           });
         }
       });
@@ -125,23 +250,24 @@ export default function NoticiasTab() {
     
     setTraducciones(loadedTraducciones);
     setPortadaArchivo(null);
-    setPaginasArchivos([]);
+    setPaginas(existingPages(storedBasePages));
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setStatus({ type: 'info', msg: `Modificando: ${item.titulo}` });
   };
 
-  const handleAgregarPagina = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setPaginasArchivos([...paginasArchivos, file]);
+  const uploadPageList = async (pageList, folderPath) => {
+    const urls = [];
+    for (const page of pageList) {
+      if (page.type === 'existing') {
+        urls.push(page.url);
+        continue;
+      }
+      const uploadedUrl = await uploadToCloudinary(page.file, folderPath);
+      if (!uploadedUrl) throw new Error(`No se pudo subir ${page.name}.`);
+      urls.push(uploadedUrl);
     }
-  };
-
-  const handleEliminarPagina = (index) => {
-    const nuevasPaginas = [...paginasArchivos];
-    nuevasPaginas.splice(index, 1);
-    setPaginasArchivos(nuevasPaginas);
+    return urls;
   };
 
   const handleSubmit = async (e) => {
@@ -151,7 +277,7 @@ export default function NoticiasTab() {
 
     try {
       let finalPortadaUrl = formData.portada_url;
-      let finalPaginasJsonStr = formData.enlace_pdf; 
+      let finalPaginas = [];
 
       const isComunidad = editingItem ? editingItem.es_comunidad : false;
       const selloStr = isComunidad ? (editingItem.sello_editorial || 'Comunidad') : 'GIMG_Oficial';
@@ -168,35 +294,38 @@ export default function NoticiasTab() {
         throw new Error("Debes incluir una ilustración para la noticia base.");
       }
 
-      // 2. Subida del Idioma Base (Páginas)
-      if (paginasArchivos.length > 0) {
+      // 2. Sincronización del Idioma Base (conserva, reordena o elimina páginas individuales)
+      if (paginas.some((page) => page.type === 'file')) {
         setStatus({ type: 'info', msg: 'Subiendo páginas del documento base...' });
-        const urlsNuevasPaginas = [];
-        for (const pagina of paginasArchivos) {
-          const urlPagina = await uploadToCloudinary(pagina, folderPath);
-          if (urlPagina) urlsNuevasPaginas.push(urlPagina);
-        }
-        finalPaginasJsonStr = JSON.stringify(urlsNuevasPaginas);
       }
+      finalPaginas = await uploadPageList(paginas, folderPath);
+      const finalPaginasJsonStr = JSON.stringify(finalPaginas);
 
       setStatus({ type: 'info', msg: 'Sincronizando traducciones y base de datos...' });
 
       // INGENIERÍA MULTI-IDIOMA EN BLOQUE
       const langBase = formData.idioma_original;
-      let paginasArray = [];
-      try { if(finalPaginasJsonStr) paginasArray = JSON.parse(finalPaginasJsonStr); } catch(e){}
-
-      // Preparamos los diccionarios clonando los existentes (por si se borra uno sin querer)
+      // Preparamos los diccionarios y eliminamos idiomas retirados explícitamente del editor.
       const titulos = { ...(editingItem?.titulo_i18n || {}) };
       const descripciones = { ...(editingItem?.descripcion_i18n || {}) };
       const posters = { ...(editingItem?.poster_i18n || {}) };
       const paginasObj = { ...(editingItem?.paginas_i18n || {}) };
+      const activeLanguages = new Set([langBase, ...traducciones.map((trad) => trad.lang)]);
+      [titulos, descripciones, posters, paginasObj].forEach((dictionary) => {
+        Object.keys(dictionary).forEach((lang) => {
+          if (!activeLanguages.has(lang)) delete dictionary[lang];
+        });
+      });
+
+      if (activeLanguages.size !== traducciones.length + 1) {
+        throw new Error('Cada traducción debe utilizar un idioma diferente al idioma base.');
+      }
 
       // Inyectar Idioma Base
       titulos[langBase] = formData.titulo;
       descripciones[langBase] = formData.descripcion;
       posters[langBase] = finalPortadaUrl;
-      if (paginasArray.length > 0) paginasObj[langBase] = paginasArray;
+      paginasObj[langBase] = finalPaginas;
 
       // Inyectar Traducciones Secundarias Dinámicas
       for (const trad of traducciones) {
@@ -211,15 +340,7 @@ export default function NoticiasTab() {
         }
         if (tPortada) posters[trad.lang] = tPortada;
 
-        let tPaginas = paginasObj[trad.lang] || [];
-        if (trad.paginasArchivos.length > 0) {
-          tPaginas = []; // Si suben nuevas, sobrescribimos
-          for (const p of trad.paginasArchivos) {
-            const u = await uploadToCloudinary(p, folderPath);
-            if (u) tPaginas.push(u);
-          }
-        }
-        if (tPaginas.length > 0) paginasObj[trad.lang] = tPaginas;
+        paginasObj[trad.lang] = await uploadPageList(trad.paginas || [], folderPath);
       }
 
       // Empaquetar para Supabase
@@ -239,21 +360,24 @@ export default function NoticiasTab() {
         titulo_i18n: titulos,
         descripcion_i18n: descripciones,
         poster_i18n: posters,
-        paginas_i18n: Object.keys(paginasObj).length > 0 ? paginasObj : null
+        paginas_i18n: paginasObj
       };
+
+      const successMessage = editingItem
+        ? 'Publicación actualizada. Las páginas ya están sincronizadas.'
+        : '¡Comunicado global GIMG publicado con éxito!';
 
       if (editingItem) {
         const { error } = await supabase.from('contenido').update(payload).eq('id', editingItem.id);
         if (error) throw error;
-        setStatus({ type: 'success', msg: 'Registro multi-idioma actualizado en el ecosistema' });
       } else {
         const { error } = await supabase.from('contenido').insert([payload]);
         if (error) throw error;
-        setStatus({ type: 'success', msg: '¡Comunicado global GIMG publicado con éxito!' });
       }
 
       resetForm();
-      fetchNewsData();
+      setStatus({ type: 'success', msg: successMessage });
+      await fetchNewsData();
     } catch (err) {
       console.error(err);
       setStatus({ type: 'error', msg: err.message || 'Error al procesar la publicación.' });
@@ -279,22 +403,19 @@ export default function NoticiasTab() {
     setEditingItem(null);
     setFormData(initialFormState);
     setPortadaArchivo(null);
-    setPaginasArchivos([]);
+    paginas.forEach((page) => {
+      if (page.type === 'file') URL.revokeObjectURL(page.preview);
+    });
+    traducciones.forEach((trad) => trad.paginas?.forEach((page) => {
+      if (page.type === 'file') URL.revokeObjectURL(page.preview);
+    }));
+    setPaginas([]);
     setTraducciones([]); // Limpiar traducciones
     setStatus(null);
   };
 
-  const hasExistingPages = () => {
-    if (!formData.enlace_pdf) return false;
-    try {
-      const parsed = JSON.parse(formData.enlace_pdf);
-      return Array.isArray(parsed) && parsed.length > 0;
-    } catch {
-      return formData.enlace_pdf.length > 0;
-    }
-  };
-
   return (
+    <>
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-12 text-white">
       
       {/* FORMULARIO EDITORIAL INTELLIGENT (DARK MODE) */}
@@ -376,33 +497,12 @@ export default function NoticiasTab() {
                 </label>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-[10px] text-neutral-400 font-bold uppercase">Páginas del Documento Base</p>
-                
-                {hasExistingPages() && paginasArchivos.length === 0 && (
-                  <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-xl text-xs text-blue-300 font-medium mb-3">
-                    Este registro ya contiene páginas o un archivo guardado. Subir nuevas aquí <b>sobrescribirá</b> el contenido anterior del idioma seleccionado.
-                  </div>
-                )}
-
-                {paginasArchivos.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 border border-white/10 rounded-xl bg-black/30 animate-in slide-in-from-left-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 bg-white/5 text-neutral-400 rounded-md flex items-center justify-center"><FileImage size={12}/></div>
-                      <div>
-                        <p className="text-[10px] font-bold text-white">Página {index + 1}</p>
-                        <p className="text-[9px] text-neutral-500 truncate max-w-[120px]">{file.name}</p>
-                      </div>
-                    </div>
-                    <button type="button" onClick={() => handleEliminarPagina(index)} className="text-red-400 hover:text-red-300 p-1"><Trash2 size={14}/></button>
-                  </div>
-                ))}
-
-                <label className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-white/20 rounded-xl text-xs font-bold text-blue-400 cursor-pointer hover:bg-blue-900/20 transition-colors">
-                  <Plus size={14} /> Añadir Página Base
-                  <input type="file" accept="image/*" onChange={handleAgregarPagina} className="hidden"/>
-                </label>
-              </div>
+              <PagesEditor
+                pages={paginas}
+                onChange={setPaginas}
+                onPreview={setPreviewPage}
+                label="Paginas del documento base"
+              />
             </div>
 
             {/* =========================================================
@@ -469,22 +569,21 @@ export default function NoticiasTab() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-2">Portada Exclusiva</label>
-                      <label className="flex items-center justify-center w-full py-2 border border-white/10 border-dashed rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
-                        <span className="text-[10px] truncate px-2">{trad.portadaArchivo ? trad.portadaArchivo.name : (trad.hasExistingPoster ? 'Actualizar Portada' : 'Subir Portada')}</span>
-                        <input type="file" accept="image/*" onChange={(e) => updateTraduccion(idx, 'portadaArchivo', e.target.files[0])} className="hidden" />
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-2">Páginas ({trad.paginasArchivos.length})</label>
-                      <label className="flex items-center justify-center w-full py-2 border border-white/10 border-dashed rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
-                        <span className="text-[10px] truncate px-2">{trad.existingPagesCount > 0 && trad.paginasArchivos.length === 0 ? 'Sobrescribir Páginas' : '+ Agregar Página'}</span>
-                        <input type="file" accept="image/*" onChange={(e) => handleTraduccionPagina(idx, e.target.files[0])} className="hidden" />
-                      </label>
-                    </div>
+                  <div className="pt-2">
+                    <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-2">Portada exclusiva</label>
+                    <label className="flex items-center justify-center w-full py-2 border border-white/10 border-dashed rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
+                      <span className="text-[10px] truncate px-2">{trad.portadaArchivo ? trad.portadaArchivo.name : (trad.hasExistingPoster ? 'Actualizar portada' : 'Subir portada')}</span>
+                      <input type="file" accept="image/*" onChange={(e) => updateTraduccion(idx, 'portadaArchivo', e.target.files[0])} className="hidden" />
+                    </label>
                   </div>
+
+                  <PagesEditor
+                    pages={trad.paginas || []}
+                    onChange={(pages) => updateTraduccionPaginas(idx, pages)}
+                    onPreview={setPreviewPage}
+                    label={`Paginas en ${trad.lang.toUpperCase()}`}
+                    accent="green"
+                  />
                 </div>
               ))}
             </div>
@@ -603,5 +702,26 @@ export default function NoticiasTab() {
 
       </div>
     </div>
+
+    {previewPage && (
+      <div
+        className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md p-4 md:p-8 flex items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Vista previa de ${previewPage.title}`}
+        onClick={() => setPreviewPage(null)}
+      >
+        <div className="relative w-full h-full flex items-center justify-center" onClick={(event) => event.stopPropagation()}>
+          <div className="absolute top-0 left-0 right-0 flex items-center justify-between gap-4 z-10">
+            <span className="bg-black/70 border border-white/10 px-4 py-2 rounded-lg text-xs font-bold text-white">{previewPage.title}</span>
+            <button type="button" onClick={() => setPreviewPage(null)} className="w-10 h-10 rounded-full bg-white text-black hover:bg-neutral-200 flex items-center justify-center" title="Cerrar vista previa">
+              <X size={20}/>
+            </button>
+          </div>
+          <img src={previewPage.src} alt={previewPage.title} className="max-w-full max-h-full object-contain pt-14" />
+        </div>
+      </div>
+    )}
+    </>
   );
 }

@@ -48,14 +48,19 @@ export function getDefaultLang(item) {
 // (enlace_pdf como string JSON) para contenido aún no migrado.
 export function resolvePaginas(item, lang) {
   if (item?.paginas_i18n) {
-    const arr = item.paginas_i18n[lang] || item.paginas_i18n[getAvailableLangs(item)[0]];
-    if (Array.isArray(arr) && arr.length > 0) return arr;
+    const hasRequestedLanguage = Object.prototype.hasOwnProperty.call(item.paginas_i18n, lang);
+    const fallbackLang = getAvailableLangs(item)[0];
+    const hasFallbackLanguage = Object.prototype.hasOwnProperty.call(item.paginas_i18n, fallbackLang);
+    const arr = hasRequestedLanguage
+      ? item.paginas_i18n[lang]
+      : (hasFallbackLanguage ? item.paginas_i18n[fallbackLang] : null);
+    if (Array.isArray(arr)) return arr;
   }
  
   if (item?.enlace_pdf) {
     try {
       const parsed = JSON.parse(item.enlace_pdf);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     } catch {
       // ignoramos, caemos al fallback de abajo
     }
