@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, FileText, Megaphone, Pause, Play, Save, Trash2, UploadCloud } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, Edit3, FileText, Megaphone, Pause, Play, Save, Trash2, UploadCloud, X } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { uploadToCloudinary } from '../cloudinary';
 import { useCampaigns } from '../hooks/useCampaigns';
@@ -55,6 +55,13 @@ const getCampaignVisibilityLabel = (campaign) => {
   return 'activa';
 };
 
+const toDateTimeLocal = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+};
+
 export default function CampaniasTab() {
   const { campaigns, fetchAllCampaigns, loading, error } = useCampaigns();
   const [formData, setFormData] = useState(initialForm);
@@ -64,6 +71,8 @@ export default function CampaniasTab() {
   const [selectedContentByCampaign, setSelectedContentByCampaign] = useState({});
   const [status, setStatus] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState(null);
+  const [existingAssets, setExistingAssets] = useState([]);
 
   useEffect(() => {
     fetchAllCampaigns();
@@ -116,12 +125,49 @@ export default function CampaniasTab() {
     });
   };
 
-  const resetForm = () => {
+  const resetForm = (clearStatus = true) => {
     setFormData(initialForm);
     setAssetFiles([]);
+    setExistingAssets([]);
     setLinkedContentIds([]);
-    setStatus(null);
+    setEditingCampaign(null);
+    if (clearStatus) setStatus(null);
   };
+
+  const handleEditCampaign = (campaign) => {
+    setEditingCampaign(campaign);
+    setFormData({
+      titulo: campaign.titulo || '',
+      descripcion: campaign.descripcion || '',
+      estado: campaign.estado || 'borrador',
+      fecha_inicio: toDateTimeLocal(campaign.fecha_inicio),
+      fecha_fin: toDateTimeLocal(campaign.fecha_fin),
+      prioridad: campaign.prioridad || 0,
+      ubicaciones: campaign.ubicaciones?.length ? campaign.ubicaciones : ['home_banner'],
+      cta_texto: campaign.cta_texto || 'Ver campaña',
+      cta_tipo: campaign.cta_tipo || 'campania',
+      cta_target: campaign.cta_target || ''
+    });
+    setExistingAssets(campaign.assets || []);
+    setAssetFiles([]);
+    setLinkedContentIds((campaign.linkedContent || []).map(item => item.id));
+    setStatus({ type: 'info', msg: `Editando: ${campaign.titulo}` });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const removeExistingAsset = (assetId) => {
+    setExistingAssets(prev => prev.filter(asset => asset.id !== assetId));
+  };
+
+  const moveExistingAsset = (index, direction) => {
+    const target = index + direction;
+    if (target < 0 || target >= existingAssets.length) return;
+    const next = [...existingAssets];
+    [next[index], next[target]] = [next[target], next[index]];
+    setExistingAssets(next);
+  };
+
+  const removeNewAsset = (index) => setAssetFiles(prev => prev.filter((_, fileIndex) => fileIndex !== index));
 
   const toggleLinkedContent = (contentId) => {
     setLinkedContentIds(prev => (
@@ -134,7 +180,7 @@ export default function CampaniasTab() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setStatus({ type: 'info', msg: 'Creando campaña...' });
+    setStatus({ type: 'info', msg: editingCampaign ? 'Actualizando campaña...' : 'Creando campaña...' });
 
     try {
       const startsAt = formData.fecha_inicio ? new Date(formData.fecha_inicio).getTime() : null;
@@ -150,13 +196,30 @@ export default function CampaniasTab() {
         fecha_fin: formData.fecha_fin || null
       };
 
-      const { data: campaign, error: campaignError } = await supabase
-        .from('campanias')
-        .insert([payload])
-        .select()
-        .single();
+      const campaignQuery = editingCampaign
+        ? supabase.from('campanias').update(payload).eq('id', editingCampaign.id).select().single()
+        : supabase.from('campanias').insert([payload]).select().single();
+      const { data: campaign, error: campaignError } = await campaignQuery;
 
       if (campaignError) throw campaignError;
+
+      if (editingCampaign) {
+        const retainedIds = new Set(existingAssets.map(asset => asset.id));
+        const removedIds = (editingCampaign.assets || []).filter(asset => !retainedIds.has(asset.id)).map(asset => asset.id);
+
+        if (removedIds.length > 0) {
+          const { error: removeAssetsError } = await supabase.from('campania_assets').delete().in('id', removedIds);
+          if (removeAssetsError) throw removeAssetsError;
+        }
+
+        for (let index = 0; index < existingAssets.length; index += 1) {
+          const { error: reorderError } = await supabase
+            .from('campania_assets')
+            .update({ orden: index })
+            .eq('id', existingAssets[index].id);
+          if (reorderError) throw reorderError;
+        }
+      }
 
       if (assetFiles.length > 0) {
         setStatus({ type: 'info', msg: `Subiendo ${assetFiles.length} asset(s) a Cloudinary...` });
@@ -173,7 +236,7 @@ export default function CampaniasTab() {
             tipo: inferAssetType(file),
             url,
             titulo: file.name,
-            orden: index,
+            orden: existingAssets.length + index,
             metadata: {
               original_name: file.name,
               mime_type: file.type,
@@ -186,6 +249,18 @@ export default function CampaniasTab() {
         if (assetsError) throw assetsError;
       }
 
+      if (editingCampaign) {
+        const previousIds = (editingCampaign.linkedContent || []).map(item => item.id);
+        const removedContentIds = previousIds.filter(id => !linkedContentIds.includes(id));
+        if (removedContentIds.length > 0) {
+          const { error: unlinkError } = await supabase
+            .from('contenido')
+            .update({ campania_id: null })
+            .in('id', removedContentIds);
+          if (unlinkError) throw unlinkError;
+        }
+      }
+
       if (linkedContentIds.length > 0) {
         const { error: linkError } = await supabase
           .from('contenido')
@@ -195,13 +270,14 @@ export default function CampaniasTab() {
         if (linkError) throw linkError;
       }
 
-      setStatus({ type: 'success', msg: 'Campaña creada correctamente.' });
-      resetForm();
-      fetchAllCampaigns();
-      fetchNewsOptions();
+      const successMessage = editingCampaign ? 'Campaña actualizada correctamente.' : 'Campaña creada correctamente.';
+      resetForm(false);
+      setStatus({ type: 'success', msg: successMessage });
+      await fetchAllCampaigns();
+      await fetchNewsOptions();
     } catch (err) {
-      console.error('Error al crear campaña:', err);
-      setStatus({ type: 'error', msg: err.message || 'No se pudo crear la campaña.' });
+      console.error('Error al guardar campaña:', err);
+      setStatus({ type: 'error', msg: err.message || 'No se pudo guardar la campaña.' });
     } finally {
       setSaving(false);
     }
@@ -218,7 +294,9 @@ export default function CampaniasTab() {
       return;
     }
 
-    fetchAllCampaigns();
+    setStatus({ type: 'success', msg: `Campaña ${estado}.` });
+    if (editingCampaign?.id === campaign.id) setFormData(prev => ({ ...prev, estado }));
+    await fetchAllCampaigns();
   };
 
   const deleteCampaign = async (campaign) => {
@@ -234,7 +312,9 @@ export default function CampaniasTab() {
       return;
     }
 
-    fetchAllCampaigns();
+    if (editingCampaign?.id === campaign.id) resetForm(false);
+    setStatus({ type: 'success', msg: 'Campaña eliminada.' });
+    await fetchAllCampaigns();
   };
 
   const linkContentToCampaign = async (campaign) => {
@@ -277,9 +357,16 @@ export default function CampaniasTab() {
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-12 text-white">
       <div className="xl:col-span-1">
         <div className="bg-[#121212] border border-white/10 p-8 rounded-[2.5rem] sticky top-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <Megaphone className="text-[#0066FF]" />
-            <h2 className="text-2xl font-bold">Nueva Campaña</h2>
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-3">
+              {editingCampaign ? <Edit3 className="text-yellow-400" /> : <Megaphone className="text-[#0066FF]" />}
+              <h2 className="text-2xl font-bold">{editingCampaign ? 'Editar Campaña' : 'Nueva Campaña'}</h2>
+            </div>
+            {editingCampaign && (
+              <button type="button" onClick={() => resetForm()} className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center" title="Cancelar edición">
+                <X size={16}/>
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -361,6 +448,33 @@ export default function CampaniasTab() {
               <input name="cta_target" value={formData.cta_target} onChange={handleChange} placeholder="Destino opcional" className="col-span-2 bg-transparent border-b border-white/10 p-2 text-sm outline-none focus:border-[#0066FF]" />
             </div>
 
+            {existingAssets.length > 0 && (
+              <div className="p-4 bg-black/40 rounded-2xl border border-white/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold">Assets publicados</p>
+                  <span className="text-[10px] text-neutral-600">{existingAssets.length}</span>
+                </div>
+                <div className="space-y-2 max-h-52 overflow-y-auto custom-scrollbar pr-1">
+                  {existingAssets.map((asset, index) => (
+                    <div key={asset.id} className="grid grid-cols-[44px_1fr_auto] items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-2">
+                      <div className="w-11 h-11 rounded-lg bg-black overflow-hidden flex items-center justify-center text-[8px] uppercase text-neutral-500">
+                        {['banner', 'poster'].includes(asset.tipo) ? <img src={asset.url} alt="" className="w-full h-full object-cover"/> : asset.tipo}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold truncate">{asset.titulo || asset.tipo}</p>
+                        <p className="text-[9px] text-neutral-500 uppercase">{asset.tipo}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <button type="button" onClick={() => moveExistingAsset(index, -1)} disabled={index === 0} className="w-7 h-7 bg-white/5 disabled:opacity-20 rounded flex items-center justify-center" title="Mover antes"><ChevronUp size={12}/></button>
+                        <button type="button" onClick={() => moveExistingAsset(index, 1)} disabled={index === existingAssets.length - 1} className="w-7 h-7 bg-white/5 disabled:opacity-20 rounded flex items-center justify-center" title="Mover después"><ChevronDown size={12}/></button>
+                        <button type="button" onClick={() => removeExistingAsset(asset.id)} className="w-7 h-7 bg-red-500/10 text-red-400 rounded flex items-center justify-center" title="Retirar asset"><Trash2 size={12}/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <label className="flex flex-col items-center justify-center gap-3 p-6 border border-dashed border-white/20 rounded-2xl bg-black/30 cursor-pointer hover:bg-white/5 transition-colors text-center">
               <UploadCloud className="text-[#0066FF]" />
               <span className="text-xs font-bold uppercase tracking-widest">
@@ -374,6 +488,20 @@ export default function CampaniasTab() {
                 className="hidden"
               />
             </label>
+
+            {assetFiles.length > 0 && (
+              <div className="space-y-2">
+                {assetFiles.map((file, index) => (
+                  <div key={`${file.name}-${index}`} className="flex items-center justify-between gap-3 bg-[#0066FF]/10 border border-[#0066FF]/20 rounded-xl p-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold truncate">{file.name}</p>
+                      <p className="text-[9px] uppercase text-blue-300 mt-1">Nuevo {inferAssetType(file)}</p>
+                    </div>
+                    <button type="button" onClick={() => removeNewAsset(index)} className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center" title="Quitar archivo"><X size={14}/></button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="p-4 bg-black/40 rounded-2xl border border-white/5">
               <div className="flex items-center justify-between gap-3 mb-3">
@@ -416,8 +544,8 @@ export default function CampaniasTab() {
               </div>
             )}
 
-            <button type="submit" disabled={saving} className="w-full py-4 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] disabled:opacity-50 text-white font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2">
-              <Save size={18} /> {saving ? 'Publicando...' : 'Crear Campaña'}
+            <button type="submit" disabled={saving} className={`w-full py-4 rounded-xl disabled:opacity-50 font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 ${editingCampaign ? 'bg-yellow-500 hover:bg-yellow-400 text-black' : 'bg-[#0066FF] hover:bg-[#0052cc] text-white'}`}>
+              <Save size={18} /> {saving ? 'Guardando...' : (editingCampaign ? 'Guardar cambios' : 'Crear Campaña')}
             </button>
           </form>
         </div>
@@ -512,6 +640,9 @@ export default function CampaniasTab() {
                   </div>
 
                   <div className="flex gap-2 mt-5">
+                    <button onClick={() => handleEditCampaign(campaign)} className="bg-yellow-500/10 hover:bg-yellow-500 border border-yellow-500/20 text-yellow-400 hover:text-black px-3 py-2 rounded-xl transition-colors" title="Editar campaña">
+                      <Edit3 size={14}/>
+                    </button>
                     <button onClick={() => updateCampaignStatus(campaign, campaign.estado === 'activa' ? 'pausada' : 'activa')} className="flex-1 bg-white/10 hover:bg-white hover:text-black text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2">
                       {campaign.estado === 'activa' ? <Pause size={14} /> : <Play size={14} />}
                       {campaign.estado === 'activa' ? 'Pausar' : 'Activar'}

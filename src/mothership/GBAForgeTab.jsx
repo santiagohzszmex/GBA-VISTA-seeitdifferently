@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { Activity, GitCommit, Database, Send, Terminal, Plus, Server, Code } from 'lucide-react';
+import { Activity, GitCommit, Database, Send, Terminal, Server, Code, Edit3, Trash2, X, Save } from 'lucide-react';
 
 // Constantes de configuración estricta
 const CATEGORIAS = [
@@ -35,21 +35,24 @@ const ESTADOS_DEV = [
   'Implementado'
 ];
 
+const initialForgeForm = {
+  titulo_experimento: '',
+  categoria: 'IA',
+  estado: 'Investigación',
+  herramientas: [],
+  otra_herramienta: '',
+  log_tecnico: '',
+  enviar_discord: false
+};
+
 export default function GBAForgeTab() {
   const { user } = useAuth();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState(null);
+  const [editingLog, setEditingLog] = useState(null);
 
-  const [formData, setFormData] = useState({
-    titulo_experimento: '',
-    categoria: 'IA',
-    estado: 'Investigación',
-    herramientas: [],
-    otra_herramienta: '',
-    log_tecnico: '',
-    enviar_discord: false
-  });
+  const [formData, setFormData] = useState(initialForgeForm);
 
   useEffect(() => {
     fetchLogs();
@@ -78,6 +81,42 @@ export default function GBAForgeTab() {
         return { ...prev, herramientas: [...prev.herramientas, tool] };
       }
     });
+  };
+
+  const resetForm = (clearStatus = true) => {
+    setEditingLog(null);
+    setFormData(initialForgeForm);
+    if (clearStatus) setStatusMsg(null);
+  };
+
+  const handleEdit = (log) => {
+    const tools = Array.isArray(log.herramientas) ? log.herramientas : [];
+    const predefined = tools.filter(tool => HERRAMIENTAS_PREDEFINIDAS.includes(tool));
+    const custom = tools.filter(tool => !HERRAMIENTAS_PREDEFINIDAS.includes(tool));
+    setEditingLog(log);
+    setFormData({
+      titulo_experimento: log.titulo_experimento || '',
+      categoria: log.categoria || 'IA',
+      estado: log.estado || 'Investigación',
+      herramientas: predefined,
+      otra_herramienta: custom.join(', '),
+      log_tecnico: log.log_tecnico || '',
+      enviar_discord: false
+    });
+    setStatusMsg({ type: 'info', msg: `Editando: ${log.titulo_experimento}` });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (log) => {
+    if (!window.confirm(`¿Eliminar el registro técnico "${log.titulo_experimento}"?`)) return;
+    const { error } = await supabase.from('gba_forge_logs').delete().eq('id', log.id);
+    if (error) {
+      setStatusMsg({ type: 'error', msg: 'No se pudo eliminar el registro técnico.' });
+      return;
+    }
+    if (editingLog?.id === log.id) resetForm(false);
+    setStatusMsg({ type: 'success', msg: 'Registro técnico eliminado.' });
+    await fetchLogs();
   };
 
   // Función para integrar con webhook de Discord
@@ -125,7 +164,7 @@ export default function GBAForgeTab() {
     // Consolidar herramientas (predefinidas + manual)
     let finalTools = [...formData.herramientas];
     if (formData.otra_herramienta.trim() !== '') {
-      finalTools.push(formData.otra_herramienta.trim());
+      finalTools.push(...formData.otra_herramienta.split(',').map(tool => tool.trim()).filter(Boolean));
     }
 
     const newLog = {
@@ -134,29 +173,25 @@ export default function GBAForgeTab() {
       estado: formData.estado,
       herramientas: finalTools,
       log_tecnico: formData.log_tecnico,
-      enviado_discord: formData.enviar_discord,
+      enviado_discord: editingLog?.enviado_discord || formData.enviar_discord,
       usuario_id: user.id
     };
 
     try {
-      const { data, error } = await supabase.from('gba_forge_logs').insert([newLog]).select();
+      const query = editingLog
+        ? supabase.from('gba_forge_logs').update(newLog).eq('id', editingLog.id).select()
+        : supabase.from('gba_forge_logs').insert([newLog]).select();
+      const { error } = await query;
       if (error) throw error;
 
       if (formData.enviar_discord) {
         await sendToDiscord(newLog);
       }
 
-      setStatusMsg({ type: 'success', msg: 'Registro técnico guardado exitosamente.' });
-      setFormData({
-        titulo_experimento: '',
-        categoria: 'IA',
-        estado: 'Investigación',
-        herramientas: [],
-        otra_herramienta: '',
-        log_tecnico: '',
-        enviar_discord: false
-      });
-      fetchLogs();
+      const successMessage = editingLog ? 'Registro técnico actualizado.' : 'Registro técnico guardado exitosamente.';
+      resetForm(false);
+      setStatusMsg({ type: 'success', msg: successMessage });
+      await fetchLogs();
     } catch (error) {
       console.error("Error guardando log:", error);
       setStatusMsg({ type: 'error', msg: 'Fallo en la escritura de la base de datos.' });
@@ -171,9 +206,12 @@ export default function GBAForgeTab() {
       {/* PANEL IZQUIERDO: CONSOLA DE REGISTRO */}
       <div className="xl:col-span-1">
         <div className="bg-[#121212] border border-white/10 p-6 rounded-2xl sticky top-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
-            <Terminal className="text-[#0066FF]" size={24} />
-            <h2 className="text-xl font-bold tracking-tight">GBA Forge Console</h2>
+          <div className="flex items-center justify-between gap-3 mb-6 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              {editingLog ? <Edit3 className="text-yellow-400" size={24}/> : <Terminal className="text-[#0066FF]" size={24} />}
+              <h2 className="text-xl font-bold tracking-tight">{editingLog ? 'Editar registro' : 'GBA Forge Console'}</h2>
+            </div>
+            {editingLog && <button type="button" onClick={() => resetForm()} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center" title="Cancelar edición"><X size={14}/></button>}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -255,12 +293,16 @@ export default function GBAForgeTab() {
                    onChange={e => setFormData({...formData, enviar_discord: e.target.checked})}
                    className="accent-[#5865F2]"
                  />
-                 <span className="text-[#5865F2] flex items-center gap-1"><Send size={14}/> Push to Discord</span>
+                 <span className="text-[#5865F2] flex items-center gap-1"><Send size={14}/> {editingLog ? 'Reenviar actualización' : 'Push to Discord'}</span>
                </label>
             </div>
 
             {statusMsg && (
-              <div className={`p-3 rounded-lg text-xs font-bold text-center ${statusMsg.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+              <div className={`p-3 rounded-lg text-xs font-bold text-center ${
+                statusMsg.type === 'success' ? 'bg-green-500/20 text-green-400' :
+                statusMsg.type === 'info' ? 'bg-blue-500/20 text-blue-400' :
+                'bg-red-500/20 text-red-400'
+              }`}>
                 {statusMsg.msg}
               </div>
             )}
@@ -268,10 +310,10 @@ export default function GBAForgeTab() {
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full bg-white text-black font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors"
+              className={`w-full font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors ${editingLog ? 'bg-yellow-500 text-black hover:bg-yellow-400' : 'bg-white text-black hover:bg-neutral-200'}`}
             >
-              {loading ? <Activity className="animate-spin" size={18} /> : <Code size={18} />}
-              Registrar Commit
+              {loading ? <Activity className="animate-spin" size={18} /> : (editingLog ? <Save size={18}/> : <Code size={18} />)}
+              {editingLog ? 'Guardar cambios' : 'Registrar Commit'}
             </button>
           </form>
         </div>
@@ -305,13 +347,15 @@ export default function GBAForgeTab() {
                          {new Date(log.created_at).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <span className="bg-white/10 text-white text-[10px] px-2 py-1 rounded-md uppercase tracking-wider font-bold">
                         {log.categoria}
                       </span>
                       <span className="bg-[#0066FF]/20 text-[#0066FF] text-[10px] px-2 py-1 rounded-md uppercase tracking-wider font-bold">
                         {log.estado}
                       </span>
+                      <button type="button" onClick={() => handleEdit(log)} className="w-8 h-8 rounded-lg bg-yellow-500/10 hover:bg-yellow-500 text-yellow-400 hover:text-black flex items-center justify-center" title="Editar registro"><Edit3 size={13}/></button>
+                      <button type="button" onClick={() => handleDelete(log)} className="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white flex items-center justify-center" title="Eliminar registro"><Trash2 size={13}/></button>
                     </div>
                   </div>
                   

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Save, Edit3, PlusCircle, X, Trash2, Eye } from 'lucide-react';
+import { Save, Edit3, PlusCircle, X, Trash2, Eye, Image as ImageIcon, Star, MonitorPlay } from 'lucide-react';
 import { VIDEO_CATEGORIES } from '../utils/contentTypes';
 
 export default function VideosTab() {
@@ -9,6 +9,7 @@ export default function VideosTab() {
   const [contentList, setContentList] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [castList, setCastList] = useState([]); 
+  const [previewItem, setPreviewItem] = useState(null);
 
   const initialFormContent = {
     titulo: '',
@@ -123,7 +124,8 @@ export default function VideosTab() {
 
       // Guardar Reparto
       if (contentId) {
-         await supabase.from('reparto').delete().eq('contenido_id', contentId);
+         const { error: deleteCastError } = await supabase.from('reparto').delete().eq('contenido_id', contentId);
+         if (deleteCastError) throw deleteCastError;
          if (castList.length > 0) {
             const castToInsert = castList.map(actor => ({
                contenido_id: contentId,
@@ -131,12 +133,13 @@ export default function VideosTab() {
                nombre_personaje: actor.nombre_personaje,
                foto_url: actor.foto_url
             }));
-            await supabase.from('reparto').insert(castToInsert);
+            const { error: insertCastError } = await supabase.from('reparto').insert(castToInsert);
+            if (insertCastError) throw insertCastError;
          }
       }
 
       setStatus({ type: 'success', msg: '¡Guardado correctamente!' });
-      fetchContent();
+      await fetchContent();
       if (!editingId) {
         setEditingId(null);
         setFormData(initialFormContent);
@@ -149,6 +152,27 @@ export default function VideosTab() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleQuickUpdate = async (item, patch, successMessage) => {
+    const { error } = await supabase.from('contenido').update(patch).eq('id', item.id);
+    if (error) {
+      setStatus({ type: 'error', msg: 'No se pudo aplicar el cambio rápido.' });
+      return;
+    }
+    setStatus({ type: 'success', msg: successMessage });
+    if (editingId === item.id) setFormData(prev => ({ ...prev, ...patch }));
+    await fetchContent();
+  };
+
+  const previewCurrentForm = () => {
+    const mediaId = formData.youtube_id || formData.trailer_id;
+    const fallback = mediaId ? `https://img.youtube.com/vi/${mediaId}/maxresdefault.jpg` : '';
+    setPreviewItem({
+      ...formData,
+      banner_url: formData.banner_url || fallback,
+      poster_url: formData.poster_url || formData.banner_url || fallback
+    });
   };
 
   const handleDelete = async (id) => {
@@ -288,9 +312,12 @@ export default function VideosTab() {
 
             {status && <div className={`p-3 rounded-xl text-xs text-center font-bold border ${status.type === 'error' ? 'text-red-300 bg-red-900/20 border-red-500/30' : 'text-green-300 bg-green-900/20 border-green-500/30'}`}>{status.msg}</div>}
 
-            <button type="submit" disabled={loading} className={`w-full py-4 font-black uppercase tracking-widest text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${editingId ? 'bg-yellow-500 text-black hover:bg-yellow-400' : 'bg-white text-black hover:bg-neutral-200'}`}>
-              <Save size={18}/> {editingId ? 'Guardar Cambios' : 'Publicar'}
-            </button>
+            <div className="grid grid-cols-[auto_1fr] gap-2">
+              <button type="button" onClick={previewCurrentForm} className="w-14 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center" title="Vista previa"><Eye size={18}/></button>
+              <button type="submit" disabled={loading} className={`w-full py-4 font-black uppercase tracking-widest text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${editingId ? 'bg-yellow-500 text-black hover:bg-yellow-400' : 'bg-white text-black hover:bg-neutral-200'}`}>
+                <Save size={18}/> {editingId ? 'Guardar Cambios' : 'Publicar'}
+              </button>
+            </div>
 
           </form>
         </div>
@@ -330,8 +357,14 @@ export default function VideosTab() {
                 </div>
                 
                 <div className="flex gap-2 mt-4">
+                  <button onClick={() => setPreviewItem(item)} className="bg-blue-500/10 border border-blue-500/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-2 rounded-lg transition-all" title="Vista previa"><Eye size={14}/></button>
                   <button onClick={() => handleEdit(item)} className="bg-white/10 border border-white/10 hover:bg-white text-white hover:text-black px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 flex-1 justify-center"><Edit3 size={14}/> Editar</button>
                   <button onClick={() => handleDelete(item.id)} className="bg-red-500/10 border border-red-500/20 hover:bg-red-600 text-red-500 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center"><Trash2 size={14}/></button>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <button type="button" onClick={() => handleQuickUpdate(item, { estado_publicacion: item.estado_publicacion === 'aprobado' ? 'pendiente' : 'aprobado' }, item.estado_publicacion === 'aprobado' ? 'Video ocultado.' : 'Video publicado.')} className={`h-8 rounded-lg border flex items-center justify-center ${item.estado_publicacion === 'aprobado' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-white/5 border-white/10 text-neutral-500'}`} title="Alternar publicación"><MonitorPlay size={13}/></button>
+                  <button type="button" onClick={() => handleQuickUpdate(item, { en_hero: !item.en_hero }, item.en_hero ? 'Video retirado del Hero.' : 'Video añadido al Hero.')} className={`h-8 rounded-lg border flex items-center justify-center ${item.en_hero ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-white/5 border-white/10 text-neutral-500'}`} title="Alternar Hero"><ImageIcon size={13}/></button>
+                  <button type="button" onClick={() => handleQuickUpdate(item, { es_top_10: !item.es_top_10 }, item.es_top_10 ? 'Video retirado del Top 10.' : 'Video añadido al Top 10.')} className={`h-8 rounded-lg border flex items-center justify-center ${item.es_top_10 ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' : 'bg-white/5 border-white/10 text-neutral-500'}`} title="Alternar Top 10"><Star size={13}/></button>
                 </div>
               </div>
             </div>
@@ -344,6 +377,35 @@ export default function VideosTab() {
            </div>
          )}
       </div>
+      {previewItem && (
+        <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md p-4 md:p-10 flex items-center justify-center" onClick={() => setPreviewItem(null)} role="dialog" aria-modal="true">
+          <div className="relative w-full max-w-5xl max-h-full overflow-y-auto bg-[#121212] border border-white/10 rounded-2xl shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <button type="button" onClick={() => setPreviewItem(null)} className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/70 hover:bg-white hover:text-black flex items-center justify-center" title="Cerrar"><X size={18}/></button>
+            <div className="relative aspect-video bg-black overflow-hidden">
+              {previewItem.banner_url ? <img src={previewItem.banner_url} alt={previewItem.titulo} className="w-full h-full object-cover opacity-70"/> : <div className="w-full h-full flex items-center justify-center text-neutral-700"><MonitorPlay size={52}/></div>}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent"/>
+              <div className="absolute bottom-6 left-6 right-16">
+                <p className="text-[10px] uppercase tracking-widest font-black text-blue-400">{previewItem.sello_editorial}</p>
+                <h3 className="text-3xl md:text-5xl font-serif italic font-bold mt-2">{previewItem.titulo || 'Sin título'}</h3>
+              </div>
+            </div>
+            <div className="p-6 md:p-8 grid md:grid-cols-[180px_1fr] gap-6">
+              {previewItem.poster_url && <img src={previewItem.poster_url} alt="Poster" className="w-full aspect-[2/3] object-cover rounded-xl border border-white/10"/>}
+              <div>
+                <div className="flex flex-wrap gap-2 text-[10px] uppercase font-bold text-neutral-400 mb-4">
+                  <span>{previewItem.categoria}</span><span>•</span><span>{previewItem.año}</span><span>•</span><span>{previewItem.duracion}</span><span>•</span><span>{previewItem.calificacion}</span>
+                </div>
+                <p className="text-neutral-300 leading-relaxed whitespace-pre-wrap">{previewItem.descripcion || 'Sin descripción.'}</p>
+                {(previewItem.trailer_id || previewItem.youtube_id) && (
+                  <div className="mt-6 aspect-video rounded-xl overflow-hidden border border-white/10 bg-black">
+                    <iframe title="Vista previa de video" src={`https://www.youtube.com/embed/${previewItem.trailer_id || previewItem.youtube_id}`} className="w-full h-full" allowFullScreen />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

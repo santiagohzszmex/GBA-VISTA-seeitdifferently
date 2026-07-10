@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Check, X, Eye, FileText, ExternalLink, ShieldAlert, ShieldCheck, Image, Layers, UserCheck, FileImage } from 'lucide-react';
+import { Check, X, Eye, FileText, ExternalLink, ShieldAlert, ShieldCheck, Image, Layers, UserCheck, Edit3, Save } from 'lucide-react';
 
 export default function AduanaTab() {
   const [activeSubTab, setActiveSubTab] = useState('ediciones'); 
@@ -9,6 +9,9 @@ export default function AduanaTab() {
   const [pendingContent, setPendingContent] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [editingReview, setEditingReview] = useState(false);
+  const [savingReview, setSavingReview] = useState(false);
+  const [reviewDraft, setReviewDraft] = useState({ titulo: '', descripcion: '', sello_editorial: '', categoria: 'Noticia', nombre_noticiero: '' });
 
   const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1521553828674146485/0BIQdUirrZbiC5FwsU14f-6tuNhFOqJB7lNxBelruyFeQgmNGfVWiTdRxJB392gsafP_";
 
@@ -65,6 +68,55 @@ export default function AduanaTab() {
     }
   };
 
+  const handleSelectItem = (item) => {
+    setSelectedItem(item);
+    setEditingReview(false);
+    setReviewDraft({
+      titulo: item.titulo || '',
+      descripcion: item.descripcion || '',
+      sello_editorial: item.sello_editorial || '',
+      categoria: item.categoria || 'Noticia',
+      nombre_noticiero: item.nombre_noticiero || ''
+    });
+  };
+
+  const getEditionCorrections = (item) => {
+    const baseLang = item.idioma_original || 'es';
+    return {
+      titulo: reviewDraft.titulo,
+      descripcion: reviewDraft.descripcion,
+      sello_editorial: reviewDraft.sello_editorial,
+      categoria: reviewDraft.categoria,
+      titulo_i18n: item.titulo_i18n ? { ...item.titulo_i18n, [baseLang]: reviewDraft.titulo } : item.titulo_i18n,
+      descripcion_i18n: item.descripcion_i18n ? { ...item.descripcion_i18n, [baseLang]: reviewDraft.descripcion } : item.descripcion_i18n
+    };
+  };
+
+  const handleSaveCorrections = async () => {
+    if (!selectedItem) return;
+    setSavingReview(true);
+    try {
+      const table = activeSubTab === 'ediciones' ? 'contenido' : 'solicitudes_editoriales';
+      const payload = activeSubTab === 'ediciones'
+        ? getEditionCorrections(selectedItem)
+        : { nombre_noticiero: reviewDraft.nombre_noticiero, descripcion: reviewDraft.descripcion };
+      const { data, error } = await supabase.from(table).update(payload).eq('id', selectedItem.id).select().single();
+      if (error) throw error;
+      setSelectedItem(data);
+      setEditingReview(false);
+      if (activeSubTab === 'ediciones') {
+        setPendingContent(prev => prev.map(item => item.id === data.id ? data : item));
+      } else {
+        setPendingRequests(prev => prev.map(item => item.id === data.id ? data : item));
+      }
+    } catch (err) {
+      console.error('No se pudieron guardar las correcciones de Aduana:', err);
+      alert('No se pudieron guardar las correcciones.');
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
   // ==========================================
   // RESOLUCIÓN DE EDICIONES DE PRENSA
   // ==========================================
@@ -76,14 +128,14 @@ export default function AduanaTab() {
     try {
       const { error } = await supabase
         .from('contenido')
-        .update({ estado_publicacion: 'aprobado' })
+        .update({ ...getEditionCorrections(item), estado_publicacion: 'aprobado' })
         .eq('id', item.id);
 
       if (error) throw error; 
 
       await enviarLogDiscord(
         "📰 ¡EDICIÓN DE PRENSA APROBADA!",
-        `El periódico **"${item.titulo}"** del sello **"${item.sello_editorial || 'Independiente'}"** ha pasado la inspección y ya está en el Kiosco.`,
+        `El periódico **"${reviewDraft.titulo}"** del sello **"${reviewDraft.sello_editorial || 'Independiente'}"** ha pasado la inspección y ya está en el Kiosco.`,
         65280
       );
     } catch (err) {
@@ -133,7 +185,7 @@ export default function AduanaTab() {
         .from('usuarios')
         .update({ 
           rol: 'Editor',
-          sello_editorial: req.nombre_noticiero
+          sello_editorial: reviewDraft.nombre_noticiero
         })
         .eq('id', req.usuario_id);
 
@@ -148,7 +200,7 @@ export default function AduanaTab() {
 
       await enviarLogDiscord(
         "✨ NUEVO SELLO EDITORIAL AUTORIZADO",
-        `La solicitud para el noticiero **"${req.nombre_noticiero}"** ha sido concedida.\n\n**Estatus:** Ascendido a **Editor** en la base maestro.`,
+        `La solicitud para el noticiero **"${reviewDraft.nombre_noticiero}"** ha sido concedida.\n\n**Estatus:** Ascendido a **Editor** en la base maestro.`,
         255
       );
     } catch (err) {
@@ -174,7 +226,7 @@ export default function AduanaTab() {
       if (error) throw error;
 
       await enviarLogDiscord(
-        "⚠️ CREDENCIALES DENEGADAS",
+        "⚠️ SOLICITUD EDITORIAL DENEGADA",
         `La administración rechazó la apertura del sello **"${req.nombre_noticiero}"** para el operador \`${req.usuario_id}\`.`,
         16753920
       );
@@ -233,7 +285,7 @@ export default function AduanaTab() {
             pendingContent.map(item => (
               <div 
                 key={item.id} 
-                onClick={() => setSelectedItem(item)}
+                onClick={() => handleSelectItem(item)}
                 className={`flex items-center justify-between p-5 bg-[#121212] border rounded-2xl cursor-pointer transition-all ${selectedItem?.id === item.id ? 'border-red-500 bg-red-500/5 shadow-[0_0_20px_rgba(220,38,38,0.1)]' : 'border-white/10 hover:border-white/20'}`}
               >
                 <div className="flex items-center gap-4 truncate">
@@ -254,7 +306,7 @@ export default function AduanaTab() {
             pendingRequests.map(req => (
               <div 
                 key={req.id} 
-                onClick={() => setSelectedItem(req)}
+                onClick={() => handleSelectItem(req)}
                 className={`flex items-center justify-between p-5 bg-[#121212] border rounded-2xl cursor-pointer transition-all ${selectedItem?.id === req.id ? 'border-red-500 bg-red-500/5 shadow-[0_0_20px_rgba(220,38,38,0.1)]' : 'border-white/10 hover:border-white/20'}`}
               >
                 <div className="flex items-center gap-4 text-left">
@@ -273,7 +325,7 @@ export default function AduanaTab() {
             ))
           )}
 
-          {!loading && pendingContent.length === 0 && pendingRequests.length === 0 && (
+          {!loading && (activeSubTab === 'ediciones' ? pendingContent.length === 0 : pendingRequests.length === 0) && (
             <div className="p-12 border border-dashed border-white/10 rounded-2xl text-center bg-white/5">
               <ShieldCheck className="text-neutral-600 mx-auto mb-3" size={32} />
               <p className="text-neutral-500 text-sm font-medium">Frontera despejada. No hay registros pendientes de revisión.</p>
@@ -290,9 +342,10 @@ export default function AduanaTab() {
                 <span className="text-[9px] font-black tracking-widest bg-red-600/20 text-red-400 px-3 py-1 rounded-full border border-red-500/20 uppercase">
                   Terminal de Verificación
                 </span>
-                <button onClick={() => setSelectedItem(null)} className="text-xs text-neutral-500 hover:text-white uppercase font-bold tracking-wider">
-                  Cerrar
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setEditingReview(prev => !prev)} className={`w-8 h-8 rounded-lg flex items-center justify-center ${editingReview ? 'bg-yellow-500 text-black' : 'bg-white/10 text-neutral-300 hover:text-white'}`} title="Corregir datos"><Edit3 size={13}/></button>
+                  <button onClick={() => setSelectedItem(null)} className="text-xs text-neutral-500 hover:text-white uppercase font-bold tracking-wider">Cerrar</button>
+                </div>
               </div>
 
               {activeSubTab === 'ediciones' ? (
@@ -306,12 +359,25 @@ export default function AduanaTab() {
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="text-xl font-bold font-serif italic text-white mb-2">{selectedItem.titulo}</h3>
-                    <p className="text-xs text-neutral-400 font-medium leading-relaxed bg-black/40 p-4 rounded-xl border border-white/5 max-h-32 overflow-y-auto custom-scrollbar">
-                      {selectedItem.descripcion || 'Sin descripción provista.'}
-                    </p>
-                  </div>
+                  {editingReview ? (
+                    <div className="space-y-3 p-4 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
+                      <input value={reviewDraft.titulo} onChange={(event) => setReviewDraft(prev => ({ ...prev, titulo: event.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm font-bold outline-none focus:border-yellow-500" placeholder="Título"/>
+                      <textarea value={reviewDraft.descripcion} onChange={(event) => setReviewDraft(prev => ({ ...prev, descripcion: event.target.value }))} rows="4" className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-xs resize-none outline-none focus:border-yellow-500" placeholder="Descripción"/>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input value={reviewDraft.sello_editorial} onChange={(event) => setReviewDraft(prev => ({ ...prev, sello_editorial: event.target.value }))} className="bg-black/40 border border-white/10 rounded-lg p-3 text-xs outline-none focus:border-yellow-500" placeholder="Sello editorial"/>
+                        <select value={reviewDraft.categoria} onChange={(event) => setReviewDraft(prev => ({ ...prev, categoria: event.target.value }))} className="bg-black/40 border border-white/10 rounded-lg p-3 text-xs outline-none [&>option]:bg-[#1d1d1f]">
+                          <option value="Noticia">Noticia</option>
+                          <option value="Periódico">Periódico</option>
+                        </select>
+                      </div>
+                      <button type="button" onClick={handleSaveCorrections} disabled={savingReview} className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black rounded-lg text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"><Save size={14}/> Guardar correcciones</button>
+                    </div>
+                  ) : (
+                    <div>
+                      <h3 className="text-xl font-bold font-serif italic text-white mb-2">{selectedItem.titulo}</h3>
+                      <p className="text-xs text-neutral-400 font-medium leading-relaxed bg-black/40 p-4 rounded-xl border border-white/5 max-h-32 overflow-y-auto custom-scrollbar">{selectedItem.descripcion || 'Sin descripción provista.'}</p>
+                    </div>
+                  )}
 
                   {/* INSPECCIÓN DE ARCHIVOS ADJUNTOS (DINÁMICO) */}
                   <div className="space-y-2">
@@ -385,7 +451,13 @@ export default function AduanaTab() {
               ) : (
                 <div className="space-y-6">
                   {/* ... (Peticiones de Sellos se mantiene igual) ... */}
-                  <div className="p-6 bg-black/40 rounded-2xl border border-white/5 space-y-4">
+                  {editingReview ? (
+                    <div className="p-5 bg-yellow-500/5 rounded-2xl border border-yellow-500/20 space-y-3">
+                      <input value={reviewDraft.nombre_noticiero} onChange={(event) => setReviewDraft(prev => ({ ...prev, nombre_noticiero: event.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm font-bold outline-none focus:border-yellow-500" placeholder="Nombre del sello"/>
+                      <textarea value={reviewDraft.descripcion} onChange={(event) => setReviewDraft(prev => ({ ...prev, descripcion: event.target.value }))} rows="4" className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-xs resize-none outline-none focus:border-yellow-500" placeholder="Propuesta editorial"/>
+                      <button type="button" onClick={handleSaveCorrections} disabled={savingReview} className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black rounded-lg text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"><Save size={14}/> Guardar correcciones</button>
+                    </div>
+                  ) : <div className="p-6 bg-black/40 rounded-2xl border border-white/5 space-y-4">
                     <div>
                       <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest block mb-1">Nombre Solicitado para la Marca</span>
                       <p className="text-lg font-bold text-white font-serif italic">"{selectedItem.nombre_noticiero}"</p>
@@ -397,7 +469,7 @@ export default function AduanaTab() {
                         {selectedItem.descripcion || 'El usuario no adjuntó una descripción editorial.'}
                       </p>
                     </div>
-                  </div>
+                  </div>}
 
                   <div className="p-4 bg-yellow-500/5 border border-yellow-500/10 text-yellow-400/80 rounded-xl text-[11px] font-medium leading-normal flex gap-3">
                     <ShieldAlert size={24} className="flex-shrink-0 text-yellow-500" />
