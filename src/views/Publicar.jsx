@@ -100,7 +100,13 @@ export default function Publicar() {
 
   // ================= MANEJADORES DE TRADUCCIÓN =================
   const addTraduccion = () => {
-    setTraducciones([...traducciones, { lang: 'en', titulo: '', descripcion: '', portadaArchivo: null, paginasArchivos: [] }]);
+    const usedLanguages = new Set([idiomaOriginal, ...traducciones.map(trad => trad.lang)]);
+    const nextLanguage = ['en', 'es', 'nah', 'pt', 'fr'].find(lang => !usedLanguages.has(lang));
+    if (!nextLanguage) {
+      alert('Ya añadiste todos los idiomas disponibles.');
+      return;
+    }
+    setTraducciones([...traducciones, { lang: nextLanguage, titulo: '', descripcion: '', portadaArchivo: null, paginasArchivos: [] }]);
   };
 
   const removeTraduccion = (index) => {
@@ -169,6 +175,12 @@ export default function Publicar() {
 
     if (!portadaArchivo) {
       alert("La ilustración de portada es obligatoria.");
+      return;
+    }
+
+    const selectedLanguages = [idiomaOriginal, ...traducciones.map(trad => trad.lang)];
+    if (new Set(selectedLanguages).size !== selectedLanguages.length) {
+      alert('El idioma base y cada traducción deben usar idiomas diferentes.');
       return;
     }
 

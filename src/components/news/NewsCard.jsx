@@ -1,11 +1,14 @@
 import React, { useState, useRef, useLayoutEffect, useCallback } from 'react';
 import { Heart, Eye, ShieldCheck, FileText, ChevronUp, Layers } from 'lucide-react';
 import { useLikes } from '../../hooks/useLikes';
+import { useContentLanguage } from '../../hooks/useContentLanguage';
+import LanguageSwitcher from '../common/LanguageSwitcher';
 
 const FLIP_DURATION = 700; // ms — una sola fuente de verdad para JS y CSS
 
 export default function NewsCard({ item, onRead, onNavigateProfile }) {
   const { isLiked, likesCount, toggleLike } = useLikes(item.id);
+  const { lang, setLang, availableLangs, langLabel, titulo, descripcion, poster, paginas } = useContentLanguage(item);
   const [isFlipped, setIsFlipped] = useState(false);
   const [contentHeight, setContentHeight] = useState(480);
 
@@ -56,18 +59,6 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
     }, FLIP_DURATION + 50);
   }, []);
 
-  const obtenerPaginas = () => {
-    if (!item.enlace_pdf) return [];
-    try {
-      const parsed = JSON.parse(item.enlace_pdf);
-      return Array.isArray(parsed) ? parsed : [item.poster_url || item.banner_url].filter(Boolean);
-    } catch {
-      return [item.poster_url || item.banner_url].filter(Boolean);
-    }
-  };
-
-  const paginasDelDocumento = obtenerPaginas();
-
   return (
     <div
       ref={cardRef}
@@ -99,8 +90,8 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
         >
           <div className="relative h-[65%] bg-[#f5f5f7] overflow-hidden">
             <img
-              src={item.poster_url || item.banner_url}
-              alt={item.titulo}
+              src={poster}
+              alt={titulo}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 ease-out"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-90" />
@@ -111,6 +102,12 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
             >
               <Heart size={20} className={isLiked ? 'fill-red-500 text-red-500' : 'text-white'} />
             </button>
+
+            {availableLangs.length > 1 && (
+              <div className="absolute top-5 left-5 z-10 rounded-xl bg-black/55 backdrop-blur-md border border-white/10 p-2 shadow-xl">
+                <LanguageSwitcher availableLangs={availableLangs} lang={lang} setLang={setLang} langLabel={langLabel} variant="dark" />
+              </div>
+            )}
 
             <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between">
               <button
@@ -133,7 +130,7 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
             </div>
 
             <h3 className="font-serif font-bold text-xl md:text-2xl text-[#1d1d1f] leading-tight mb-2 line-clamp-2 group-hover:text-[#0066FF] transition-colors">
-              {item.titulo}
+              {titulo}
             </h3>
 
             <div className="mt-auto pt-4 border-t border-[#d2d2d7]/50 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
@@ -152,36 +149,39 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
             isFlipped ? 'relative opacity-100' : 'absolute inset-0 h-[480px] opacity-0 pointer-events-none'
           }`}
         >
-          <div className="sticky top-0 z-50 bg-[#121212]/95 backdrop-blur-xl border-b border-white/10 px-8 py-6 flex justify-between items-center shadow-xl">
-            <div>
+          <div className="sticky top-0 z-50 bg-[#121212]/95 backdrop-blur-xl border-b border-white/10 px-6 md:px-8 py-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-xl">
+            <div className="min-w-0 flex-1">
               <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 block mb-1">
                 Lector VISTA • {item.sello_editorial}
               </span>
               <h3 className="font-serif italic font-bold text-2xl text-white/95 pr-4">
-                {item.titulo}
+                {titulo}
               </h3>
             </div>
-            <button
-              onClick={closeCard}
-              className="px-5 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-bold uppercase tracking-widest text-xs flex items-center gap-2 transition-all border border-red-500/20 active:scale-95 flex-shrink-0"
-            >
-              <ChevronUp size={16} strokeWidth={3} /> Cerrar Edición
-            </button>
+            <div className="flex items-center gap-3 flex-wrap flex-shrink-0">
+              <LanguageSwitcher availableLangs={availableLangs} lang={lang} setLang={setLang} langLabel={langLabel} variant="dark" />
+              <button
+                onClick={closeCard}
+                className="px-5 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-bold uppercase tracking-widest text-xs flex items-center gap-2 transition-all border border-red-500/20 active:scale-95 flex-shrink-0"
+              >
+                <ChevronUp size={16} strokeWidth={3} /> Cerrar Edición
+              </button>
+            </div>
           </div>
 
           {/* Cuerpo Extendido */}
           <div className="p-8 flex flex-col gap-8">
 
             {/* Portada de la edición */}
-            {(item.poster_url || item.banner_url) && (
+            {poster && (
               <div className="max-w-3xl mx-auto w-full">
                 <div className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#1d1d1f]">
                   <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest text-white/80 border border-white/10 z-10">
                     Portada
                   </div>
                   <img
-                    src={item.poster_url || item.banner_url}
-                    alt={`Portada de ${item.titulo}`}
+                    src={poster}
+                    alt={`Portada de ${titulo}`}
                     className="w-full h-auto object-contain"
                     loading="lazy"
                     onLoad={() => backRef.current && setContentHeight(backRef.current.scrollHeight)}
@@ -192,15 +192,15 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
 
             <div className="max-w-4xl mx-auto w-full text-center">
               <p className="text-base md:text-lg text-neutral-400 leading-relaxed font-medium">
-                {item.descripcion}
+                {descripcion}
               </p>
               <div className="h-px w-32 bg-white/10 mx-auto mt-8"></div>
             </div>
 
             {/* Cascada de Páginas a lo ancho */}
-            {paginasDelDocumento.length > 0 ? (
+            {paginas.length > 0 ? (
               <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full items-center">
-                {paginasDelDocumento.map((url, idx) => (
+                {paginas.map((url, idx) => (
                   <div
                     key={idx}
                     className="w-full aspect-[3/4] bg-[#1d1d1f] rounded-xl overflow-hidden border border-white/5 shadow-lg relative"
