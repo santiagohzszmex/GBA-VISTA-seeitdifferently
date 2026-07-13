@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, Check, Newspaper, UserRound, X } from 'lucide-react';
+import { ArrowRight, Check, Eye, Heart, Newspaper, Play, Sparkles, UserRound, X } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useEditorialFollow } from '../../hooks/useEditorialFollow';
 
-function SuggestedEditorial({ name }) {
-  const { isFollowing, loading, toggleFollow } = useEditorialFollow(name);
+const engagementScore = (item) => (Number(item.vistas) || 0) + ((Number(item.likes_count) || 0) * 5);
+const formatMetric = new Intl.NumberFormat('es-MX', { notation: 'compact', maximumFractionDigits: 1 });
+
+function SuggestedEditorial({ editorial }) {
+  const { isFollowing, loading, toggleFollow } = useEditorialFollow(editorial.name);
   return (
     <button
       type="button"
@@ -16,8 +19,12 @@ function SuggestedEditorial({ name }) {
       }`}
     >
       <div className="min-w-0">
-        <p className="font-bold text-sm text-[#1d1d1f] truncate">{name}</p>
-        <p className="text-[10px] uppercase tracking-widest text-[#86868b] mt-1">Editorial de Empyria</p>
+        <p className="font-bold text-sm text-[#1d1d1f] truncate">{editorial.name}</p>
+        <div className="flex items-center gap-3 text-[10px] font-bold text-[#86868b] mt-1.5">
+          <span className="flex items-center gap-1"><Eye size={11}/>{formatMetric.format(editorial.views)}</span>
+          <span className="flex items-center gap-1"><Heart size={11}/>{formatMetric.format(editorial.likes)}</span>
+          <span>{editorial.editions} ed.</span>
+        </div>
       </div>
       <span className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isFollowing ? 'bg-green-500 text-white' : 'bg-[#f5f5f7] text-[#0066FF]'}`}>
         {isFollowing ? <Check size={15}/> : <span className="text-lg leading-none">+</span>}
@@ -26,22 +33,53 @@ function SuggestedEditorial({ name }) {
   );
 }
 
-export default function WelcomeOverlay({ onClose, setActiveTab }) {
+export default function WelcomeOverlay({ onClose, setActiveTab, onSelectContent }) {
   const { user, refreshUser } = useAuth();
   const [suggestions, setSuggestions] = useState([]);
+  const [featuredGimg, setFeaturedGimg] = useState(null);
 
   useEffect(() => {
     const loadSuggestions = async () => {
-      const { data } = await supabase
+      const [{ data: communityData }, { data: gimgData }] = await Promise.all([
+        supabase
         .from('contenido')
-        .select('sello_editorial')
+        .select('sello_editorial,vistas,likes_count')
         .eq('estado_publicacion', 'aprobado')
         .eq('es_comunidad', true)
         .not('sello_editorial', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(30);
-      const unique = [...new Set((data || []).map(item => item.sello_editorial).filter(Boolean))].slice(0, 3);
-      setSuggestions(unique);
+        .limit(500),
+        supabase
+          .from('contenido')
+          .select('id,titulo,descripcion,poster_url,banner_url,vistas,likes_count,categoria,created_at')
+          .eq('estado_publicacion', 'aprobado')
+          .eq('es_comunidad', false)
+          .limit(80)
+      ]);
+
+      const editorials = new Map();
+      (communityData || []).forEach(item => {
+        const name = item.sello_editorial?.trim();
+        if (!name) return;
+        const key = name.toLocaleLowerCase('es-MX');
+        const current = editorials.get(key) || { name, views: 0, likes: 0, editions: 0 };
+        current.views += Number(item.vistas) || 0;
+        current.likes += Number(item.likes_count) || 0;
+        current.editions += 1;
+        editorials.set(key, current);
+      });
+      setSuggestions(
+        [...editorials.values()]
+          .sort((a, b) => (b.views + b.likes * 5) - (a.views + a.likes * 5))
+          .slice(0, 3)
+      );
+
+      const rankedGimg = [...(gimgData || [])]
+        .filter(item => item.banner_url || item.poster_url)
+        .sort((a, b) => {
+          const scoreDifference = engagementScore(b) - engagementScore(a);
+          return scoreDifference || (new Date(b.created_at) - new Date(a.created_at));
+        });
+      setFeaturedGimg(rankedGimg[0] || null);
     };
     loadSuggestions();
   }, []);
@@ -54,6 +92,12 @@ export default function WelcomeOverlay({ onClose, setActiveTab }) {
     }
     setActiveTab(destination);
     onClose();
+  };
+
+  const openGimgContent = async () => {
+    if (!featuredGimg) return;
+    await finish('home');
+    onSelectContent?.(featuredGimg);
   };
 
   return (
@@ -72,14 +116,36 @@ export default function WelcomeOverlay({ onClose, setActiveTab }) {
           Tu GBA ID ya puede seguir la actualidad de Empyria, guardar ediciones y construir un perfil público con tus aportaciones.
         </p>
 
+        {featuredGimg && (
+          <section className="mb-7">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles size={16} className="text-[#0066FF]"/>
+              <h2 className="text-xs font-black uppercase tracking-widest">Selección esencial de GIMG</h2>
+            </div>
+            <button type="button" onClick={openGimgContent} className="group relative w-full min-h-40 md:min-h-48 overflow-hidden rounded-xl bg-[#111] text-white text-left">
+              <img src={featuredGimg.banner_url || featuredGimg.poster_url} alt={featuredGimg.titulo} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-700"/>
+              <span className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/10"/>
+              <span className="relative min-h-40 md:min-h-48 p-5 md:p-7 flex flex-col justify-end items-start">
+                <span className="text-[9px] font-black uppercase tracking-widest text-blue-300 mb-2">GIMG Original</span>
+                <span className="font-serif italic text-2xl md:text-3xl leading-tight max-w-xl">{featuredGimg.titulo}</span>
+                <span className="flex items-center gap-4 mt-3 text-[10px] font-bold text-white/70">
+                  <span className="flex items-center gap-1"><Eye size={12}/>{formatMetric.format(featuredGimg.vistas || 0)}</span>
+                  <span className="flex items-center gap-1"><Heart size={12}/>{formatMetric.format(featuredGimg.likes_count || 0)}</span>
+                  <span className="flex items-center gap-1 text-white"><Play size={12} fill="currentColor"/> Abrir selección</span>
+                </span>
+              </span>
+            </button>
+          </section>
+        )}
+
         {suggestions.length > 0 && (
           <section className="border-y border-[#d2d2d7]/60 py-6 mb-7">
             <div className="flex items-center gap-2 mb-4">
               <Newspaper size={17} className="text-[#0066FF]"/>
-              <h2 className="text-sm font-black uppercase tracking-widest">Empieza siguiendo editoriales</h2>
+              <h2 className="text-sm font-black uppercase tracking-widest">Editoriales más destacadas</h2>
             </div>
             <div className="grid sm:grid-cols-3 gap-3">
-              {suggestions.map(name => <SuggestedEditorial key={name} name={name}/>) }
+              {suggestions.map(editorial => <SuggestedEditorial key={editorial.name} editorial={editorial}/>) }
             </div>
           </section>
         )}

@@ -163,6 +163,7 @@ export default function VISTAHome() {
         <WelcomeOverlay
           onClose={() => setShowWelcome(false)}
           setActiveTab={setActiveTab}
+          onSelectContent={handleSelectMovieInfo}
         />
       )}
 

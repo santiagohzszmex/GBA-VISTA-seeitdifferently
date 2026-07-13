@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Edit3, Eye, Heart, ImagePlus, Newspaper, Save, Server, Share2, UserRound, X } from 'lucide-react';
+import { ArrowLeft, Edit3, Eye, Heart, Newspaper, Save, Server, Share2, UserRound, X } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import NewsCard from '../components/news/NewsCard';
-import { uploadToCloudinary } from '../cloudinary';
 
 export default function PerfilUsuario({ publicHandle = null, setActiveTab }) {
   const { user, refreshUser } = useAuth();
@@ -15,8 +14,7 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [avatarFile, setAvatarFile] = useState(null);
-  const [draft, setDraft] = useState({ nombre_publico: '', bio: '', avatar_url: '', servidor: '', nacion: '', discord_id: '', perfil_publico: true });
+  const [draft, setDraft] = useState({ nombre_publico: '', bio: '', servidor: '', nacion: '', discord_id: '', perfil_publico: true });
 
   useEffect(() => {
     const load = async () => {
@@ -31,7 +29,6 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab }) {
         handle: user.nombre,
         nombre_publico: user.nombre_publico || user.nombre,
         bio: user.bio || '',
-        avatar_url: user.avatar_url,
         servidor: user.servidor,
         nacion: user.nacion,
         rol: user.rol,
@@ -65,7 +62,6 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab }) {
     setDraft({
       nombre_publico: profile.nombre_publico || profile.handle || '',
       bio: profile.bio || '',
-      avatar_url: profile.avatar_url || '',
       servidor: profile.servidor || '',
       nacion: profile.nacion || '',
       discord_id: isOwnProfile ? (user?.discord_id || '') : '',
@@ -78,20 +74,10 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab }) {
   const saveProfile = async () => {
     if (!user?.id) return;
     setSaving(true);
-    let avatarUrl = draft.avatar_url;
-    if (avatarFile) {
-      avatarUrl = await uploadToCloudinary(avatarFile, `Perfiles_GBA/${user.id}`);
-      if (!avatarUrl) {
-        setSaving(false);
-        return;
-      }
-    }
-    const payload = { ...draft, avatar_url: avatarUrl };
-    const { error } = await supabase.from('usuarios').update(payload).eq('id', user.id);
+    const { error } = await supabase.from('usuarios').update(draft).eq('id', user.id);
     if (!error) {
       await refreshUser();
-      setProfile(prev => ({ ...prev, ...payload }));
-      setAvatarFile(null);
+      setProfile(prev => ({ ...prev, ...draft }));
       setEditing(false);
     }
     setSaving(false);
@@ -127,7 +113,7 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab }) {
 
         <header className="grid md:grid-cols-[180px_1fr_auto] gap-7 md:gap-10 items-center border-b border-[#d2d2d7]/60 pb-12">
           <div className="w-36 h-36 md:w-44 md:h-44 rounded-2xl overflow-hidden bg-[#1d1d1f] text-white flex items-center justify-center text-4xl font-black shadow-xl">
-            {profile.avatar_url ? <img src={profile.avatar_url} alt={profile.nombre_publico} className="w-full h-full object-cover"/> : initials}
+            {initials}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[#0066FF] text-[10px] font-black uppercase tracking-widest mb-3"><UserRound size={15}/> Perfil GBA ID</div>
@@ -175,11 +161,6 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab }) {
             <div className="flex items-center justify-between"><h2 className="text-2xl font-serif italic font-bold">Editar perfil público</h2><button onClick={() => setEditing(false)} className="w-9 h-9 rounded-full bg-[#f5f5f7] flex items-center justify-center"><X size={16}/></button></div>
             <input value={draft.nombre_publico} onChange={e => setDraft(prev => ({ ...prev, nombre_publico: e.target.value }))} placeholder="Nombre público" className="w-full border border-[#d2d2d7] rounded-xl p-3 outline-none focus:border-[#0066FF]"/>
             <textarea value={draft.bio} onChange={e => setDraft(prev => ({ ...prev, bio: e.target.value }))} rows="4" placeholder="Biografía" className="w-full border border-[#d2d2d7] rounded-xl p-3 resize-none outline-none focus:border-[#0066FF]"/>
-            <label className="flex items-center justify-between gap-4 border border-dashed border-[#d2d2d7] rounded-xl p-4 cursor-pointer hover:bg-[#f5f5f7]">
-              <span className="flex items-center gap-3 min-w-0"><ImagePlus size={18} className="text-[#0066FF]"/><span className="text-sm font-bold truncate">{avatarFile?.name || (draft.avatar_url ? 'Cambiar avatar' : 'Subir avatar')}</span></span>
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#86868b]">Imagen</span>
-              <input type="file" accept="image/*" onChange={event => setAvatarFile(event.target.files?.[0] || null)} className="hidden"/>
-            </label>
             <div className="grid grid-cols-2 gap-3"><input value={draft.servidor} onChange={e => setDraft(prev => ({ ...prev, servidor: e.target.value }))} placeholder="Servidor" className="border border-[#d2d2d7] rounded-xl p-3 outline-none"/><input value={draft.nacion} onChange={e => setDraft(prev => ({ ...prev, nacion: e.target.value }))} placeholder="Nación" className="border border-[#d2d2d7] rounded-xl p-3 outline-none"/></div>
             <div><input value={draft.discord_id} onChange={e => setDraft(prev => ({ ...prev, discord_id: e.target.value }))} placeholder="Usuario de Discord (opcional)" className="w-full border border-[#d2d2d7] rounded-xl p-3 outline-none"/><p className="text-[10px] text-[#86868b] mt-1.5 px-1">Dato privado para contacto y administración; no aparece en tu perfil público.</p></div>
             <label className="flex items-center justify-between gap-4 p-3 bg-[#f5f5f7] rounded-xl font-medium text-sm">Perfil visible mediante enlace<input type="checkbox" checked={draft.perfil_publico} onChange={e => setDraft(prev => ({ ...prev, perfil_publico: e.target.checked }))}/></label>
