@@ -64,10 +64,23 @@ export const AuthProvider = ({ children }) => {
     await supabase.auth.signOut();
   };
 
+  const refreshUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return null;
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+    if (!error && data) setUser(data);
+    return data || null;
+  };
+
   const value = {
     user,
     isDueño: user?.rol === 'Dueño' || user?.rol === 'Admin',
-    logout
+    logout,
+    refreshUser
   };
 
   return (

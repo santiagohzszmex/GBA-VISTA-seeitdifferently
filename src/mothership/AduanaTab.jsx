@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Check, X, Eye, FileText, ExternalLink, ShieldAlert, ShieldCheck, Image, Layers, UserCheck, Edit3, Save } from 'lucide-react';
+import { EDITORIAL_CATEGORIES } from '../utils/editorialCategories';
 
 export default function AduanaTab() {
   const [activeSubTab, setActiveSubTab] = useState('ediciones'); 
@@ -11,7 +12,7 @@ export default function AduanaTab() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [editingReview, setEditingReview] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
-  const [reviewDraft, setReviewDraft] = useState({ titulo: '', descripcion: '', sello_editorial: '', categoria: 'Noticia', nombre_noticiero: '' });
+  const [reviewDraft, setReviewDraft] = useState({ titulo: '', descripcion: '', sello_editorial: '', categoria: 'Noticia', categoria_editorial: 'comunidad', nombre_noticiero: '' });
 
   const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1521553828674146485/0BIQdUirrZbiC5FwsU14f-6tuNhFOqJB7lNxBelruyFeQgmNGfVWiTdRxJB392gsafP_";
 
@@ -76,6 +77,7 @@ export default function AduanaTab() {
       descripcion: item.descripcion || '',
       sello_editorial: item.sello_editorial || '',
       categoria: item.categoria || 'Noticia',
+      categoria_editorial: item.categoria_editorial || 'comunidad',
       nombre_noticiero: item.nombre_noticiero || ''
     });
   };
@@ -87,6 +89,7 @@ export default function AduanaTab() {
       descripcion: reviewDraft.descripcion,
       sello_editorial: reviewDraft.sello_editorial,
       categoria: reviewDraft.categoria,
+      categoria_editorial: reviewDraft.categoria_editorial,
       titulo_i18n: item.titulo_i18n ? { ...item.titulo_i18n, [baseLang]: reviewDraft.titulo } : item.titulo_i18n,
       descripcion_i18n: item.descripcion_i18n ? { ...item.descripcion_i18n, [baseLang]: reviewDraft.descripcion } : item.descripcion_i18n
     };
@@ -370,6 +373,9 @@ export default function AduanaTab() {
                           <option value="Periódico">Periódico</option>
                         </select>
                       </div>
+                      <select value={reviewDraft.categoria_editorial} onChange={(event) => setReviewDraft(prev => ({ ...prev, categoria_editorial: event.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-xs outline-none [&>option]:bg-[#1d1d1f]">
+                        {EDITORIAL_CATEGORIES.map(category => <option key={category.value} value={category.value}>{category.label}</option>)}
+                      </select>
                       <button type="button" onClick={handleSaveCorrections} disabled={savingReview} className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black rounded-lg text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"><Save size={14}/> Guardar correcciones</button>
                     </div>
                   ) : (

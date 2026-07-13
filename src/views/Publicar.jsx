@@ -19,8 +19,10 @@ import {
   FileImage,
   Crown,
   Globe,
-  Languages // <-- Añadido para la UI de traducciones
+  Languages,
+  Tag
 } from 'lucide-react';
+import { EDITORIAL_CATEGORIES } from '../utils/editorialCategories';
 
 export default function Publicar() {
   const { user, isDueño } = useAuth();
@@ -39,6 +41,7 @@ export default function Publicar() {
   const [idiomaOriginal, setIdiomaOriginal] = useState('es'); 
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
+  const [categoriaEditorial, setCategoriaEditorial] = useState('comunidad');
   const [portadaArchivo, setPortadaArchivo] = useState(null);
   const [paginasArchivos, setPaginasArchivos] = useState([]); 
   const [enviando, setEnviando] = useState(false);
@@ -252,6 +255,7 @@ export default function Publicar() {
         autor_id: user.id,
         sello_editorial: selloFinal,
         categoria: 'Periódico',
+        categoria_editorial: categoriaEditorial,
         anio: new Date().getFullYear().toString()
       };
 
@@ -276,7 +280,7 @@ export default function Publicar() {
       });
 
       setPublicacionExitosa(true);
-      setTitulo(''); setDescripcion(''); setPortadaArchivo(null); setPaginasArchivos([]); setTraducciones([]);
+      setTitulo(''); setDescripcion(''); setCategoriaEditorial('comunidad'); setPortadaArchivo(null); setPaginasArchivos([]); setTraducciones([]);
       cargarHistorialAduana();
     } catch (err) {
       console.error(err);
@@ -431,6 +435,13 @@ export default function Publicar() {
                           <option value="fr">Francés (FR)</option>
                         </select>
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-[#86868b] uppercase tracking-widest mb-1.5 font-bold flex items-center gap-1"><Tag size={12}/> Categoría editorial</label>
+                      <select value={categoriaEditorial} onChange={(e) => setCategoriaEditorial(e.target.value)} className="w-full bg-[#f5f5f7] border border-[#d2d2d7] text-[#1d1d1f] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#0066FF] font-bold text-sm outline-none appearance-none cursor-pointer">
+                        {EDITORIAL_CATEGORIES.map(category => <option key={category.value} value={category.value}>{category.label}</option>)}
+                      </select>
                     </div>
 
                     <div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { uploadToCloudinary } from '../cloudinary';
+import { EDITORIAL_CATEGORIES } from '../utils/editorialCategories';
 import { 
   Save, 
   Edit3, 
@@ -158,7 +159,8 @@ export default function NoticiasTab() {
     portada_url: '', 
     enlace_pdf: '',  
     youtube_id: '',
-    idioma_original: 'es' 
+    idioma_original: 'es',
+    categoria_editorial: 'comunidad'
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -228,7 +230,8 @@ export default function NoticiasTab() {
       portada_url: item.poster_url || item.banner_url || '',
       enlace_pdf: item.enlace_pdf || '', 
       youtube_id: item.youtube_id || '',
-      idioma_original: baseLang 
+      idioma_original: baseLang,
+      categoria_editorial: item.categoria_editorial || 'comunidad'
     });
 
     // Cargar traducciones existentes al panel dinámico
@@ -353,6 +356,7 @@ export default function NoticiasTab() {
         youtube_id: formData.youtube_id || null,
         es_comunidad: isComunidad,
         categoria: editingItem ? editingItem.categoria : 'Noticia',
+        categoria_editorial: formData.categoria_editorial,
         estado_publicacion: 'aprobado',
         anio: editingItem ? editingItem.anio : new Date().getFullYear().toString(),
         
@@ -476,6 +480,12 @@ export default function NoticiasTab() {
                   value={formData.descripcion} onChange={handleChange}
                   className="w-full bg-transparent border-b border-white/10 p-2 text-xs resize-none outline-none focus:border-blue-500 leading-relaxed custom-scrollbar transition-colors"
                 />
+              </div>
+              <div>
+                <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Categoría editorial</label>
+                <select name="categoria_editorial" value={formData.categoria_editorial} onChange={handleChange} className="w-full bg-transparent border-b border-white/10 p-2 text-sm outline-none focus:border-blue-500 [&>option]:bg-[#1d1d1f]">
+                  {EDITORIAL_CATEGORIES.map(category => <option key={category.value} value={category.value}>{category.label}</option>)}
+                </select>
               </div>
             </div>
 

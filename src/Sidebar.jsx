@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
+import { useNotifications } from './hooks/useNotifications';
 import { 
   Home, 
   Tv, 
@@ -30,6 +31,7 @@ function AllianceLogo({ className = "hover:scale-105 transition-transform durati
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const { user, isDueño, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
   const sidebarRef = useRef(null);
@@ -63,6 +65,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: 'publicar', label: 'Studio', icon: <PenTool size={22} strokeWidth={1.5} /> },
     { id: 'search', label: 'Buscar', icon: <Search size={22} strokeWidth={1.5} /> },
     { id: 'library', label: 'Biblioteca', icon: <Library size={22} strokeWidth={1.5} /> },
+    { id: 'notifications', label: 'Avisos', icon: <Bell size={22} strokeWidth={1.5} /> },
   ];
 
   return (
@@ -97,7 +100,10 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 : 'text-[#86868b] hover:bg-black/5 hover:text-[#1d1d1f]'
               }`}
             >
-              <div className="min-w-[24px] flex justify-center">{item.icon}</div>
+              <div className="min-w-[24px] flex justify-center relative">
+                {item.icon}
+                {item.id === 'notifications' && unreadCount > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[8px] font-black flex items-center justify-center">{Math.min(unreadCount, 9)}</span>}
+              </div>
               <span className="font-medium text-sm tracking-wide opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                 {item.label}
               </span>
@@ -133,10 +139,10 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             className={`w-full flex items-center gap-4 p-2 rounded-2xl transition-all duration-300 border ${showMenu ? 'bg-black/5 border-blue-500/20' : 'border-transparent hover:bg-black/5'}`}
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-100 to-blue-50 border border-[#d2d2d7] flex items-center justify-center text-sm font-black text-blue-600 min-w-[40px] shadow-sm">
-              {user?.nombre?.slice(0, 2).toUpperCase() || 'GB'}
+              {(user?.nombre_publico || user?.nombre)?.slice(0, 2).toUpperCase() || 'GB'}
             </div>
             <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity overflow-hidden whitespace-nowrap text-left">
-              <span className="text-sm font-bold truncate text-[#1d1d1f] tracking-tight">{user?.nombre || 'GBA ID'}</span>
+              <span className="text-sm font-bold truncate text-[#1d1d1f] tracking-tight">{user?.nombre_publico || user?.nombre || 'GBA ID'}</span>
               <span className="text-[9px] text-[#86868b] uppercase font-bold tracking-[0.2em]">
                 {user?.rol || 'Ciudadano'}
               </span>
@@ -168,7 +174,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
           className={`mobile-nav-btn flex flex-col items-center justify-center w-14 gap-1.5 transition-colors ${showMenu ? 'text-[#0066FF]' : 'text-[#86868b]'}`}
         >
           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm transition-all ${showMenu ? 'bg-blue-600 text-white border-none' : 'bg-gradient-to-tr from-blue-100 to-blue-50 border border-[#d2d2d7] text-blue-600'}`}>
-            {user?.nombre?.slice(0, 2).toUpperCase() || 'GB'}
+            {(user?.nombre_publico || user?.nombre)?.slice(0, 2).toUpperCase() || 'GB'}
           </div>
           <span className="text-[9px] font-bold tracking-wide">Perfil</span>
         </button>
@@ -197,11 +203,12 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
               <div className="flex items-center gap-3"><Moon size={16} className="text-[#86868b]"/> Apariencia</div>
               <span className="text-[10px] font-black text-[#86868b]">CLARO</span>
             </button>
-            <button className="w-full flex items-center justify-between px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
+            <button onClick={() => {setActiveTab('notifications'); setShowMenu(false)}} className="w-full flex items-center justify-between px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
               <div className="flex items-center gap-3"><Bell size={16} className="text-[#86868b]"/> Notificaciones</div>
-              <div className="w-8 h-4 bg-green-500 rounded-full relative">
-                <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow-sm"></div>
-              </div>
+              {unreadCount > 0 && <span className="min-w-6 h-6 px-2 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">{unreadCount}</span>}
+            </button>
+            <button onClick={() => {setActiveTab('profile'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
+              <User size={16} className="text-[#86868b]"/> Mi perfil público
             </button>
             
             {/* Buscador / Biblioteca en Móvil (Ya que no cabían en la barra inferior) */}

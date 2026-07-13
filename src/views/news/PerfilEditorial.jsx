@@ -1,10 +1,19 @@
 import React, { useEffect } from 'react';
 import { useNews } from '../../hooks/useNews';
+import { useEditorialFollow } from '../../hooks/useEditorialFollow';
 import NewsCard from '../../components/news/NewsCard';
-import { ShieldCheck, Eye, Heart, ArrowLeft, Newspaper, Activity } from 'lucide-react';
+import { ShieldCheck, Eye, Heart, ArrowLeft, Newspaper, Activity, Bell, BellOff, Check, UserPlus } from 'lucide-react';
 
 export default function PerfilEditorial({ selloNombre, setActiveTab, onSelectMovie }) {
   const { loading, editorialContent, editorialStats, fetchEditorialProfile, registrarVisita } = useNews();
+  const {
+    isFollowing,
+    notificationsEnabled,
+    followersCount,
+    loading: followLoading,
+    toggleFollow,
+    toggleNotifications
+  } = useEditorialFollow(selloNombre);
 
   // Cargar los datos del perfil del sello al montar la vista
   useEffect(() => {
@@ -48,7 +57,7 @@ export default function PerfilEditorial({ selloNombre, setActiveTab, onSelectMov
       <header className="pt-12 pb-16 px-6 md:px-12 max-w-[1800px] mx-auto border-b border-[#d2d2d7]/50 mb-16">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
           
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             <div className="flex items-center gap-2.5 text-[#0066FF]">
               <ShieldCheck size={22} />
               <span className="text-xs font-bold tracking-widest uppercase">Sello Verificado</span>
@@ -59,6 +68,35 @@ export default function PerfilEditorial({ selloNombre, setActiveTab, onSelectMov
             <p className="text-sm text-[#86868b] font-medium max-w-xl leading-relaxed">
               Catálogo oficial de publicaciones y documentos de prensa distribuidos dentro del ecosistema VISTA.
             </p>
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={toggleFollow}
+                disabled={followLoading}
+                className={`h-11 px-5 rounded-xl font-bold text-sm flex items-center gap-2 transition-colors disabled:opacity-50 ${
+                  isFollowing
+                    ? 'bg-[#1d1d1f] text-white'
+                    : 'bg-[#0066FF] hover:bg-[#0052cc] text-white'
+                }`}
+              >
+                {isFollowing ? <Check size={17}/> : <UserPlus size={17}/>}
+                {isFollowing ? 'Siguiendo' : 'Seguir editorial'}
+              </button>
+              {isFollowing && (
+                <button
+                  type="button"
+                  onClick={toggleNotifications}
+                  disabled={followLoading}
+                  className="w-11 h-11 rounded-xl border border-[#d2d2d7] bg-white hover:bg-[#f5f5f7] flex items-center justify-center text-[#1d1d1f] disabled:opacity-50"
+                  title={notificationsEnabled ? 'Desactivar avisos' : 'Activar avisos'}
+                >
+                  {notificationsEnabled ? <Bell size={17}/> : <BellOff size={17}/>}
+                </button>
+              )}
+              <span className="text-xs font-bold text-[#86868b] px-2">
+                {followersCount} {followersCount === 1 ? 'seguidor' : 'seguidores'}
+              </span>
+            </div>
           </div>
 
           {/* MÉTRICAS ACUMULADAS PÚBLICAS */}

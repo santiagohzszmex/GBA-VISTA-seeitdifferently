@@ -1,13 +1,16 @@
 import React, { useState, useRef, useLayoutEffect, useCallback } from 'react';
-import { Heart, Eye, ShieldCheck, FileText, ChevronUp, Layers } from 'lucide-react';
+import { Heart, Eye, ShieldCheck, FileText, ChevronUp, Layers, Bookmark, Check } from 'lucide-react';
 import { useLikes } from '../../hooks/useLikes';
+import { useLibrary } from '../../hooks/useLibrary';
 import { useContentLanguage } from '../../hooks/useContentLanguage';
 import LanguageSwitcher from '../common/LanguageSwitcher';
+import { getEditorialCategoryLabel } from '../../utils/editorialCategories';
 
 const FLIP_DURATION = 700; // ms — una sola fuente de verdad para JS y CSS
 
 export default function NewsCard({ item, onRead, onNavigateProfile }) {
   const { isLiked, likesCount, toggleLike } = useLikes(item.id);
+  const { isInLibrary, toggleLibrary, loading: libraryLoading } = useLibrary(item);
   const { lang, setLang, availableLangs, langLabel, titulo, descripcion, poster, paginas } = useContentLanguage(item);
   const [isFlipped, setIsFlipped] = useState(false);
   const [contentHeight, setContentHeight] = useState(480);
@@ -40,6 +43,11 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
     if (onNavigateProfile && item.sello_editorial) {
       onNavigateProfile(item.sello_editorial);
     }
+  };
+
+  const handleLibraryClick = async (e) => {
+    e.stopPropagation();
+    await toggleLibrary();
   };
 
   const openCard = () => {
@@ -117,6 +125,9 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
                 <ShieldCheck size={14} className="text-blue-400" />
                 <span className="truncate max-w-[140px]">{item.sello_editorial}</span>
               </button>
+              <button onClick={handleLibraryClick} disabled={libraryLoading} className={`w-10 h-10 rounded-xl border flex items-center justify-center backdrop-blur-md transition-colors ${isInLibrary ? 'bg-green-500/90 border-green-400 text-white' : 'bg-black/60 border-white/20 text-white hover:bg-white hover:text-black'}`} title={isInLibrary ? 'Quitar de guardados' : 'Guardar edición'}>
+                {isInLibrary ? <Check size={16}/> : <Bookmark size={16}/>}
+              </button>
             </div>
           </div>
 
@@ -129,6 +140,7 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
               </div>
             </div>
 
+            <span className="text-[9px] font-black uppercase tracking-widest text-[#0066FF] mb-2">{getEditorialCategoryLabel(item.categoria_editorial)}</span>
             <h3 className="font-serif font-bold text-xl md:text-2xl text-[#1d1d1f] leading-tight mb-2 line-clamp-2 group-hover:text-[#0066FF] transition-colors">
               {titulo}
             </h3>
@@ -160,6 +172,9 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
             </div>
             <div className="flex items-center gap-3 flex-wrap flex-shrink-0">
               <LanguageSwitcher availableLangs={availableLangs} lang={lang} setLang={setLang} langLabel={langLabel} variant="dark" />
+              <button onClick={handleLibraryClick} disabled={libraryLoading} className={`h-11 px-4 rounded-xl border flex items-center gap-2 text-xs font-bold transition-colors ${isInLibrary ? 'bg-green-500/15 border-green-500/30 text-green-400' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`} title={isInLibrary ? 'Quitar de guardados' : 'Guardar edición'}>
+                {isInLibrary ? <Check size={16}/> : <Bookmark size={16}/>}<span className="hidden md:inline">{isInLibrary ? 'Guardada' : 'Guardar'}</span>
+              </button>
               <button
                 onClick={closeCard}
                 className="px-5 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-bold uppercase tracking-widest text-xs flex items-center gap-2 transition-all border border-red-500/20 active:scale-95 flex-shrink-0"

@@ -5,6 +5,7 @@ import NewsCoverflow from '../../components/news/NewsCoverflow';
 import NewsCard from '../../components/news/NewsCard';
 import { CampaignDetailInline, getCampaignPrimaryAsset } from '../../components/campaigns/CampaignShowcase';
 import { Radio, Newspaper, Activity, Crown, Megaphone, ArrowUpRight } from 'lucide-react';
+import { EDITORIAL_CATEGORIES } from '../../utils/editorialCategories';
 
 // Clave de localStorage donde guardamos qué noticias ya registró este navegador/usuario
 const VISTAS_KEY = 'vista_gimg_registradas';
@@ -33,6 +34,7 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
   const [activeCampaigns, setActiveCampaigns] = useState([]);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [localFocusedNewsId, setLocalFocusedNewsId] = useState(focusedNewsId || null);
+  const [activeCategory, setActiveCategory] = useState('todas');
 
   useEffect(() => {
     fetchGlobalNews();
@@ -80,6 +82,13 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
           sello_editorial: item.sello_editorial || 'Editorial Independiente'
         }))),
     [allNews, prioritizeFocusedNews]
+  );
+
+  const filteredCommunityNews = useMemo(
+    () => activeCategory === 'todas'
+      ? communityNews
+      : communityNews.filter(item => (item.categoria_editorial || 'comunidad') === activeCategory),
+    [activeCategory, communityNews]
   );
 
   const focusedNews = useMemo(
@@ -272,7 +281,7 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
 
       {/* NIVEL 2: KIOSCO INDEPENDIENTE */}
       <div className="px-6 md:px-12 max-w-[1800px] mx-auto mt-16 pt-16 border-t border-[#d2d2d7]/50">
-        <div className="flex flex-col md:flex-row md:items-center gap-3 mb-12">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6">
           <div className="flex items-center gap-3">
             <Newspaper size={26} className="text-[#1d1d1f]" />
             <h3 className="text-2xl md:text-4xl font-serif italic font-bold text-[#1d1d1f]">Kiosco de la Alianza</h3>
@@ -282,9 +291,31 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
           </span>
         </div>
 
-        {communityNews.length > 0 ? (
+        <div className="flex gap-2 overflow-x-auto pb-3 mb-9" role="tablist" aria-label="Categorías editoriales">
+          {[{ value: 'todas', label: 'Todas' }, ...EDITORIAL_CATEGORIES].map(category => {
+            const selected = activeCategory === category.value;
+            return (
+              <button
+                key={category.value}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setActiveCategory(category.value)}
+                className={`h-10 px-4 rounded-xl whitespace-nowrap text-xs font-bold transition-colors border ${
+                  selected
+                    ? 'bg-[#1d1d1f] border-[#1d1d1f] text-white'
+                    : 'bg-white border-[#d2d2d7] text-[#86868b] hover:text-[#1d1d1f] hover:border-[#86868b]'
+                }`}
+              >
+                {category.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {filteredCommunityNews.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10 items-start animate-in slide-in-from-bottom-8 duration-700 delay-300 fill-mode-forwards">
-            {communityNews.map((item) => (
+            {filteredCommunityNews.map((item) => (
               <NewsCard
                 key={item.id}
                 item={item}
@@ -296,7 +327,9 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
         ) : (
           <div className="py-32 text-center border-2 border-dashed border-[#d2d2d7] rounded-[2.5rem] bg-white shadow-sm">
             <Newspaper size={48} className="text-[#d2d2d7] mx-auto mb-4" />
-            <p className="text-[#86868b] font-medium text-lg">El Kiosco independiente está despejado de momento.</p>
+            <p className="text-[#86868b] font-medium text-lg">
+              {communityNews.length > 0 ? 'No hay ediciones en esta categoría todavía.' : 'El Kiosco independiente está despejado de momento.'}
+            </p>
           </div>
         )}
       </div>

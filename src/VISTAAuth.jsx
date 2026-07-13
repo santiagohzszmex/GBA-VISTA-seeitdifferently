@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, ChevronLeft, ArrowRight, Loader2, AlertCircle, KeyRound, AtSign } from 'lucide-react';
+import { User, ChevronLeft, ArrowRight, Loader2, AlertCircle, KeyRound } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 function AllianceLogo() {
@@ -32,11 +32,10 @@ function PinIndicators({ length }) {
 
 export default function VISTAAuth({ onLogin }) {
   const [flow, setFlow] = useState('login'); 
-  // step: 'username' | 'discord' | 'phrase' | 'pin'
+  // step: 'username' | 'profile' | 'phrase' | 'pin'
   const [step, setStep] = useState('username'); 
   
   const [nombre, setNombre] = useState('');
-  const [discordId, setDiscordId] = useState('');
   const [frase, setFrase] = useState('');
   const [pin, setPin] = useState('');
   const pinInputRef = useRef(null);
@@ -45,6 +44,11 @@ export default function VISTAAuth({ onLogin }) {
   const [error, setError] = useState('');
 
   const normalizePin = (value) => value.replace(/\D/g, '').slice(0, 4);
+  const normalizeHandle = (value) => value
+    .toLowerCase()
+    .replace(/\s+/g, '.')
+    .replace(/[^a-z0-9._-]/g, '')
+    .slice(0, 24);
   const focusPinInput = () => {
     if (loading) return;
 
@@ -57,7 +61,6 @@ export default function VISTAAuth({ onLogin }) {
     setPin('');
     if (step === 'username') {
       setFrase('');
-      setDiscordId('');
     }
   }, [flow, step]);
 
@@ -91,16 +94,21 @@ export default function VISTAAuth({ onLogin }) {
         if (!nombre.trim()) return;
 
         if (flow === 'register') {
-          const { data } = await supabase.from('usuarios').select('nombre').eq('nombre', nombre.trim()).maybeSingle();
+          if (nombre.trim().length < 3) {
+            setError('Tu GBA ID debe tener al menos 3 caracteres.');
+            setLoading(false);
+            return;
+          }
+          const { data } = await supabase.from('usuarios').select('nombre').ilike('nombre', nombre.trim()).maybeSingle();
           if (data) {
             setError('Este GBA ID ya está en uso.');
             setLoading(false);
             return;
           }
-          setStep('discord'); // Nuevo paso agregado al registro
+          setStep('profile');
         } 
         else if (flow === 'recover') {
-          const { data } = await supabase.from('usuarios').select('nombre').eq('nombre', nombre.trim()).maybeSingle();
+          const { data } = await supabase.from('usuarios').select('nombre').ilike('nombre', nombre.trim()).maybeSingle();
           if (!data) {
             setError('Este GBA ID no existe.');
             setLoading(false);
@@ -112,13 +120,13 @@ export default function VISTAAuth({ onLogin }) {
           setStep('pin');
         }
       } 
-      else if (step === 'discord') {
-        if (!discordId.trim()) {
-          setError('El usuario de Discord es obligatorio.');
+      else if (step === 'profile') {
+        if (!frase.trim()) {
+          setError('La frase de recuperación es obligatoria.');
           setLoading(false);
           return;
         }
-        setStep('phrase');
+        setStep('pin');
       }
       else if (step === 'phrase') {
         if (!frase.trim()) {
@@ -138,19 +146,20 @@ export default function VISTAAuth({ onLogin }) {
   // ==========================================
   // PROCESAMIENTO FINAL
   // ==========================================
-  const getPhantomEmail = (id) => `${id.toLowerCase().replace(/\s+/g, '')}@gba.com`;
+  // Dirección técnica usada exclusivamente por Supabase Auth. Nunca se muestra como identidad del usuario.
+  const getAuthAddress = (id) => `${id.toLowerCase().replace(/\s+/g, '')}@gba.com`;
   const getSecurePassword = (codigo) => `GBA-${codigo}-SecureVault`;
 
   const procesarPIN = async () => {
     setLoading(true);
     setError('');
 
-    const email = getPhantomEmail(nombre);
+    const authAddress = getAuthAddress(nombre);
     const password = getSecurePassword(pin);
 
     try {
       if (flow === 'login') {
-        const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error: authError } = await supabase.auth.signInWithPassword({ email: authAddress, password });
         if (authError) {
           setError('GBA ID o clave incorrectos.');
           setPin('');
@@ -163,23 +172,26 @@ export default function VISTAAuth({ onLogin }) {
       
       else if (flow === 'register') {
         const { data, error: signUpError } = await supabase.auth.signUp({
-          email, password, options: { data: { nombre: nombre.trim() } }
+          email: authAddress, password, options: { data: { nombre: nombre.trim() } }
         });
 
         if (signUpError) throw signUpError;
+        window.localStorage.setItem('vista_show_welcome', '1');
 
-        setTimeout(async () => {
-          // Guardamos la frase secreta Y el Discord ID juntos
-          await supabase.from('usuarios')
-            .update({ 
-              frase_seguridad: frase.trim().toLowerCase(),
-              discord_id: discordId.trim()
-            })
-            .eq('id', data.user.id);
+        const profilePayload = {
+          frase_seguridad: frase.trim().toLowerCase(),
+          nombre_publico: nombre.trim(),
+          onboarding_completado: false
+        };
+        const { error: profileError } = await supabase.from('usuarios').update(profilePayload).eq('id', data.user.id);
+        if (profileError) {
+          await supabase.from('usuarios').update({
+            frase_seguridad: profilePayload.frase_seguridad
+          }).eq('id', data.user.id);
+        }
 
-          const { data: newUserData } = await supabase.from('usuarios').select('*').eq('id', data.user.id).single();
-          onLogin(newUserData || data.user);
-        }, 1000);
+        const { data: newUserData } = await supabase.from('usuarios').select('*').eq('id', data.user.id).single();
+        onLogin(newUserData || data.user);
       } 
       
       else if (flow === 'recover') {
@@ -197,7 +209,7 @@ export default function VISTAAuth({ onLogin }) {
           return;
         }
 
-        const { data: authData } = await supabase.auth.signInWithPassword({ email, password });
+        const { data: authData } = await supabase.auth.signInWithPassword({ email: authAddress, password });
         const { data: userData } = await supabase.from('usuarios').select('*').eq('id', authData.user.id).single();
         onLogin(userData || authData.user);
       }
@@ -216,15 +228,15 @@ export default function VISTAAuth({ onLogin }) {
   const getTitles = () => {
     if (step === 'username') {
       if (flow === 'login') return { title: 'Accede a VISTA con tu GBA ID.', subtitle: 'Tu GBA ID (Nombre de usuario)', note: 'Un solo GBA ID abre tu acceso a VISTA y a las herramientas del ecosistema GlobalBank.' };
-      if (flow === 'register') return { title: 'Crea tu GBA ID.', subtitle: 'Tu GBA ID (Nombre de usuario)', note: 'Tu GBA ID será tu identidad de acceso a VISTA, la plataforma de contenido para servidores geopolíticos dentro de Minecraft.' };
+      if (flow === 'register') return { title: 'Crea tu GBA ID.', subtitle: 'Elige tu nombre de usuario', note: 'Sin correo. Tu GBA ID abre VISTA, la plataforma de contenido para servidores geopolíticos dentro de Minecraft.' };
       if (flow === 'recover') return { title: 'Recuperación de Acceso.', subtitle: 'Ingresa tu GBA ID', note: 'Usa tu GBA ID para recuperar el acceso a VISTA.' };
     }
-    if (step === 'discord') {
-      return { title: 'Vincula tu usuario de Discord.' };
+    if (step === 'profile') {
+      return { title: 'Protege tu GBA ID.', note: 'Escribe una frase que recuerdes. La necesitarás si alguna vez olvidas tu clave.' };
     }
     if (step === 'phrase') {
       if (flow === 'register') return { title: 'Configura tu Frase de Seguridad.' };
-      if (flow === 'recover') return { title: 'Verificación de Identidad.' };
+      if (flow === 'recover') return { title: 'Verificación de GBA ID.' };
     }
     if (step === 'pin') {
       if (flow === 'login') return { title: 'Introduce tu clave de seguridad.' };
@@ -244,12 +256,12 @@ export default function VISTAAuth({ onLogin }) {
         <button 
           onClick={() => {
             if (step === 'pin') {
-              if (flow !== 'login') setStep('phrase');
+              if (flow === 'register') setStep('profile');
+              else if (flow === 'recover') setStep('phrase');
               else setStep('username');
             } else if (step === 'phrase') {
-              if (flow === 'register') setStep('discord');
-              else setStep('username'); 
-            } else if (step === 'discord') {
+              setStep('username');
+            } else if (step === 'profile') {
               setStep('username');
             }
           }}
@@ -297,7 +309,7 @@ export default function VISTAAuth({ onLogin }) {
                 <input 
                   type="text" placeholder={titles.subtitle} 
                   className="w-full bg-transparent py-3 pl-10 text-lg focus:outline-none placeholder:text-[#86868b]/60 text-[#1d1d1f] font-medium"
-                  value={nombre} onChange={(e) => setNombre(e.target.value)}
+                  value={nombre} onChange={(e) => setNombre(flow === 'register' ? normalizeHandle(e.target.value) : e.target.value)}
                   disabled={loading} autoFocus required
                 />
               </div>
@@ -311,27 +323,27 @@ export default function VISTAAuth({ onLogin }) {
             </form>
           )}
 
-          {/* ESTADO EXTRA: DISCORD ID (Solo en registro) */}
-          {step === 'discord' && (
+          {/* Recuperación compacta; el perfil público se completa en la bienvenida. */}
+          {step === 'profile' && (
             <form onSubmit={handleNextStep} className="space-y-6 text-left">
-              <p className="text-sm text-[#86868b] mb-4">
-                Ingresa tu usuario de Discord. Esto nos permitirá identificarte en la comunidad de GlobalBank Alliance.
-              </p>
               <div className="relative border-b border-[#d2d2d7] focus-within:border-[#1d1d1f] transition-colors pb-1">
-                <AtSign className="absolute left-0 top-3 text-[#86868b]" size={20} strokeWidth={1.5} />
-                <input 
-                  type="text" placeholder="Usuario de Discord (ej. santiago#1234)" 
+                <KeyRound className="absolute left-0 top-3 text-[#86868b]" size={20} strokeWidth={1.5} />
+                <input
+                  type="text" placeholder="Frase de recuperación"
                   className="w-full bg-transparent py-3 pl-10 text-lg focus:outline-none placeholder:text-[#86868b]/60 text-[#1d1d1f] font-medium"
-                  value={discordId} onChange={(e) => setDiscordId(e.target.value)}
+                  value={frase} onChange={(e) => setFrase(e.target.value)}
                   disabled={loading} autoFocus required
                 />
               </div>
+              <p className="text-xs leading-relaxed text-[#86868b]">
+                No uses tu clave ni compartas esta frase. VISTA no te la mostrará públicamente.
+              </p>
               {error && <div className="flex items-center gap-2 text-red-500 text-sm font-medium pt-2"><AlertCircle size={16} /> {error}</div>}
-              <button 
-                type="submit" disabled={loading || !discordId.trim()}
+              <button
+                type="submit" disabled={loading || !frase.trim()}
                 className="w-full bg-[#1d1d1f] text-white py-4 rounded-full font-medium hover:bg-black transition-all flex justify-center items-center gap-2 shadow-md disabled:opacity-30"
               >
-                Continuar <ArrowRight size={18} />
+                Crear clave de acceso <ArrowRight size={18} />
               </button>
             </form>
           )}
@@ -340,9 +352,7 @@ export default function VISTAAuth({ onLogin }) {
           {step === 'phrase' && (
             <form onSubmit={handleNextStep} className="space-y-6 text-left">
               <p className="text-sm text-[#86868b] mb-4">
-                {flow === 'register' 
-                  ? "Escribe una palabra o frase corta que solo tú conozcas. Esta será tu única forma de recuperar tu GBA ID si olvidas el PIN."
-                  : "Ingresa la Frase de Seguridad que configuraste al crear tu GBA ID para verificar tu identidad."}
+                Ingresa la frase de recuperación que configuraste al crear tu GBA ID.
               </p>
               <div className="relative border-b border-[#d2d2d7] focus-within:border-[#1d1d1f] transition-colors pb-1">
                 <KeyRound className="absolute left-0 top-3 text-[#86868b]" size={20} strokeWidth={1.5} />
@@ -358,7 +368,7 @@ export default function VISTAAuth({ onLogin }) {
                 type="submit" disabled={loading || !frase.trim()}
                 className="w-full bg-[#1d1d1f] text-white py-4 rounded-full font-medium hover:bg-black transition-all flex justify-center items-center gap-2 shadow-md disabled:opacity-30"
               >
-                {flow === 'register' ? 'Guardar Frase' : 'Verificar'} <ArrowRight size={18} />
+                Verificar <ArrowRight size={18} />
               </button>
             </form>
           )}

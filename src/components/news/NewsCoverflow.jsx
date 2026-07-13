@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
-import { ChevronLeft, ChevronRight, ShieldCheck, Eye, ArrowUpRight, Heart, ChevronUp, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShieldCheck, Eye, ArrowUpRight, Heart, ChevronUp, FileText, Bookmark, Check } from 'lucide-react';
 import { useLikes } from '../../hooks/useLikes';
+import { useLibrary } from '../../hooks/useLibrary';
 
 // IMPORTAMOS LOS MÓDULOS DE I18N
 import { useContentLanguage } from '../../hooks/useContentLanguage';
@@ -13,6 +14,7 @@ const FLIP_DURATION = 700; // ms — misma referencia usada en NewsCard, para co
 // ==========================================
 function ExpandedPanel({ item, content, onClose }) {
   const { isLiked, likesCount, toggleLike } = useLikes(item.id);
+  const { isInLibrary, toggleLibrary, loading: libraryLoading } = useLibrary(item);
   const panelRef = useRef(null);
   const [height, setHeight] = useState(0);
 
@@ -90,6 +92,19 @@ function ExpandedPanel({ item, content, onClose }) {
                 >
                   <Heart size={16} className={isLiked ? 'fill-red-500 text-red-500' : 'text-white'} />
                   <span className="text-xs font-bold text-white/90">{likesCount}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleLibrary(); }}
+                  disabled={libraryLoading}
+                  className={`flex items-center gap-2 border px-4 py-2.5 rounded-full transition-all active:scale-95 disabled:opacity-50 ${
+                    isInLibrary
+                      ? 'bg-blue-500/15 border-blue-400/30 text-blue-300'
+                      : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/90'
+                  }`}
+                >
+                  {isInLibrary ? <Check size={16}/> : <Bookmark size={16}/>}
+                  <span className="text-xs font-bold">{isInLibrary ? 'Guardada' : 'Guardar'}</span>
                 </button>
                 <span className="flex items-center gap-1.5 text-xs text-neutral-400 font-bold">
                   <Eye size={14} /> {item.vistas || 0} {lang === 'en' ? 'Reads' : 'Lecturas'}
@@ -219,6 +234,24 @@ function QuickLikeButton({ itemId }) {
       title="Me gusta"
     >
       <Heart size={20} className={isLiked ? 'fill-red-500 text-red-500' : 'text-[#86868b]'} />
+    </button>
+  );
+}
+
+function QuickSaveButton({ item }) {
+  const { isInLibrary, toggleLibrary, loading } = useLibrary(item);
+
+  return (
+    <button
+      type="button"
+      onClick={(event) => { event.stopPropagation(); toggleLibrary(); }}
+      disabled={loading}
+      className={`p-3 rounded-full border transition-all active:scale-95 flex-shrink-0 shadow-sm disabled:opacity-50 ${
+        isInLibrary ? 'bg-blue-50 border-blue-200 text-[#0066FF]' : 'bg-white border-[#d2d2d7] text-[#86868b] hover:bg-[#f5f5f7]'
+      }`}
+      title={isInLibrary ? 'Quitar de la biblioteca' : 'Guardar en la biblioteca'}
+    >
+      {isInLibrary ? <Check size={20}/> : <Bookmark size={20}/>}
     </button>
   );
 }
@@ -377,6 +410,7 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
               {activeContent.descripcion} {/* Descripción traducida */}
             </p>
             <QuickLikeButton key={activeItem.id} itemId={activeItem.id} />
+            <QuickSaveButton key={`save-${activeItem.id}`} item={activeItem} />
           </div>
 
           <div className="flex items-center gap-4 mt-1">

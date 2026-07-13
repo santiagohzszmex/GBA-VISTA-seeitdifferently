@@ -12,6 +12,9 @@ import BibliotecaView from './views/Biblioteca';
 import PublicarView from './views/Publicar';
 import MothershipView from './views/Mothership';
 import Estadisticas from './views/Estadisticas';
+import NotificacionesView from './views/Notificaciones';
+import PerfilUsuarioView from './views/PerfilUsuario';
+import WelcomeOverlay from './components/onboarding/WelcomeOverlay';
 
 // Importación de los componentes de interacción global
 import VideoPlayer from './components/player/VideoPlayer'; // <-- Importado
@@ -26,6 +29,7 @@ export default function VISTAHome() {
   const [selectedMovieInfo, setSelectedMovieInfo] = useState(null);
   const [selloSeleccionado, setSelloSeleccionado] = useState(''); // Estado para enrutar el Perfil Editorial
   const [focusedNewsId, setFocusedNewsId] = useState(null);
+  const [showWelcome, setShowWelcome] = useState(() => window.localStorage.getItem('vista_show_welcome') === '1');
 
   // Manejadores de acciones que serán inyectados a las vistas hijas
   const handlePlayVideo = (youtubeId) => {
@@ -90,6 +94,10 @@ export default function VISTAHome() {
             onPlay={handlePlayVideo} 
           />
         );
+      case 'notifications':
+        return <NotificacionesView onNavigateNews={handleNavigateNews} />;
+      case 'profile':
+        return <PerfilUsuarioView setActiveTab={setActiveTab} />;
       case 'estadisticas': 
         return <Estadisticas />;
       case 'publicar':
@@ -148,6 +156,13 @@ export default function VISTAHome() {
             setPlayingVideo(id); // Dispara la reproducción cinematográfica
             setSelectedMovieInfo(null); // Limpia el foco del modal cerrándolo limpiamente
           }} 
+        />
+      )}
+
+      {showWelcome && (
+        <WelcomeOverlay
+          onClose={() => setShowWelcome(false)}
+          setActiveTab={setActiveTab}
         />
       )}
 

@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { PlayCircle, Trash2, Info } from 'lucide-react';
 import { isVideoContent } from '../utils/contentTypes';
+import { getEditorialCategoryLabel } from '../utils/editorialCategories';
 
 export default function Biblioteca({ onSelectMovie, onPlay }) {
   const { user } = useAuth();
@@ -97,7 +98,7 @@ export default function Biblioteca({ onSelectMovie, onPlay }) {
           Mi Biblioteca.
         </h1>
         <p className="text-[#86868b] text-sm font-bold uppercase tracking-widest">
-          Colección Personal de {user?.user_metadata?.nombre || 'Usuario'}
+          Colección de {user?.nombre_publico || user?.nombre || 'GBA ID'}
         </p>
       </div>
 
@@ -153,7 +154,7 @@ export default function Biblioteca({ onSelectMovie, onPlay }) {
                   </p>
                   <div className="flex justify-between items-center">
                      <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider">
-                       {movie.categoria || 'Original'}
+                       {movie.es_comunidad ? getEditorialCategoryLabel(movie.categoria_editorial) : (movie.categoria || 'Original')}
                      </p>
                      <Info size={14} className="text-white/50 group-hover:text-white transition-colors" />
                   </div>
