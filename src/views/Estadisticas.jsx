@@ -7,7 +7,7 @@ import {
   Edit3, X, Save, Globe, Languages, Plus, Trash2, Image as ImageIcon, FileImage, Heart
 } from 'lucide-react';
 
-export default function Estadisticas() {
+export default function Estadisticas({ embedded = false }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   
@@ -181,7 +181,7 @@ export default function Estadisticas() {
 
   if (loading) {
     return (
-      <div className="w-full min-h-screen bg-[#fbfbfd] pt-12 px-6 flex items-center justify-center">
+      <div className={`w-full bg-[#fbfbfd] flex items-center justify-center ${embedded ? 'min-h-80' : 'min-h-screen pt-12 px-6'}`}>
         <div className="flex flex-col items-center gap-4 text-[#86868b]">
           <Activity className="animate-pulse" size={32} />
           <p className="text-[10px] font-bold uppercase tracking-widest">Sincronizando métricas...</p>
@@ -191,18 +191,18 @@ export default function Estadisticas() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-[#fbfbfd] pt-12 px-6 md:px-12 pb-24 font-sans selection:bg-[#0066FF] selection:text-white relative">
+    <div className={`w-full bg-[#fbfbfd] font-sans selection:bg-[#0066FF] selection:text-white relative ${embedded ? 'pt-10 pb-6' : 'min-h-screen pt-12 px-6 md:px-12 pb-24'}`}>
       <div className="max-w-6xl mx-auto">
         
         {/* HEADER */}
-        <header className="mb-12">
+        <header className={embedded ? 'mb-8' : 'mb-12'}>
           <div className="flex items-center gap-2 text-[#0066FF] mb-3">
             <BarChart3 size={18} />
             <span className="text-[10px] font-bold tracking-widest uppercase">
               Panel Analítico
             </span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-serif italic tracking-tight text-[#1d1d1f] mb-2">
+          <h2 className={`${embedded ? 'text-3xl md:text-4xl' : 'text-4xl md:text-5xl'} font-serif italic tracking-tight text-[#1d1d1f] mb-2`}>
             Métricas Editoriales.
           </h2>
           <p className="text-[#86868b] font-medium text-sm">

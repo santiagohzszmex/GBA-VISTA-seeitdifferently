@@ -12,7 +12,6 @@ import {
   PenTool,
   Moon,
   Bell,
-  BarChart3,
   FileUp,
   User
 } from 'lucide-react';
@@ -186,7 +185,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       {showMenu && (
         <div 
           ref={menuRef}
-          className="fixed md:absolute md:left-28 md:bottom-6 bottom-24 right-4 md:right-auto left-4 md:w-72 bg-white/95 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.12)] p-2 animate-in slide-in-from-bottom-4 duration-300 z-[1000] text-[#1d1d1f] border border-[#d2d2d7]/60"
+          className="fixed left-4 right-4 bottom-24 md:left-28 md:right-auto md:bottom-6 md:w-72 max-h-[calc(100vh-7rem)] md:max-h-[calc(100vh-3rem)] overflow-y-auto bg-white/95 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.12)] p-2 animate-in slide-in-from-bottom-4 duration-300 z-[1000] text-[#1d1d1f] border border-[#d2d2d7]/60"
         >
           {/* IDENTIDAD */}
           <div className="p-5 bg-gradient-to-b from-white to-[#f5f5f7]/50 rounded-[2rem] border border-[#d2d2d7]/30 shadow-sm mb-2">
@@ -208,7 +207,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
               {unreadCount > 0 && <span className="min-w-6 h-6 px-2 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">{unreadCount}</span>}
             </button>
             <button onClick={() => {setActiveTab('profile'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
-              <User size={16} className="text-[#86868b]"/> Mi perfil público
+              <User size={16} className="text-[#86868b]"/> {isEditor ? 'Mi perfil y estadísticas' : 'Mi perfil'}
             </button>
             
             {/* Buscador / Biblioteca en Móvil (Ya que no cabían en la barra inferior) */}
@@ -226,9 +225,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
           {isEditor && (
             <div className="px-2 py-2 border-t border-[#d2d2d7]/40 mt-1 space-y-1">
                <p className="px-3 py-2 text-[9px] font-black text-[#86868b] uppercase tracking-[0.2em] opacity-60">Funciones de Prensa</p>
-               <button onClick={() => {setActiveTab('estadisticas'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-blue-50 text-blue-600 rounded-2xl transition-colors text-sm font-bold">
-                 <BarChart3 size={16}/> Mis Estadísticas
-               </button>
                <button onClick={() => {setActiveTab('publicar'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-blue-50 text-blue-600 rounded-2xl transition-colors text-sm font-bold">
                  <FileUp size={16}/> Cargar Edición
                </button>

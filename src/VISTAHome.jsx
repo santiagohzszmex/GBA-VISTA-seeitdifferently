@@ -11,7 +11,6 @@ import BuscarView from './views/Buscar';
 import BibliotecaView from './views/Biblioteca';
 import PublicarView from './views/Publicar';
 import MothershipView from './views/Mothership';
-import Estadisticas from './views/Estadisticas';
 import NotificacionesView from './views/Notificaciones';
 import PerfilUsuarioView from './views/PerfilUsuario';
 import WelcomeOverlay from './components/onboarding/WelcomeOverlay';
@@ -100,7 +99,7 @@ export default function VISTAHome() {
       case 'profile':
         return <PerfilUsuarioView setActiveTab={setActiveTab} />;
       case 'estadisticas': 
-        return <Estadisticas />;
+        return <PerfilUsuarioView setActiveTab={setActiveTab} initialSection="analytics" />;
       case 'publicar':
       case 'settings':
         return <PublicarView />;

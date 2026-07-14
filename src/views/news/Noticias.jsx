@@ -75,7 +75,7 @@ function GimgInstitutionalHeader({ news }) {
   );
 }
 
-function KioskRanking({ title, icon: Icon, items, metric, onSelect }) {
+function KioskRanking({ title, icon: Icon, items, metric }) {
   return (
     <section>
       <div className="flex items-center gap-2 mb-3">
@@ -84,7 +84,7 @@ function KioskRanking({ title, icon: Icon, items, metric, onSelect }) {
       </div>
       <div className="border-y border-[#d2d2d7]/70 divide-y divide-[#d2d2d7]/60">
         {items.map((item, index) => (
-          <button key={item.id} type="button" onClick={() => onSelect(item)} className="w-full min-h-20 py-3 flex items-center gap-4 text-left hover:bg-white transition-colors">
+          <div key={item.id} className="w-full min-h-20 py-3 flex items-center gap-4 text-left">
             <span className="w-7 text-center font-serif italic text-2xl text-[#86868b]">{index + 1}</span>
             <img src={item.poster_url || item.banner_url} alt="" className="w-12 h-14 rounded-md object-cover bg-[#e8e8ed] flex-shrink-0"/>
             <span className="min-w-0 flex-1">
@@ -94,7 +94,7 @@ function KioskRanking({ title, icon: Icon, items, metric, onSelect }) {
             <span className="text-xs font-black text-[#1d1d1f] flex items-center gap-1.5 pr-2">
               <Icon size={13}/>{formatMetric.format(Number(item[metric]) || 0)}
             </span>
-          </button>
+          </div>
         ))}
       </div>
     </section>
@@ -269,12 +269,6 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
     });
   }, []);
 
-  const handleRankedEdition = useCallback((item) => {
-    setActiveCategory('todas');
-    setLocalFocusedNewsId(item.id);
-    window.requestAnimationFrame(() => kioskRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  }, []);
-
   if (loading && allNews.length === 0) {
     return (
       <div className="w-full min-h-screen bg-[#fbfbfd] flex items-center justify-center">
@@ -415,8 +409,8 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
               <h3 className="text-sm font-black uppercase tracking-[0.2em]">Top del kiosco</h3>
             </div>
             <div className="grid lg:grid-cols-2 gap-8 lg:gap-14">
-              <KioskRanking title="Más vistas" icon={Eye} items={topViewed} metric="vistas" onSelect={handleRankedEdition}/>
-              <KioskRanking title="Más likes" icon={Heart} items={topLiked} metric="likes_count" onSelect={handleRankedEdition}/>
+              <KioskRanking title="Más vistas" icon={Eye} items={topViewed} metric="vistas"/>
+              <KioskRanking title="Más likes" icon={Heart} items={topLiked} metric="likes_count"/>
             </div>
           </section>
         )}

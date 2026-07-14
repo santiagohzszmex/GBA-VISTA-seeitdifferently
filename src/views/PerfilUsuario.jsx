@@ -1,19 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Edit3, Eye, Heart, Newspaper, Save, Server, Share2, UserRound, X } from 'lucide-react';
+import { ArrowLeft, BarChart3, Edit3, Eye, Heart, Newspaper, Save, Server, Share2, UserRound, X } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import NewsCard from '../components/news/NewsCard';
+import Estadisticas from './Estadisticas';
 
-export default function PerfilUsuario({ publicHandle = null, setActiveTab }) {
-  const { user, refreshUser } = useAuth();
+export default function PerfilUsuario({ publicHandle = null, setActiveTab, initialSection = 'profile' }) {
+  const { user, isDueño, refreshUser } = useAuth();
   const handle = publicHandle || user?.nombre;
   const isOwnProfile = Boolean(user?.nombre && handle && user.nombre.toLowerCase() === handle.replace(/^@/, '').toLowerCase());
+  const canViewAnalytics = isOwnProfile && (user?.rol === 'Editor' || isDueño);
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [publications, setPublications] = useState([]);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeSection, setActiveSection] = useState(initialSection);
   const [draft, setDraft] = useState({ nombre_publico: '', bio: '', servidor: '', nacion: '', discord_id: '', perfil_publico: true });
 
   useEffect(() => {
@@ -145,14 +148,31 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab }) {
           ))}
         </section>
 
-        <section className="pt-12">
-          <h2 className="text-2xl font-serif italic font-bold mb-8">Aportaciones públicas</h2>
-          {publications.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
-              {publications.map(item => <NewsCard key={item.id} item={item} onRead={() => {}} onNavigateProfile={null}/>) }
+        {canViewAnalytics && (
+          <div className="pt-8" role="tablist" aria-label="Secciones del perfil">
+            <div className="inline-flex w-full sm:w-auto rounded-xl bg-[#e8e8ed] p-1">
+              <button type="button" role="tab" aria-selected={activeSection === 'profile'} onClick={() => setActiveSection('profile')} className={`min-h-10 flex-1 sm:flex-none px-5 rounded-lg flex items-center justify-center gap-2 text-xs font-bold transition-colors ${activeSection === 'profile' ? 'bg-white text-[#1d1d1f] shadow-sm' : 'text-[#6e6e73] hover:text-[#1d1d1f]'}`}>
+                <Newspaper size={15}/> Publicaciones
+              </button>
+              <button type="button" role="tab" aria-selected={activeSection === 'analytics'} onClick={() => setActiveSection('analytics')} className={`min-h-10 flex-1 sm:flex-none px-5 rounded-lg flex items-center justify-center gap-2 text-xs font-bold transition-colors ${activeSection === 'analytics' ? 'bg-white text-[#1d1d1f] shadow-sm' : 'text-[#6e6e73] hover:text-[#1d1d1f]'}`}>
+                <BarChart3 size={15}/> Estadísticas
+              </button>
             </div>
-          ) : <div className="py-20 border border-dashed border-[#d2d2d7] rounded-2xl text-center text-[#86868b]">Este perfil todavía no tiene aportaciones públicas.</div>}
-        </section>
+          </div>
+        )}
+
+        {canViewAnalytics && activeSection === 'analytics' ? (
+          <Estadisticas embedded />
+        ) : (
+          <section className="pt-12">
+            <h2 className="text-2xl font-serif italic font-bold mb-8">Aportaciones públicas</h2>
+            {publications.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
+                {publications.map(item => <NewsCard key={item.id} item={item} onRead={() => {}} onNavigateProfile={null}/>) }
+              </div>
+            ) : <div className="py-20 border border-dashed border-[#d2d2d7] rounded-2xl text-center text-[#86868b]">Este perfil todavía no tiene aportaciones públicas.</div>}
+          </section>
+        )}
       </div>
 
       {editing && (
