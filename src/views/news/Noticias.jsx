@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react'
 import { useNews } from '../../hooks/useNews';
 import { useCampaigns } from '../../hooks/useCampaigns';
 import { useEditorialFollow } from '../../hooks/useEditorialFollow';
+import { useWeeklyVistaRanking } from '../../hooks/useWeeklyVistaRanking';
 import NewsCoverflow from '../../components/news/NewsCoverflow';
 import NewsCard from '../../components/news/NewsCard';
+import VistaWeeklyRanking from '../../components/news/VistaWeeklyRanking';
 import { CampaignDetailInline, getCampaignPrimaryAsset } from '../../components/campaigns/CampaignShowcase';
-import { Radio, Newspaper, Activity, Megaphone, ArrowUpRight, Bell, BellOff, Check, Eye, Heart, Trophy, UserPlus } from 'lucide-react';
+import { Radio, Newspaper, Activity, Megaphone, ArrowUpRight, Bell, BellOff, Check, UserPlus } from 'lucide-react';
 import { EDITORIAL_CATEGORIES } from '../../utils/editorialCategories';
 
 // Clave de localStorage donde guardamos qué noticias ya registró este navegador/usuario
@@ -70,32 +72,6 @@ function GimgInstitutionalHeader({ news }) {
             </div>
           ))}
         </div>
-      </div>
-    </section>
-  );
-}
-
-function KioskRanking({ title, icon: Icon, items, metric }) {
-  return (
-    <section>
-      <div className="flex items-center gap-2 mb-3">
-        <Icon size={16} className={metric === 'vistas' ? 'text-[#0066FF]' : 'text-red-500'}/>
-        <h4 className="text-xs font-black uppercase tracking-widest text-[#1d1d1f]">{title}</h4>
-      </div>
-      <div className="border-y border-[#d2d2d7]/70 divide-y divide-[#d2d2d7]/60">
-        {items.map((item, index) => (
-          <div key={item.id} className="w-full min-h-20 py-3 flex items-center gap-4 text-left">
-            <span className="w-7 text-center font-serif italic text-2xl text-[#86868b]">{index + 1}</span>
-            <img src={item.poster_url || item.banner_url} alt="" className="w-12 h-14 rounded-md object-cover bg-[#e8e8ed] flex-shrink-0"/>
-            <span className="min-w-0 flex-1">
-              <span className="block font-bold text-sm text-[#1d1d1f] line-clamp-1">{item.titulo}</span>
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-[#86868b] mt-1 truncate">{item.sello_editorial}</span>
-            </span>
-            <span className="text-xs font-black text-[#1d1d1f] flex items-center gap-1.5 pr-2">
-              <Icon size={13}/>{formatMetric.format(Number(item[metric]) || 0)}
-            </span>
-          </div>
-        ))}
       </div>
     </section>
   );
@@ -184,15 +160,7 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
     [activeCategory, communityNews]
   );
 
-  const topViewed = useMemo(
-    () => [...communityNews].sort((a, b) => (Number(b.vistas) || 0) - (Number(a.vistas) || 0)).slice(0, 3),
-    [communityNews]
-  );
-
-  const topLiked = useMemo(
-    () => [...communityNews].sort((a, b) => (Number(b.likes_count) || 0) - (Number(a.likes_count) || 0)).slice(0, 3),
-    [communityNews]
-  );
+  const weeklyRanking = useWeeklyVistaRanking(allNews);
 
   const focusedNews = useMemo(
     () => allNews.find(item => item.id === localFocusedNewsId),
@@ -378,7 +346,7 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
 
       {/* NIVEL 1: ESCAPARATE OFICIAL */}
       {gimgNews.length > 0 && (
-        <div ref={gimgRef} className="mb-24 animate-in fade-in duration-1000 delay-200 fill-mode-forwards scroll-mt-6">
+        <div ref={gimgRef} className="mb-20 animate-in fade-in duration-1000 delay-200 fill-mode-forwards scroll-mt-6">
           <GimgInstitutionalHeader news={gimgNews}/>
 
           <NewsCoverflow
@@ -389,6 +357,14 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
           />
         </div>
       )}
+
+      <VistaWeeklyRanking
+        ranking={weeklyRanking.ranking}
+        loading={weeklyRanking.loading}
+        mode={weeklyRanking.mode}
+        weekStart={weeklyRanking.weekStart}
+        weekEnd={weeklyRanking.weekEnd}
+      />
 
       {/* NIVEL 2: KIOSCO INDEPENDIENTE */}
       <div ref={kioskRef} className="px-6 md:px-12 max-w-[1800px] mx-auto mt-16 pt-16 border-t border-[#d2d2d7]/50 scroll-mt-6">
@@ -402,20 +378,7 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
           </span>
         </div>
 
-        {communityNews.length > 0 && (
-          <section className="mb-10 py-7 border-y border-[#d2d2d7]/60">
-            <div className="flex items-center gap-2 mb-6">
-              <Trophy size={18} className="text-yellow-500"/>
-              <h3 className="text-sm font-black uppercase tracking-[0.2em]">Top del kiosco</h3>
-            </div>
-            <div className="grid lg:grid-cols-2 gap-8 lg:gap-14">
-              <KioskRanking title="Más vistas" icon={Eye} items={topViewed} metric="vistas"/>
-              <KioskRanking title="Más likes" icon={Heart} items={topLiked} metric="likes_count"/>
-            </div>
-          </section>
-        )}
-
-        <div className="flex gap-2 overflow-x-auto pb-3 mb-9" role="tablist" aria-label="Categorías editoriales">
+        <div className="flex gap-2 overflow-x-auto pb-3 mt-9 mb-9" role="tablist" aria-label="Categorías editoriales">
           {[{ value: 'todas', label: 'Todas' }, ...EDITORIAL_CATEGORIES].map(category => {
             const selected = activeCategory === category.value;
             return (

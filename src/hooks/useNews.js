@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
  
 // Código estándar de Postgres para violación de restricción única/llave primaria.
@@ -11,6 +11,22 @@ export function useNews() {
   const [allNews, setAllNews] = useState([]);
   const [editorialContent, setEditorialContent] = useState([]);
   const [editorialStats, setEditorialStats] = useState({ totalVistas: 0, totalLikes: 0 });
+
+  useEffect(() => {
+    const syncLikes = (event) => {
+      const detail = event.detail || {};
+      if (!detail.contenidoId) return;
+
+      const updateItem = item => item.id === detail.contenidoId
+        ? { ...item, likes_count: Number(detail.likesCount) || 0 }
+        : item;
+      setAllNews(current => current.map(updateItem));
+      setEditorialContent(current => current.map(updateItem));
+    };
+
+    window.addEventListener('vista:likes-updated', syncLikes);
+    return () => window.removeEventListener('vista:likes-updated', syncLikes);
+  }, []);
  
   // 1. Cargar todas las noticias aprobadas para el feed general y Coverflow
   const fetchGlobalNews = useCallback(async () => {

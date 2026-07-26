@@ -405,46 +405,51 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
 
       {/* Info del ítem activo (Apple Music Style) */}
       {activeItem && !expanded && (
-        <div className="w-full max-w-2xl px-6 text-center flex flex-col items-center gap-3 mb-10 animate-in fade-in duration-500">
-          {isGimgOfficial ? (
-            <span className="flex items-center gap-1.5 bg-[#1d1d1f] text-white border border-[#1d1d1f] px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase">
-              <ShieldCheck size={14} className="text-blue-400"/> GIMG OFICIAL
-            </span>
-          ) : (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onNavigateProfile && activeItem.sello_editorial) onNavigateProfile(activeItem.sello_editorial);
-              }}
-              className="flex items-center gap-1.5 bg-[#f5f5f7] text-[#1d1d1f] border border-[#d2d2d7] px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase hover:bg-[#1d1d1f] hover:text-white transition-colors"
-            >
-              <ShieldCheck size={14}/> {activeItem.sello_editorial || 'Independiente'}
-            </button>
-          )}
+        <div className="w-full max-w-2xl h-[340px] sm:h-[304px] px-6 text-center flex flex-col items-center gap-3 mb-10 animate-in fade-in duration-500">
+          <div className="h-8 flex items-center justify-center">
+            {isGimgOfficial ? (
+              <span className="flex items-center gap-1.5 bg-[#1d1d1f] text-white border border-[#1d1d1f] px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase">
+                <ShieldCheck size={14} className="text-blue-400"/> GIMG OFICIAL
+              </span>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onNavigateProfile && activeItem.sello_editorial) onNavigateProfile(activeItem.sello_editorial);
+                }}
+                className="flex items-center gap-1.5 bg-[#f5f5f7] text-[#1d1d1f] border border-[#d2d2d7] px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase hover:bg-[#1d1d1f] hover:text-white transition-colors max-w-full"
+              >
+                <ShieldCheck size={14} className="flex-shrink-0"/> <span className="truncate">{activeItem.sello_editorial || 'Independiente'}</span>
+              </button>
+            )}
+          </div>
 
-          <h2 className="text-2xl md:text-3xl font-serif italic text-[#1d1d1f] leading-tight">
+          <h2 className="h-[72px] md:h-[76px] overflow-hidden text-2xl md:text-3xl font-serif italic text-[#1d1d1f] leading-tight line-clamp-2 flex items-center justify-center">
             {activeContent.titulo} {/* Título traducido */}
           </h2>
 
-          <LanguageSwitcher 
-            availableLangs={activeContent.availableLangs} 
-            lang={activeContent.lang} 
-            setLang={activeContent.setLang} 
-            langLabel={activeContent.langLabel} 
-            variant="light" 
-          />
-
-          {/* ESTA ES LA SECCIÓN MODIFICADA: Descripción + Like Button */}
-          <div className="flex items-center gap-4 max-w-xl w-full">
-            <p className="text-sm md:text-base text-[#86868b] line-clamp-2 font-medium flex-1 text-center md:text-right">
-              {activeContent.descripcion} {/* Descripción traducida */}
-            </p>
-            <QuickLikeButton key={activeItem.id} itemId={activeItem.id} />
-            <QuickSaveButton key={`save-${activeItem.id}`} item={activeItem} />
-            <QuickShareButton key={`share-${activeItem.id}`} item={activeItem} content={{ titulo: activeContent.titulo, descripcion: activeContent.descripcion }} />
+          <div className="h-10 flex items-center justify-center">
+            <LanguageSwitcher
+              availableLangs={activeContent.availableLangs}
+              lang={activeContent.lang}
+              setLang={activeContent.setLang}
+              langLabel={activeContent.langLabel}
+              variant="light"
+            />
           </div>
 
-          <div className="flex items-center gap-4 mt-1">
+          <div className="h-[104px] sm:h-16 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-xl w-full">
+            <p className="h-10 text-sm md:text-base text-[#86868b] line-clamp-2 font-medium flex-1 text-center sm:text-right overflow-hidden">
+              {activeContent.descripcion} {/* Descripción traducida */}
+            </p>
+            <div className="h-12 flex flex-shrink-0 items-center gap-3">
+              <QuickLikeButton key={activeItem.id} itemId={activeItem.id} />
+              <QuickSaveButton key={`save-${activeItem.id}`} item={activeItem} />
+              <QuickShareButton key={`share-${activeItem.id}`} item={activeItem} content={{ titulo: activeContent.titulo, descripcion: activeContent.descripcion }} />
+            </div>
+          </div>
+
+          <div className="h-10 flex items-center gap-4">
             <span className="flex items-center gap-1.5 text-xs text-[#86868b] font-bold">
               <Eye size={14} /> {activeItem.vistas || 0} {activeContent.lang === 'en' ? 'Reads' : 'Lecturas'}
             </span>
