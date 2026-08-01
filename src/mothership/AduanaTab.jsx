@@ -14,8 +14,6 @@ export default function AduanaTab() {
   const [savingReview, setSavingReview] = useState(false);
   const [reviewDraft, setReviewDraft] = useState({ titulo: '', descripcion: '', sello_editorial: '', categoria: 'Noticia', categoria_editorial: 'comunidad', nombre_noticiero: '' });
 
-  const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1521553828674146485/0BIQdUirrZbiC5FwsU14f-6tuNhFOqJB7lNxBelruyFeQgmNGfVWiTdRxJB392gsafP_";
-
   useEffect(() => {
     fetchAduanaData();
   }, [activeSubTab]);
@@ -51,19 +49,15 @@ export default function AduanaTab() {
 
   const enviarLogDiscord = async (tituloLog, mensajeLog, colorCode) => {
     try {
-      await fetch(DISCORD_WEBHOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          embeds: [{
-            title: tituloLog,
-            description: mensajeLog,
-            color: colorCode,
-            timestamp: new Date().toISOString(),
-            footer: { text: "Mothership Command • Sistema de Aduanas VISTA" }
-          }]
-        })
+      const { error } = await supabase.functions.invoke('vista-discord-notify', {
+        body: {
+          event: 'admin_log',
+          title: tituloLog,
+          description: mensajeLog,
+          color: colorCode
+        }
       });
+      if (error) throw error;
     } catch (err) {
       console.error("Error al despachar log a Discord:", err);
     }

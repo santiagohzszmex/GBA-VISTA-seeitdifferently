@@ -119,41 +119,12 @@ export default function GBAForgeTab() {
     await fetchLogs();
   };
 
-  // Función para integrar con webhook de Discord
+  // El webhook vive en una Edge Function; nunca debe exponerse en el navegador.
   const sendToDiscord = async (logData) => {
-    // URL Real de tu Webhook
-    const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1521960813752090804/a1T0biY6qYNxNc9MxneYp4-GWQ0dppU_dWvkW2zVzZhDj1OYLbqLTLmZCpBv-8-tML66"; 
-    
-    // Extraemos el nombre del usuario logueado
-    const nombreUsuario = user?.user_metadata?.nombre || user?.email || 'Ingeniero';
-    
-    // Armamos la tarjeta (Embed) con formato profesional para Discord
-    const embed = {
-      title: `[${logData.categoria}] ${logData.titulo_experimento}`,
-      color: 0x0066FF, // Azul técnico
-      fields: [
-        { name: "Estado", value: logData.estado, inline: true },
-        { name: "Ingeniero", value: nombreUsuario, inline: true },
-        { name: "Herramientas", value: logData.herramientas.length > 0 ? logData.herramientas.join(', ') : 'Ninguna', inline: false },
-        { name: "Log Técnico", value: logData.log_tecnico || 'Sin descripción detallada.', inline: false }
-      ],
-      timestamp: new Date().toISOString()
-    };
-
-    try {
-      // Hacemos el envío (POST) directo a los servidores de Discord
-      const response = await fetch(DISCORD_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ embeds: [embed] })
-      });
-      
-      if (!response.ok) {
-        console.error("Discord rechazó el mensaje. Status:", response.status);
-      }
-    } catch (err) {
-      console.error("Error enviando a Discord:", err);
-    }
+    const { error } = await supabase.functions.invoke('forge-discord-notify', {
+      body: logData
+    });
+    if (error) throw error;
   };
 
   const handleSubmit = async (e) => {
@@ -173,24 +144,33 @@ export default function GBAForgeTab() {
       estado: formData.estado,
       herramientas: finalTools,
       log_tecnico: formData.log_tecnico,
-      enviado_discord: editingLog?.enviado_discord || formData.enviar_discord,
+      enviado_discord: editingLog?.enviado_discord || false,
       usuario_id: user.id
     };
 
     try {
       const query = editingLog
-        ? supabase.from('gba_forge_logs').update(newLog).eq('id', editingLog.id).select()
-        : supabase.from('gba_forge_logs').insert([newLog]).select();
-      const { error } = await query;
+        ? supabase.from('gba_forge_logs').update(newLog).eq('id', editingLog.id).select().single()
+        : supabase.from('gba_forge_logs').insert([newLog]).select().single();
+      const { data: savedLog, error } = await query;
       if (error) throw error;
 
+      let discordFailed = false;
       if (formData.enviar_discord) {
-        await sendToDiscord(newLog);
+        try {
+          await sendToDiscord(newLog);
+          await supabase.from('gba_forge_logs').update({ enviado_discord: true }).eq('id', savedLog.id);
+        } catch (discordError) {
+          discordFailed = true;
+          console.error('No se pudo notificar a Discord:', discordError);
+        }
       }
 
-      const successMessage = editingLog ? 'Registro técnico actualizado.' : 'Registro técnico guardado exitosamente.';
+      const successMessage = discordFailed
+        ? 'Registro guardado, pero Discord todavía no está configurado en la Edge Function.'
+        : (editingLog ? 'Registro técnico actualizado.' : 'Registro técnico guardado exitosamente.');
       resetForm(false);
-      setStatusMsg({ type: 'success', msg: successMessage });
+      setStatusMsg({ type: discordFailed ? 'warning' : 'success', msg: successMessage });
       await fetchLogs();
     } catch (error) {
       console.error("Error guardando log:", error);
@@ -301,6 +281,7 @@ export default function GBAForgeTab() {
               <div className={`p-3 rounded-lg text-xs font-bold text-center ${
                 statusMsg.type === 'success' ? 'bg-green-500/20 text-green-400' :
                 statusMsg.type === 'info' ? 'bg-blue-500/20 text-blue-400' :
+                statusMsg.type === 'warning' ? 'bg-yellow-500/20 text-yellow-400' :
                 'bg-red-500/20 text-red-400'
               }`}>
                 {statusMsg.msg}

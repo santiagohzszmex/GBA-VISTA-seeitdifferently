@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Monitor, Film, Newspaper, ShieldCheck, Cpu, Megaphone } from 'lucide-react';
+import { Monitor, Film, Newspaper, ShieldCheck, Cpu, Megaphone, Terminal, Server, BrainCircuit } from 'lucide-react';
 
 // Importamos los submódulos subiendo un nivel en la estructura de carpetas (../)
 import VideosTab from '../mothership/VideosTab';
@@ -7,9 +7,12 @@ import NoticiasTab from '../mothership/NoticiasTab';
 import AduanaTab from '../mothership/AduanaTab';
 import GBAForgeTab from '../mothership/GBAForgeTab'; // <-- Importación del Laboratorio
 import CampaniasTab from '../mothership/CampaniasTab';
+import InfrastructureTab from '../mothership/InfrastructureTab';
+import AnimaTab from '../mothership/AnimaTab';
 
 export default function Mothership() {
   const [activeSection, setActiveSection] = useState('videos');
+  const [forgeArea, setForgeArea] = useState('development');
 
   // El enrutador interno del panel
   const renderSection = () => {
@@ -21,9 +24,19 @@ export default function Mothership() {
       case 'aduana':
         return <AduanaTab />;
       case 'forge': // <-- Ruta para GBA Forge
-        return <GBAForgeTab />;
+        return (
+          <div>
+            <div className="flex items-center gap-1 border-b border-white/10 mb-9 overflow-x-auto" role="tablist" aria-label="Áreas de GBA Forge">
+              <button type="button" role="tab" aria-selected={forgeArea === 'development'} onClick={() => setForgeArea('development')} className={`h-11 px-5 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest border-b-2 whitespace-nowrap ${forgeArea === 'development' ? 'border-[#0066FF] text-white' : 'border-transparent text-neutral-600 hover:text-neutral-300'}`}><Terminal size={14}/>Development</button>
+              <button type="button" role="tab" aria-selected={forgeArea === 'infrastructure'} onClick={() => setForgeArea('infrastructure')} className={`h-11 px-5 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest border-b-2 whitespace-nowrap ${forgeArea === 'infrastructure' ? 'border-[#0066FF] text-white' : 'border-transparent text-neutral-600 hover:text-neutral-300'}`}><Server size={14}/>Infrastructure</button>
+            </div>
+            {forgeArea === 'infrastructure' ? <InfrastructureTab /> : <GBAForgeTab />}
+          </div>
+        );
       case 'campanias':
         return <CampaniasTab />;
+      case 'anima':
+        return <AnimaTab />;
       default:
         return <VideosTab />;
     }
@@ -85,6 +98,15 @@ export default function Mothership() {
             }`}
           >
             <Cpu size={16} /> GBA Forge
+          </button>
+
+          <button
+            onClick={() => setActiveSection('anima')}
+            className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all whitespace-nowrap ${
+              activeSection === 'anima' ? 'bg-cyan-300 text-black shadow-lg shadow-cyan-300/10' : 'text-neutral-500 hover:text-white'
+            }`}
+          >
+            <BrainCircuit size={16} /> ANIMA
           </button>
 
           <button 

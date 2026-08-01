@@ -28,8 +28,6 @@ export default function Publicar() {
   const { user, isDueño } = useAuth();
   const puedePublicar = user?.rol === 'Editor';
 
-  const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1521553828674146485/0BIQdUirrZbiC5FwsU14f-6tuNhFOqJB7lNxBelruyFeQgmNGfVWiTdRxJB392gsafP_";
-
   // ================= ESTADOS CIUDADANO =================
   const [nombreNoticiero, setNombreNoticiero] = useState('');
   const [descripcionNoticiero, setDescripcionNoticiero] = useState('');
@@ -129,6 +127,17 @@ export default function Publicar() {
     setTraducciones(newTrads);
   };
 
+  const notifyDiscord = async (event, payload) => {
+    try {
+      const { error } = await supabase.functions.invoke('vista-discord-notify', {
+        body: { event, ...payload }
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.warn('La operación se guardó, pero Discord no recibió la notificación:', err);
+    }
+  };
+
   // ================= MANEJADOR A: CIUDADANOS =================
   const handleSolicitarSello = async (e) => {
     e.preventDefault();
@@ -136,31 +145,16 @@ export default function Publicar() {
     setProcesandoSolicitud(true);
 
     try {
-      const { error: supabaseError } = await supabase.from('solicitudes_editoriales').insert([{
+      const { data: solicitud, error: supabaseError } = await supabase.from('solicitudes_editoriales').insert([{
         usuario_id: user.id,
         nombre_noticiero: nombreNoticiero,
         descripcion: descripcionNoticiero,
         estado: 'pendiente'
-      }]);
+      }]).select('id').single();
 
       if (supabaseError) throw supabaseError;
 
-      await fetch(DISCORD_WEBHOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          embeds: [{
-            title: "🚨 NUEVA SOLICITUD DE SELLO EDITORIAL",
-            description: "Un ciudadano ha enviado una propuesta de prensa y espera su acreditación en la aduana.",
-            color: 3447003, 
-            fields: [
-              { name: "Nombre del Noticiero", value: `\`${nombreNoticiero}\``, inline: true },
-              { name: "Usuario UID", value: `\`${user.id}\``, inline: true },
-              { name: "Línea Editorial", value: descripcionNoticiero }
-            ]
-          }]
-        })
-      });
+      await notifyDiscord('editorial_request', { request_id: solicitud.id });
 
       setSolicitudExistente(true);
     } catch (err) {
@@ -259,25 +253,10 @@ export default function Publicar() {
         anio: new Date().getFullYear().toString()
       };
 
-      const { error } = await supabase.from('contenido').insert([payload]);
+      const { data: publicacion, error } = await supabase.from('contenido').insert([payload]).select('id').single();
       if (error) throw error;
 
-      await fetch(DISCORD_WEBHOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          embeds: [{
-            title: "📦 NUEVA EDICIÓN EN ADUANA",
-            description: `El sello **"${selloFinal}"** ha subido un documento multi-idioma a revisión.`,
-            color: 15105570, 
-            fields: [
-              { name: "Titular", value: titulo, inline: true },
-              { name: "Idioma Base", value: langBase.toUpperCase(), inline: true },
-              { name: "Traducciones Extra", value: `${traducciones.length} idioma(s)`, inline: true }
-            ]
-          }]
-        })
-      });
+      await notifyDiscord('edition_submitted', { edition_id: publicacion.id });
 
       setPublicacionExitosa(true);
       setTitulo(''); setDescripcion(''); setCategoriaEditorial('comunidad'); setPortadaArchivo(null); setPaginasArchivos([]); setTraducciones([]);
