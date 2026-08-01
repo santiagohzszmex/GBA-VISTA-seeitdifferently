@@ -263,7 +263,11 @@ export default function Publicar() {
       cargarHistorialAduana();
     } catch (err) {
       console.error(err);
-      alert(err.message || "Error al inyectar el documento.");
+      const permissionDenied = err?.code === '42501'
+        || /row-level security|permission denied/i.test(err?.message || '');
+      alert(permissionDenied
+        ? 'Tu GBA ID no tiene permisos editoriales activos para publicar. Cierra sesion, vuelve a entrar y, si el problema continua, solicita a un administrador que revise tu rango Editor.'
+        : err.message || "Error al inyectar el documento.");
     } finally {
       setEnviando(false);
     }
