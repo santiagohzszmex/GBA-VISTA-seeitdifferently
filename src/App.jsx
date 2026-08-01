@@ -3,12 +3,16 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import VISTAHome from './VISTAHome';
 import VISTAAuth from './VISTAAuth';
 import PerfilUsuario from './views/PerfilUsuario';
+import WorkspaceView from './views/Workspace';
 
 // Creamos un sub-componente para poder "sintonizar" el contexto
 function MainApp() {
   const { user } = useAuth();
   const publicHandle = new URLSearchParams(window.location.search).get('profile');
+  const workspacePreview = import.meta.env.DEV
+    && new URLSearchParams(window.location.search).get('workspace-preview') === '1';
 
+  if (workspacePreview) return <WorkspaceView previewMode />;
   if (publicHandle) return <PerfilUsuario publicHandle={publicHandle} />;
   
   // El Router Maestro: Si hay sesión, entra a VISTA. Si no, al muro de Auth.

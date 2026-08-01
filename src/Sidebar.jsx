@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { useNotifications } from './hooks/useNotifications';
+import { supabase } from './supabaseClient';
 import { 
   Home, 
   Tv, 
@@ -13,7 +14,8 @@ import {
   Moon,
   Bell,
   FileUp,
-  User
+  User,
+  PanelsTopLeft
 } from 'lucide-react';
 
 function AllianceLogo({ className = "hover:scale-105 transition-transform duration-300" }) {
@@ -32,6 +34,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
   const { user, isDueño, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const [showMenu, setShowMenu] = useState(false);
+  const [hasWorkspaceAccess, setHasWorkspaceAccess] = useState(isDueño);
   const menuRef = useRef(null);
   const sidebarRef = useRef(null);
 
@@ -50,6 +53,18 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (isDueño) {
+      setHasWorkspaceAccess(true);
+      return () => { active = false; };
+    }
+    supabase.rpc('gba_workspace_my_access').then(({ data, error }) => {
+      if (active) setHasWorkspaceAccess(!error && Boolean(data?.can_access));
+    });
+    return () => { active = false; };
+  }, [isDueño, user?.id]);
 
   const handleLogout = async () => {
     if (window.confirm("¿Estás seguro de que deseas cerrar sesión en el ecosistema VISTA?")) {
@@ -85,7 +100,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
           </span>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -109,12 +124,23 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             </button>
           ))}
 
-          {isDueño && (
-            <div className="pt-8 mt-8 border-t border-[#d2d2d7]/50">
+          {(hasWorkspaceAccess || isDueño) && (
+            <div className="pt-5 mt-5 border-t border-[#d2d2d7]/50 space-y-2">
               <p className="px-4 mb-3 text-[9px] font-bold text-[#86868b] uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-opacity">
-                Admin Systems
+                GBA Systems
               </p>
-              <button
+              {hasWorkspaceAccess && <button
+                onClick={() => {setActiveTab('workspace'); setShowMenu(false)}}
+                className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${
+                  activeTab === 'workspace'
+                  ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-500/20'
+                  : 'text-blue-600/80 hover:bg-blue-50 hover:text-blue-700'
+                }`}
+              >
+                <div className="min-w-[24px] flex justify-center"><PanelsTopLeft size={22} strokeWidth={1.5}/></div>
+                <span className="font-bold text-sm tracking-tight opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">WORKSPACE</span>
+              </button>}
+              {isDueño && <button
                 onClick={() => {setActiveTab('mothership'); setShowMenu(false)}}
                 className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${
                   activeTab === 'mothership' 
@@ -126,7 +152,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 <span className="font-bold text-sm tracking-tight opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                   MOTHERSHIP
                 </span>
-              </button>
+              </button>}
             </div>
           )}
         </nav>
@@ -227,6 +253,15 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                <p className="px-3 py-2 text-[9px] font-black text-[#86868b] uppercase tracking-[0.2em] opacity-60">Funciones de Prensa</p>
                <button onClick={() => {setActiveTab('publicar'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-blue-50 text-blue-600 rounded-2xl transition-colors text-sm font-bold">
                  <FileUp size={16}/> Cargar Edición
+               </button>
+            </div>
+          )}
+
+          {hasWorkspaceAccess && (
+            <div className="md:hidden px-2 py-2 border-t border-[#d2d2d7]/40 mt-1 space-y-1">
+               <p className="px-3 py-2 text-[9px] font-black text-blue-600 uppercase tracking-[0.2em] opacity-80">GBA Systems</p>
+               <button onClick={() => {setActiveTab('workspace'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-blue-50 text-blue-600 rounded-2xl transition-colors text-sm font-bold">
+                 <PanelsTopLeft size={16}/> GBA Workspace
                </button>
             </div>
           )}

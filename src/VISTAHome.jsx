@@ -11,6 +11,7 @@ import BuscarView from './views/Buscar';
 import BibliotecaView from './views/Biblioteca';
 import PublicarView from './views/Publicar';
 import MothershipView from './views/Mothership';
+import WorkspaceView from './views/Workspace';
 import NotificacionesView from './views/Notificaciones';
 import PerfilUsuarioView from './views/PerfilUsuario';
 import WelcomeOverlay from './components/onboarding/WelcomeOverlay';
@@ -113,6 +114,8 @@ export default function VISTAHome() {
             onNavigateNews={handleNavigateNews}
           />
         );
+      case 'workspace':
+        return <WorkspaceView />;
       default:
         return (
           <HomeView 
