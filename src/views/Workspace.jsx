@@ -40,6 +40,7 @@ export default function Workspace({ previewMode = false }) {
   const [documents, setDocuments] = useState(previewMode ? DEMO_DOCUMENTS : []);
   const [events, setEvents] = useState(previewMode ? DEMO_EVENTS : []);
   const [members, setMembers] = useState(previewMode ? DEMO_MEMBERS : []);
+  const [keynotePublications, setKeynotePublications] = useState([]);
   const [selectedDocumentId, setSelectedDocumentId] = useState(previewMode ? DEMO_DOCUMENTS[0].id : null);
   const [loading, setLoading] = useState(!previewMode);
   const [notice, setNotice] = useState(previewMode ? { type: 'info', message: 'Vista de demostración local. Ningún cambio afecta datos reales.' } : null);
@@ -60,11 +61,12 @@ export default function Workspace({ previewMode = false }) {
         return;
       }
 
-      const [collectionsResult, documentsResult, eventsResult, membersResult] = await Promise.all([
+      const [collectionsResult, documentsResult, eventsResult, membersResult, keynotesResult] = await Promise.all([
         supabase.from('gba_workspace_collections').select('*').order('position'),
         supabase.from('gba_workspace_documents').select('*').order('updated_at', { ascending: false }),
         supabase.from('gba_workspace_events').select('*').order('starts_at'),
-        supabase.rpc('gba_workspace_member_directory')
+        supabase.rpc('gba_workspace_member_directory'),
+        supabase.from('gba_keynotes').select('id,workspace_document_id,slug,title,summary,keynote_date,is_published,published_at,updated_at')
       ]);
       const error = collectionsResult.error || documentsResult.error || eventsResult.error || membersResult.error;
       if (error) throw error;
@@ -74,6 +76,7 @@ export default function Workspace({ previewMode = false }) {
       setDocuments(nextDocuments);
       setEvents(eventsResult.data || []);
       setMembers(membersResult.data || []);
+      if (!keynotesResult.error) setKeynotePublications(keynotesResult.data || []);
       setSelectedDocumentId(current => nextDocuments.some(document => document.id === current) ? current : nextDocuments[0]?.id || null);
     } catch (error) {
       console.error('Workspace load failed:', error);
@@ -150,6 +153,59 @@ export default function Workspace({ previewMode = false }) {
       return [];
     }
     return data || [];
+  };
+
+  const publishKeynote = async ({ documentId, summary, keynoteDate }) => {
+    if (previewMode) {
+      const document = documents.find(item => item.id === documentId);
+      const slugBase = document.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const existing = keynotePublications.find(item => item.workspace_document_id === documentId);
+      const publication = {
+        id: existing?.id || `keynote-${Date.now()}`,
+        workspace_document_id: documentId,
+        slug: existing?.slug || `${slugBase}-${keynoteDate}`,
+        title: document.title,
+        summary,
+        keynote_date: keynoteDate,
+        is_published: true,
+        published_at: existing?.published_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      setKeynotePublications(current => [publication, ...current.filter(item => item.workspace_document_id !== documentId)]);
+      flash('success', existing ? 'Keynote de demostración actualizada.' : 'Keynote de demostración publicada.');
+      return publication;
+    }
+
+    const { data, error } = await supabase.rpc('gba_workspace_publish_keynote', {
+      p_document_id: documentId,
+      p_summary: summary,
+      p_keynote_date: keynoteDate
+    });
+    if (error) {
+      flash('error', error.message);
+      return null;
+    }
+    const publication = Array.isArray(data) ? data[0] : data;
+    setKeynotePublications(current => [publication, ...current.filter(item => item.workspace_document_id !== documentId)]);
+    flash('success', 'Keynote publicada en VISTA.');
+    return publication;
+  };
+
+  const unpublishKeynote = async documentId => {
+    if (!window.confirm('¿Retirar esta Keynote del archivo público de VISTA?')) return false;
+    if (previewMode) {
+      setKeynotePublications(current => current.map(item => item.workspace_document_id === documentId ? { ...item, is_published: false } : item));
+      flash('success', 'Keynote retirada de la demostración.');
+      return true;
+    }
+    const { error } = await supabase.rpc('gba_workspace_unpublish_keynote', { p_document_id: documentId });
+    if (error) {
+      flash('error', error.message);
+      return false;
+    }
+    setKeynotePublications(current => current.map(item => item.workspace_document_id === documentId ? { ...item, is_published: false } : item));
+    flash('success', 'Keynote retirada del archivo público.');
+    return true;
   };
 
   const saveEvent = async eventPayload => {
@@ -261,7 +317,7 @@ export default function Workspace({ previewMode = false }) {
             ? <WorkspaceCalendar access={access} events={events} documents={documents} onSaveEvent={saveEvent}/>
             : activeArea === 'members'
               ? <WorkspaceMembers access={access} members={members} collections={collections} onAddMember={addMember} onSetMemberRole={setMemberRole} onRemoveMember={removeMember} onUpdateCollection={updateCollection}/>
-              : <WorkspaceDocuments access={access} collections={collections} documents={documents} selectedDocumentId={selectedDocumentId} onSelectDocument={setSelectedDocumentId} onCreateDocument={createDocument} onSaveDocument={saveDocument} onLoadRevisions={loadRevisions} previewMode={previewMode}/>
+              : <WorkspaceDocuments access={access} collections={collections} documents={documents} events={events} keynotePublications={keynotePublications} selectedDocumentId={selectedDocumentId} onSelectDocument={setSelectedDocumentId} onCreateDocument={createDocument} onSaveDocument={saveDocument} onLoadRevisions={loadRevisions} onPublishKeynote={publishKeynote} onUnpublishKeynote={unpublishKeynote} previewMode={previewMode}/>
         ) : <AccessDenied/>}
       </div>
     </div>

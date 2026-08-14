@@ -62,7 +62,7 @@ export const DEMO_DOCUMENTS = [
     id: 'doc-keynote',
     collection_id: 'keynotes',
     title: 'GBA Keynote 001',
-    content_markdown: '## Idea central\n\nEscribe aquí el mensaje que debe recordar la audiencia.\n\n## Actualizaciones terminadas\n\n- Actualización 1\n- Actualización 2\n- Actualización 3\n\n## Estadísticas\n\nTodas las cifras deben incluir fuente y periodo.\n\n## Cierre\n\nPróxima Keynote: lunes 10 de agosto.',
+    content_markdown: '## Idea central\n\nEscribe aquí el mensaje que debe recordar la audiencia.\n\n## Actualizaciones terminadas\n\n- Actualización 1\n- Actualización 2\n- Actualización 3\n\n## Cierre\n\nResume la siguiente etapa de GBA.',
     status: 'draft',
     version: 3,
     updated_at: '2026-08-01T17:35:00.000Z',

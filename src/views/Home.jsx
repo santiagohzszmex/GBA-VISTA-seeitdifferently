@@ -2,8 +2,10 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useContent } from '../hooks/useContent';
 import { useCampaigns } from '../hooks/useCampaigns';
 import { useCampaignShare } from '../hooks/useCampaignShare';
+import { useKeynotes } from '../hooks/useKeynotes';
 import { useLibrary } from '../hooks/useLibrary';
 import ContentRow from '../components/ContentRow';
+import KeynoteSpotlight from '../components/keynotes/KeynoteSpotlight';
 import { CampaignDetailInline, CampaignLikeButton, getCampaignAudioAsset, getCampaignPrimaryAsset, getCampaignVideoAsset } from '../components/campaigns/CampaignShowcase';
 import { ArrowUpRight, ChevronDown, Film, Megaphone, Music, Play, Plus, Check, Info, Share2, Volume2, VolumeX } from 'lucide-react';
 
@@ -309,14 +311,16 @@ const CampaignHeroSection = ({ campaign, onOpen, onScrollNext, isOpen }) => {
 // ==========================================
 // VISTA HOME PRINCIPAL (Controlador)
 // ==========================================
-export default function Home({ onSelectMovie, onPlay, onNavigateNews, initialCampaignId = null }) {
+export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigateKeynotes, initialCampaignId = null }) {
   const { getAllContent, getTop10, loading } = useContent();
   const { fetchActiveCampaigns, trackCampaignEvent } = useCampaigns();
+  const { fetchPublishedKeynotes } = useKeynotes();
   const [featuredMovies, setFeaturedMovies] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [top10, setTop10] = useState([]);
   const [moviesByGenre, setMoviesByGenre] = useState({});
   const [campaigns, setCampaigns] = useState([]);
+  const [latestKeynote, setLatestKeynote] = useState(null);
   const [expandedCampaign, setExpandedCampaign] = useState(null);
   const [showCampaignReturn, setShowCampaignReturn] = useState(false);
   const campaignDetailRef = useRef(null);
@@ -328,33 +332,40 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, initialCam
   useEffect(() => {
     const loadData = async () => {
       try {
-        const all = await getAllContent() || [];
-        const top = await getTop10() || [];
-        const activeCampaigns = await fetchActiveCampaigns();
+        const [all, top, activeCampaigns, publishedKeynotes] = await Promise.all([
+          getAllContent(),
+          getTop10(),
+          fetchActiveCampaigns(),
+          fetchPublishedKeynotes()
+        ]);
+        const allContent = all || [];
+        const topContent = top || [];
+        const active = activeCampaigns || [];
 
         const sharedCampaign = initialCampaignId
-          ? activeCampaigns.find((campaign) => campaign.id === initialCampaignId)
+          ? active.find((campaign) => campaign.id === initialCampaignId)
           : null;
         const orderedCampaigns = sharedCampaign
-          ? [sharedCampaign, ...activeCampaigns.filter((campaign) => campaign.id !== sharedCampaign.id)]
-          : activeCampaigns;
+          ? [sharedCampaign, ...active.filter((campaign) => campaign.id !== sharedCampaign.id)]
+          : active;
 
-        setTop10(top.filter(m => m && m.es_comunidad !== true));
+        setTop10(topContent.filter(m => m && m.es_comunidad !== true));
         setCampaigns(orderedCampaigns);
+        setLatestKeynote(publishedKeynotes?.[0] || null);
         if (sharedCampaign) setExpandedCampaign(sharedCampaign);
 
-        const heroContent = all.filter(m => m && m.en_hero === true && m.es_comunidad !== true);
+        const heroContent = allContent.filter(m => m && m.en_hero === true && m.es_comunidad !== true);
 
         if (heroContent.length > 0) {
           setFeaturedMovies(heroContent);
-        } else if (top.length > 0) {
-          setFeaturedMovies(top.slice(0, 5));
+        } else if (topContent.length > 0) {
+          setFeaturedMovies(topContent.slice(0, 5));
         } else {
-          setFeaturedMovies(all.slice(0, 5));
+          setFeaturedMovies(allContent.slice(0, 5));
         }
 
         const groups = {};
-        all.filter(m => m && m.es_comunidad !== true).forEach(movie => {
+        allContent.filter(m => m && m.es_comunidad !== true).forEach(movie => {
           if (Array.isArray(movie.generos) && movie.generos.length > 0) {
             movie.generos.forEach(genero => {
               if (!groups[genero]) groups[genero] = [];
@@ -457,7 +468,7 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, initialCam
     );
   }
 
-  if (featuredMovies.length === 0 && top10.length === 0 && campaigns.length === 0) {
+  if (featuredMovies.length === 0 && top10.length === 0 && campaigns.length === 0 && !latestKeynote) {
     return (
       <div className="w-full min-h-[80vh] flex flex-col items-center justify-center pt-24 px-6 text-center font-sans">
         <h2 className="text-4xl font-serif italic text-[#1d1d1f] mb-4">Ecosistema en preparación.</h2>
@@ -536,6 +547,12 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, initialCam
         >
           <Megaphone size={16} /> Volver a campaña
         </button>
+      )}
+
+      {latestKeynote && (
+        <div className="mt-10 md:mt-14">
+          <KeynoteSpotlight keynote={latestKeynote} onOpen={onNavigateKeynotes}/>
+        </div>
       )}
 
       {/* 2. CONTENIDO (Filas Editoriales) */}

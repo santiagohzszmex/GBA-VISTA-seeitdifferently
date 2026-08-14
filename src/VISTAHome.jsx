@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { useAuth } from './context/AuthContext';
 import Sidebar from './Sidebar';
 
@@ -16,6 +16,8 @@ import NotificacionesView from './views/Notificaciones';
 import PerfilUsuarioView from './views/PerfilUsuario';
 import WelcomeOverlay from './components/onboarding/WelcomeOverlay';
 
+const KeynotesView = lazy(() => import('./views/Keynotes'));
+
 // Importación de los componentes de interacción global
 import VideoPlayer from './components/player/VideoPlayer'; // <-- Importado
 import ContentDetailModal from './components/modals/ContentDetailModal'; // <-- Importado
@@ -24,13 +26,15 @@ export default function VISTAHome() {
   const { user, isDueño } = useAuth();
   const sharedEditionId = new URLSearchParams(window.location.search).get('edition');
   const sharedCampaignId = new URLSearchParams(window.location.search).get('campaign');
-  const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : 'home');
+  const sharedKeynoteSlug = new URLSearchParams(window.location.search).get('keynote');
+  const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : sharedKeynoteSlug ? 'keynotes' : 'home');
 
   // Estados locales para el control de overlays e interacciones globales
   const [playingVideo, setPlayingVideo] = useState(null);
   const [selectedMovieInfo, setSelectedMovieInfo] = useState(null);
   const [selloSeleccionado, setSelloSeleccionado] = useState(''); // Estado para enrutar el Perfil Editorial
   const [focusedNewsId, setFocusedNewsId] = useState(sharedEditionId || null);
+  const [focusedKeynoteSlug, setFocusedKeynoteSlug] = useState(sharedKeynoteSlug || null);
   const [showWelcome, setShowWelcome] = useState(() => window.localStorage.getItem('vista_show_welcome') === '1');
 
   // Manejadores de acciones que serán inyectados a las vistas hijas
@@ -47,6 +51,11 @@ export default function VISTAHome() {
     setActiveTab('news');
   };
 
+  const handleNavigateKeynotes = (keynote = null) => {
+    setFocusedKeynoteSlug(keynote?.slug || null);
+    setActiveTab('keynotes');
+  };
+
   // El cerebro del tráfico: decide qué archivo montar según el Sidebar u acciones del usuario
   const renderView = () => {
     switch (activeTab) {
@@ -56,6 +65,7 @@ export default function VISTAHome() {
             onSelectMovie={handleSelectMovieInfo} 
             onPlay={handlePlayVideo} 
             onNavigateNews={handleNavigateNews}
+            onNavigateKeynotes={handleNavigateKeynotes}
             initialCampaignId={sharedCampaignId}
           />
         );
@@ -99,6 +109,8 @@ export default function VISTAHome() {
         );
       case 'notifications':
         return <NotificacionesView onNavigateNews={handleNavigateNews} />;
+      case 'keynotes':
+        return <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-[#86868b]">Abriendo Keynote...</div>}><KeynotesView initialSlug={focusedKeynoteSlug} onBackHome={() => setActiveTab('home')} /></Suspense>;
       case 'profile':
         return <PerfilUsuarioView setActiveTab={setActiveTab} />;
       case 'estadisticas': 
@@ -114,6 +126,7 @@ export default function VISTAHome() {
             onSelectMovie={handleSelectMovieInfo} 
             onPlay={handlePlayVideo} 
             onNavigateNews={handleNavigateNews}
+            onNavigateKeynotes={handleNavigateKeynotes}
             initialCampaignId={sharedCampaignId}
           />
         );
@@ -125,6 +138,7 @@ export default function VISTAHome() {
             onSelectMovie={handleSelectMovieInfo} 
             onPlay={handlePlayVideo} 
             onNavigateNews={handleNavigateNews}
+            onNavigateKeynotes={handleNavigateKeynotes}
             initialCampaignId={sharedCampaignId}
           />
         );

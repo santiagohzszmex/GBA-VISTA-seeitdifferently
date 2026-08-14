@@ -4,8 +4,10 @@ import {
   CheckCircle2,
   Clock3,
   Download,
+  ExternalLink,
   FilePlus2,
   Files,
+  Globe2,
   Heading2,
   History,
   Italic,
@@ -14,6 +16,7 @@ import {
   Save,
   Search,
   Send,
+  Trash2,
   X
 } from 'lucide-react';
 import { DOCUMENT_STATUS, ROLE_RANK } from './workspaceData';
@@ -43,6 +46,10 @@ export default function WorkspaceDocuments({
   onCreateDocument,
   onSaveDocument,
   onLoadRevisions,
+  onPublishKeynote,
+  onUnpublishKeynote,
+  keynotePublications = [],
+  events = [],
   previewMode
 }) {
   const [selectedCollectionId, setSelectedCollectionId] = useState(collections[0]?.id || null);
@@ -51,6 +58,9 @@ export default function WorkspaceDocuments({
   const [saving, setSaving] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [revisions, setRevisions] = useState([]);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publicationForm, setPublicationForm] = useState({ summary: '', keynoteDate: '' });
   const editorRef = useRef(null);
 
   const selectedDocument = documents.find(document => document.id === selectedDocumentId) || null;
@@ -59,6 +69,8 @@ export default function WorkspaceDocuments({
     && ROLE_RANK[access.role] >= ROLE_RANK[selectedCollection.minimum_role];
   const canApprove = Boolean(access?.can_approve) && selectedCollection
     && ROLE_RANK[access.role] >= ROLE_RANK[selectedCollection.minimum_role];
+  const isKeynotesCollection = selectedCollection?.slug === 'keynotes';
+  const publication = keynotePublications.find(item => item.workspace_document_id === selectedDocument?.id) || null;
 
   useEffect(() => {
     if (!selectedCollectionId && collections[0]) setSelectedCollectionId(collections[0].id);
@@ -69,6 +81,7 @@ export default function WorkspaceDocuments({
       setDraft({ ...selectedDocument });
       setSelectedCollectionId(selectedDocument.collection_id);
       setHistoryOpen(false);
+      setPublishOpen(false);
     } else {
       setDraft(null);
     }
@@ -99,6 +112,38 @@ export default function WorkspaceDocuments({
     const data = await onLoadRevisions(selectedDocument.id);
     setRevisions(data || []);
     setHistoryOpen(true);
+  };
+
+  const openPublication = () => {
+    if (!selectedDocument) return;
+    const linkedEvent = events.find(event => event.event_type === 'keynote' && event.linked_document_id === selectedDocument.id);
+    const fallbackDate = linkedEvent?.starts_at || selectedDocument.approved_at || selectedDocument.created_at || new Date().toISOString();
+    setPublicationForm({
+      summary: publication?.summary || '',
+      keynoteDate: publication?.keynote_date || fallbackDate.slice(0, 10)
+    });
+    setPublishOpen(true);
+  };
+
+  const submitPublication = async event => {
+    event.preventDefault();
+    if (!draft || !onPublishKeynote) return;
+    setPublishing(true);
+    const result = await onPublishKeynote({
+      documentId: draft.id,
+      summary: publicationForm.summary.trim(),
+      keynoteDate: publicationForm.keynoteDate
+    });
+    setPublishing(false);
+    if (result) setPublishOpen(false);
+  };
+
+  const removePublication = async () => {
+    if (!draft || !onUnpublishKeynote) return;
+    setPublishing(true);
+    const removed = await onUnpublishKeynote(draft.id);
+    setPublishing(false);
+    if (removed) setPublishOpen(false);
   };
 
   const insertSyntax = (prefix, suffix = prefix, placeholder = 'texto') => {
@@ -173,9 +218,12 @@ export default function WorkspaceDocuments({
               <input value={draft.title} disabled={!canEditCollection} onChange={event => setDraft({ ...draft, title: event.target.value })} className="min-w-48 flex-1 bg-transparent text-base font-bold outline-none disabled:text-[#24272c]" aria-label="Título del documento"/>
               <StatusBadge status={draft.status}/>
               {previewMode && <span className="text-[8px] font-black uppercase tracking-widest text-[#2563eb]">Vista demo</span>}
+              {publication?.is_published && <span className="inline-flex h-6 items-center gap-1 px-2 rounded bg-blue-50 text-blue-700 text-[8px] font-black uppercase tracking-wider"><Globe2 size={11}/>Publicada</span>}
               <div className="flex items-center gap-2 ml-auto">
                 <IconButton label="Historial de revisiones" onClick={openHistory}><History size={16}/></IconButton>
                 <IconButton label="Exportar Markdown" onClick={exportMarkdown}><Download size={16}/></IconButton>
+                {isKeynotesCollection && canApprove && publication?.is_published && <IconButton label="Abrir Keynote pública" onClick={() => window.open(`/?keynote=${encodeURIComponent(publication.slug)}`, '_blank', 'noopener,noreferrer')}><ExternalLink size={16}/></IconButton>}
+                {isKeynotesCollection && canApprove && <button type="button" onClick={openPublication} disabled={draft.status !== 'approved' || isDirty} title={draft.status !== 'approved' ? 'Aprueba el documento antes de publicarlo' : isDirty ? 'Guarda los cambios antes de publicarlo' : publication?.is_published ? 'Actualizar Keynote pública' : 'Publicar Keynote'} className="ws-secondary disabled:opacity-40"><Globe2 size={14}/>{publication?.is_published ? 'Actualizar en VISTA' : 'Publicar en VISTA'}</button>}
                 {canEditCollection && <button type="button" onClick={() => save()} disabled={!isDirty || saving} className="ws-primary"><Save size={14}/>{saving ? 'Guardando' : 'Guardar'}</button>}
               </div>
             </header>
@@ -216,6 +264,27 @@ export default function WorkspaceDocuments({
               {revisions.map(revision => <button key={revision.id} type="button" onClick={() => { setDraft({ ...draft, title: revision.title, content_markdown: revision.content_markdown, status: 'draft' }); setHistoryOpen(false); }} className="w-full p-4 text-left hover:bg-[#f7f8fa]"><div className="flex justify-between gap-3"><span className="text-xs font-bold">Revisión {revision.revision_number}</span><StatusBadge status={revision.status}/></div><p className="text-[10px] text-[#8b9099] mt-2">{new Date(revision.created_at).toLocaleString('es-MX')}</p><p className="text-[10px] leading-4 text-[#6f747d] mt-3 line-clamp-3">{revision.content_markdown || 'Documento vacío'}</p></button>)}
               {!revisions.length && <p className="text-xs text-[#8b9099] text-center py-12">Sin revisiones disponibles.</p>}
             </div>
+          </div>
+        )}
+
+        {publishOpen && draft && (
+          <div className="fixed inset-0 z-[1400] bg-black/35 backdrop-blur-sm flex items-center justify-center p-4">
+            <form onSubmit={submitPublication} className="w-full max-w-xl bg-white border border-[#d9dce3] rounded-md shadow-2xl overflow-hidden">
+              <header className="min-h-16 px-5 border-b border-[#e2e4e9] flex items-center justify-between gap-4">
+                <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#2563eb]">GBA Keynote</p><h3 className="font-bold mt-1">{publication?.is_published ? 'Actualizar publicación' : 'Publicar en VISTA'}</h3></div>
+                <IconButton label="Cerrar" onClick={() => setPublishOpen(false)}><X size={16}/></IconButton>
+              </header>
+              <div className="p-5 space-y-5">
+                <div className="p-4 bg-[#f7f8fa] border border-[#e2e4e9] rounded-md"><p className="text-[9px] font-black uppercase tracking-wider text-[#8b9099]">Documento aprobado</p><p className="font-serif italic text-xl mt-2">{draft.title}</p><p className="text-[10px] text-[#8b9099] mt-2">La publicación guardará una copia de esta revisión.</p></div>
+                <label><span className="ws-label">Fecha de la Keynote</span><input required type="date" value={publicationForm.keynoteDate} onChange={event => setPublicationForm(current => ({ ...current, keynoteDate: event.target.value }))} className="ws-input"/></label>
+                <label><span className="ws-label">Resumen público</span><textarea required minLength="20" maxLength="600" rows="5" value={publicationForm.summary} onChange={event => setPublicationForm(current => ({ ...current, summary: event.target.value }))} className="ws-input resize-none" placeholder="Explica brevemente qué se presentó en esta Keynote."/><span className="block text-right text-[9px] text-[#9a9ea6] mt-1">{publicationForm.summary.length}/600</span></label>
+              </div>
+              <footer className="p-4 bg-[#f7f8fa] border-t border-[#e2e4e9] flex flex-wrap items-center justify-end gap-2">
+                {publication?.is_published && <button type="button" onClick={removePublication} disabled={publishing} className="h-10 px-3 mr-auto rounded-md text-red-600 inline-flex items-center gap-2 text-[10px] font-bold hover:bg-red-50"><Trash2 size={14}/>Retirar</button>}
+                <button type="button" onClick={() => setPublishOpen(false)} className="ws-secondary">Cancelar</button>
+                <button type="submit" disabled={publishing || publicationForm.summary.trim().length < 20} className="ws-primary"><Globe2 size={14}/>{publishing ? 'Publicando' : publication?.is_published ? 'Actualizar' : 'Publicar'}</button>
+              </footer>
+            </form>
           </div>
         )}
       </section>
