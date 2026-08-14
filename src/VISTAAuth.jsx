@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, ChevronLeft, ArrowRight, Loader2, AlertCircle, KeyRound } from 'lucide-react';
+import { User, ChevronLeft, ArrowRight, Loader2, AlertCircle, KeyRound, LogIn, UserPlus } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 function AllianceLogo() {
@@ -31,7 +31,7 @@ function PinIndicators({ length }) {
 }
 
 export default function VISTAAuth({ onLogin }) {
-  const [flow, setFlow] = useState('login'); 
+  const [flow, setFlow] = useState('register');
   // step: 'username' | 'profile' | 'phrase' | 'pin'
   const [step, setStep] = useState('username'); 
   
@@ -53,6 +53,15 @@ export default function VISTAAuth({ onLogin }) {
     if (loading) return;
 
     pinInputRef.current?.focus({ preventScroll: true });
+  };
+  const selectFlow = (nextFlow) => {
+    if (nextFlow === flow || loading) return;
+
+    setFlow(nextFlow);
+    setStep('username');
+    setNombre('');
+    setFrase('');
+    setPin('');
   };
 
   // Limpiar errores si el usuario se mueve entre pantallas
@@ -227,8 +236,8 @@ export default function VISTAAuth({ onLogin }) {
   // ==========================================
   const getTitles = () => {
     if (step === 'username') {
-      if (flow === 'login') return { title: 'Accede a VISTA con tu GBA ID.', subtitle: 'Tu GBA ID (Nombre de usuario)', note: 'Un solo GBA ID abre tu acceso a VISTA y a las herramientas del ecosistema GlobalBank.' };
-      if (flow === 'register') return { title: 'Crea tu GBA ID.', subtitle: 'Elige tu nombre de usuario', note: 'Sin correo. Tu GBA ID abre VISTA, la plataforma de contenido para servidores geopolíticos dentro de Minecraft.' };
+      if (flow === 'login') return { title: 'Accede a VISTA con tu GBA ID.', subtitle: 'Tu GBA ID', note: 'Lee, sigue editoriales y guarda ediciones con una sola identidad. No necesitas correo.' };
+      if (flow === 'register') return { title: 'Crea tu GBA ID para VISTA.', subtitle: 'Elige tu nombre de usuario', note: 'Es rápido y no necesitas correo. Tu GBA ID te da acceso a todo lo que publican las comunidades en VISTA.' };
       if (flow === 'recover') return { title: 'Recuperación de Acceso.', subtitle: 'Ingresa tu GBA ID', note: 'Usa tu GBA ID para recuperar el acceso a VISTA.' };
     }
     if (step === 'profile') {
@@ -272,7 +281,7 @@ export default function VISTAAuth({ onLogin }) {
       )}
 
       {/* Botón "Cancelar" */}
-      {(flow === 'recover' || flow === 'register') && step === 'username' && (
+      {flow === 'recover' && step === 'username' && (
         <button 
           onClick={() => setFlow('login')}
           className="absolute top-12 left-6 md:left-12 text-[#86868b] hover:text-[#1d1d1f] flex items-center gap-1 text-sm transition-colors font-medium z-10"
@@ -286,12 +295,50 @@ export default function VISTAAuth({ onLogin }) {
           key={flow + '-' + step}
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-sm text-center"
+          className="w-full max-w-md text-center"
         >
           <div className="flex justify-center mb-6"><AllianceLogo /></div>
           <span className="text-[10px] font-bold tracking-[0.3em] text-[#86868b] uppercase block mb-2">
             Global Insight Media Group
           </span>
+          {step === 'username' && flow !== 'recover' && (
+            <div
+              role="tablist"
+              aria-label="Acceso con GBA ID"
+              className="grid grid-cols-2 gap-2 rounded-lg border border-[#d2d2d7] bg-[#f1f1f3] p-1.5 mt-6 mb-8"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={flow === 'register'}
+                onClick={() => selectFlow('register')}
+                disabled={loading}
+                className={`min-h-12 rounded-md border px-3 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+                  flow === 'register'
+                    ? 'border-[#0a66d8] bg-[#0a66d8] text-white shadow-sm'
+                    : 'border-[#0a66d8]/25 bg-[#eef6ff] text-[#075fca] hover:bg-[#e3f0ff]'
+                }`}
+              >
+                <UserPlus size={17} aria-hidden="true" />
+                Crear GBA ID
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={flow === 'login'}
+                onClick={() => selectFlow('login')}
+                disabled={loading}
+                className={`min-h-12 rounded-md px-3 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+                  flow === 'login'
+                    ? 'bg-[#1d1d1f] text-white shadow-sm'
+                    : 'bg-white text-[#515154] hover:text-[#1d1d1f]'
+                }`}
+              >
+                <LogIn size={17} aria-hidden="true" />
+                Iniciar sesión
+              </button>
+            </div>
+          )}
           <h1 className="font-serif italic text-3xl md:text-4xl text-[#1d1d1f] mb-10 tracking-tight leading-tight">
             {titles.title}
           </h1>
@@ -316,9 +363,11 @@ export default function VISTAAuth({ onLogin }) {
               {error && <div className="flex items-center gap-2 text-red-500 text-sm font-medium pt-2"><AlertCircle size={16} /> {error}</div>}
               <button 
                 type="submit" disabled={loading || !nombre.trim()}
-                className="w-full bg-[#1d1d1f] text-white py-4 rounded-full font-medium hover:bg-black transition-all flex justify-center items-center gap-2 shadow-md disabled:opacity-30"
+                className={`w-full text-white py-4 rounded-lg font-semibold transition-colors flex justify-center items-center gap-2 shadow-md disabled:opacity-30 ${
+                  flow === 'register' ? 'bg-[#0a66d8] hover:bg-[#075fca]' : 'bg-[#1d1d1f] hover:bg-black'
+                }`}
               >
-                Continuar <ArrowRight size={18} />
+                {flow === 'register' ? 'Crear mi GBA ID' : 'Continuar'} <ArrowRight size={18} />
               </button>
             </form>
           )}
@@ -431,17 +480,6 @@ export default function VISTAAuth({ onLogin }) {
                 Ingresa tu clave de 4 dígitos
               </p>
             </form>
-          )}
-
-          {/* FOOTER: CAMBIO LOGIN / REGISTRO */}
-          {step === 'username' && flow !== 'recover' && (
-            <button 
-              onClick={() => setFlow(flow === 'login' ? 'register' : 'login')} 
-              disabled={loading}
-              className="mt-10 text-sm text-[#86868b] hover:text-[#1d1d1f] transition-colors font-medium border-b border-transparent hover:border-[#1d1d1f] pb-0.5"
-            >
-              {flow === 'login' ? '¿No tienes GBA ID? Crea uno' : '¿Ya tienes un GBA ID? Inicia sesión'}
-            </button>
           )}
         </motion.div>
       </AnimatePresence>
