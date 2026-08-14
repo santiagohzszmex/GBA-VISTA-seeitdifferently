@@ -23,6 +23,7 @@ import ContentDetailModal from './components/modals/ContentDetailModal'; // <-- 
 export default function VISTAHome() {
   const { user, isDueño } = useAuth();
   const sharedEditionId = new URLSearchParams(window.location.search).get('edition');
+  const sharedCampaignId = new URLSearchParams(window.location.search).get('campaign');
   const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : 'home');
 
   // Estados locales para el control de overlays e interacciones globales
@@ -55,6 +56,7 @@ export default function VISTAHome() {
             onSelectMovie={handleSelectMovieInfo} 
             onPlay={handlePlayVideo} 
             onNavigateNews={handleNavigateNews}
+            initialCampaignId={sharedCampaignId}
           />
         );
       case 'originals':
@@ -112,6 +114,7 @@ export default function VISTAHome() {
             onSelectMovie={handleSelectMovieInfo} 
             onPlay={handlePlayVideo} 
             onNavigateNews={handleNavigateNews}
+            initialCampaignId={sharedCampaignId}
           />
         );
       case 'workspace':
@@ -122,6 +125,7 @@ export default function VISTAHome() {
             onSelectMovie={handleSelectMovieInfo} 
             onPlay={handlePlayVideo} 
             onNavigateNews={handleNavigateNews}
+            initialCampaignId={sharedCampaignId}
           />
         );
     }

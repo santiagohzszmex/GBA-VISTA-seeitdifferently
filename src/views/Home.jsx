@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useContent } from '../hooks/useContent';
 import { useCampaigns } from '../hooks/useCampaigns';
+import { useCampaignShare } from '../hooks/useCampaignShare';
 import { useLibrary } from '../hooks/useLibrary';
 import ContentRow from '../components/ContentRow';
 import { CampaignDetailInline, CampaignLikeButton, getCampaignAudioAsset, getCampaignPrimaryAsset, getCampaignVideoAsset } from '../components/campaigns/CampaignShowcase';
-import { ArrowUpRight, ChevronDown, Film, Megaphone, Music, Play, Plus, Check, Info, Volume2, VolumeX } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, Film, Megaphone, Music, Play, Plus, Check, Info, Share2, Volume2, VolumeX } from 'lucide-react';
 
 // ==========================================
 // HERO SECTION (Inmersivo, debajo del Sidebar)
@@ -140,6 +141,7 @@ const CampaignHeroSection = ({ campaign, onOpen, onScrollNext, isOpen }) => {
   const imageAsset = getCampaignPrimaryAsset(campaign);
   const videoAsset = getCampaignVideoAsset(campaign);
   const audioAsset = getCampaignAudioAsset(campaign);
+  const { shareCampaign, shareStatus } = useCampaignShare(campaign);
   const heroRef = useRef(null);
   const audioRef = useRef(null);
   const [audioEnabled, setAudioEnabled] = useState(false);
@@ -266,6 +268,15 @@ const CampaignHeroSection = ({ campaign, onOpen, onScrollNext, isOpen }) => {
             {isOpen ? 'Campaña abierta' : (campaign.cta_texto || 'Ver campaña')} <ArrowUpRight size={18} />
           </button>
           <CampaignLikeButton campaign={campaign} />
+          <button
+            type="button"
+            onClick={shareCampaign}
+            className="bg-white/10 text-white border border-white/20 p-4 rounded-full hover:bg-white/20 transition-colors"
+            title={shareStatus === 'idle' ? 'Compartir campaña y video' : 'Campaña lista para compartir'}
+            aria-label={shareStatus === 'idle' ? 'Compartir campaña y video' : 'Campaña lista para compartir'}
+          >
+            {shareStatus === 'idle' ? <Share2 size={18} /> : <Check size={18} className="text-green-300" />}
+          </button>
           {audioAsset && (
             <button
               type="button"
@@ -298,7 +309,7 @@ const CampaignHeroSection = ({ campaign, onOpen, onScrollNext, isOpen }) => {
 // ==========================================
 // VISTA HOME PRINCIPAL (Controlador)
 // ==========================================
-export default function Home({ onSelectMovie, onPlay, onNavigateNews }) {
+export default function Home({ onSelectMovie, onPlay, onNavigateNews, initialCampaignId = null }) {
   const { getAllContent, getTop10, loading } = useContent();
   const { fetchActiveCampaigns, trackCampaignEvent } = useCampaigns();
   const [featuredMovies, setFeaturedMovies] = useState([]);
@@ -321,8 +332,16 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews }) {
         const top = await getTop10() || [];
         const activeCampaigns = await fetchActiveCampaigns();
 
+        const sharedCampaign = initialCampaignId
+          ? activeCampaigns.find((campaign) => campaign.id === initialCampaignId)
+          : null;
+        const orderedCampaigns = sharedCampaign
+          ? [sharedCampaign, ...activeCampaigns.filter((campaign) => campaign.id !== sharedCampaign.id)]
+          : activeCampaigns;
+
         setTop10(top.filter(m => m && m.es_comunidad !== true));
-        setCampaigns(activeCampaigns);
+        setCampaigns(orderedCampaigns);
+        if (sharedCampaign) setExpandedCampaign(sharedCampaign);
 
         const heroContent = all.filter(m => m && m.en_hero === true && m.es_comunidad !== true);
 
@@ -352,7 +371,7 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews }) {
       }
     };
     loadData();
-  }, []);
+  }, [initialCampaignId]);
 
   // Reinicia el temporizador del carrusel (usado por autoplay y por clics manuales)
   const resetInterval = useCallback(() => {

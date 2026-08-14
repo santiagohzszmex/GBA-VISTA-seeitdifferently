@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, ChevronUp, Film, Heart, Image as ImageIcon, Layers, Music, Newspaper } from 'lucide-react';
+import { ArrowUpRight, Check, ChevronUp, Film, Heart, Image as ImageIcon, Layers, Music, Newspaper, Share2 } from 'lucide-react';
 import { useCampaigns } from '../../hooks/useCampaigns';
+import { useCampaignShare } from '../../hooks/useCampaignShare';
 
 export const getCampaignPrimaryAsset = (campaign) => (
   campaign.assets?.find(asset => asset.tipo === 'banner')
@@ -74,6 +75,7 @@ export function CampaignLikeButton({ campaign }) {
 
 export function CampaignDetailInline({ campaign, onClose, onNavigateNews }) {
   const { trackCampaignEvent } = useCampaigns();
+  const { shareCampaign, shareStatus } = useCampaignShare(campaign);
   const videoAsset = getCampaignVideoAsset(campaign);
   const audioAsset = getCampaignAudioAsset(campaign);
 
@@ -97,8 +99,17 @@ export function CampaignDetailInline({ campaign, onClose, onNavigateNews }) {
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#0066FF] mb-3">Campaña VISTA</p>
             <h2 className="text-3xl md:text-5xl font-serif italic tracking-tight">{campaign.titulo}</h2>
-            <div className="mt-5">
+            <div className="mt-5 flex flex-wrap items-center gap-3">
               <CampaignLikeButton campaign={campaign} />
+              <button
+                type="button"
+                onClick={shareCampaign}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20 text-xs font-black uppercase tracking-widest transition-colors"
+                title="Compartir campaña y video"
+              >
+                {shareStatus === 'idle' ? <Share2 size={14} /> : <Check size={14} className="text-green-300" />}
+                {shareStatus === 'copied' ? 'Enlace copiado' : shareStatus === 'shared' ? 'Compartida' : 'Compartir'}
+              </button>
             </div>
           </div>
           <button
