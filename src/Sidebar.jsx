@@ -81,7 +81,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: 'publicar', label: 'Studio', icon: <PenTool size={22} strokeWidth={1.5} /> },
     { id: 'search', label: 'Buscar', icon: <Search size={22} strokeWidth={1.5} /> },
     { id: 'library', label: 'Biblioteca', icon: <Library size={22} strokeWidth={1.5} /> },
-    { id: 'notifications', label: 'Avisos', icon: <Bell size={22} strokeWidth={1.5} /> },
   ];
   const mobileNavItems = ['home', 'news', 'network', 'publicar'].map(id => navItems.find(item => item.id === id));
 
@@ -119,7 +118,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             >
               <div className="min-w-[24px] flex justify-center relative">
                 {item.icon}
-                {item.id === 'notifications' && unreadCount > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[8px] font-black flex items-center justify-center">{Math.min(unreadCount, 9)}</span>}
               </div>
               <span className="font-medium text-sm tracking-wide opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                 {item.label}
