@@ -1,13 +1,17 @@
 import React, { useEffect } from 'react';
 import { useNews } from '../../hooks/useNews';
 import { useEditorialFollow } from '../../hooks/useEditorialFollow';
+import { useEditorialShare } from '../../hooks/useEditorialShare';
 import NewsCard from '../../components/news/NewsCard';
-import { ShieldCheck, Eye, Heart, ArrowLeft, Newspaper, Activity, Bell, BellOff, Check, UserPlus, ExternalLink, Languages, MapPin, Users } from 'lucide-react';
+import { ShieldCheck, Eye, Heart, ArrowLeft, Newspaper, Activity, Bell, BellOff, Check, UserPlus, ExternalLink, Languages, MapPin, Users, Share2 } from 'lucide-react';
 import { getEditorialCategoryLabel } from '../../utils/editorialCategories';
+import { buildVistaPublicUrl } from '../../utils/publicUrl';
+import { useAuth } from '../../context/AuthContext';
 
 const LANGUAGE_LABELS = { es: 'Español', en: 'Inglés', fr: 'Francés', pt: 'Portugués', nah: 'Náhuatl' };
 
-export default function PerfilEditorial({ selloNombre, setActiveTab, onSelectMovie }) {
+export default function PerfilEditorial({ selloNombre, setActiveTab, onSelectMovie, publicEditorial = false }) {
+  const { user } = useAuth();
   const { loading, editorialContent, editorialProfile, editorialStats, fetchEditorialProfile, registrarVisita } = useNews();
   const {
     isFollowing,
@@ -17,6 +21,7 @@ export default function PerfilEditorial({ selloNombre, setActiveTab, onSelectMov
     toggleFollow,
     toggleNotifications
   } = useEditorialFollow(editorialProfile || selloNombre);
+  const { shareEditorial, shareStatus } = useEditorialShare(editorialProfile, selloNombre);
 
   const displayName = editorialProfile?.nombre || selloNombre || 'Sello Independiente';
 
@@ -32,6 +37,22 @@ export default function PerfilEditorial({ selloNombre, setActiveTab, onSelectMov
     if (onSelectMovie) {
       onSelectMovie(item);
     }
+  };
+
+  const handleBack = () => {
+    if (publicEditorial) {
+      window.location.assign(buildVistaPublicUrl('/'));
+      return;
+    }
+    setActiveTab?.('news');
+  };
+
+  const handleFollow = () => {
+    if (!user?.id) {
+      window.location.assign(buildVistaPublicUrl('/'));
+      return;
+    }
+    toggleFollow();
   };
 
   if (loading && editorialContent.length === 0) {
@@ -51,10 +72,11 @@ export default function PerfilEditorial({ selloNombre, setActiveTab, onSelectMov
       {/* BOTÓN DE RETORNO */}
       <div className="pt-8 px-6 md:px-12 max-w-[1800px] mx-auto">
         <button 
-          onClick={() => setActiveTab && setActiveTab('news')}
+          type="button"
+          onClick={handleBack}
           className="flex items-center gap-2 text-xs font-bold text-[#86868b] hover:text-[#1d1d1f] transition-colors uppercase tracking-wider"
         >
-          <ArrowLeft size={16} /> Volver a Prensa
+          <ArrowLeft size={16} /> {publicEditorial ? 'Entrar a VISTA' : 'Volver a Prensa'}
         </button>
       </div>
 
@@ -86,7 +108,7 @@ export default function PerfilEditorial({ selloNombre, setActiveTab, onSelectMov
             <div className="flex flex-wrap items-center gap-2 pt-2">
               <button
                 type="button"
-                onClick={toggleFollow}
+                onClick={handleFollow}
                 disabled={followLoading}
                 className={`h-11 px-5 rounded-xl font-bold text-sm flex items-center gap-2 transition-colors disabled:opacity-50 ${
                   isFollowing
@@ -95,7 +117,7 @@ export default function PerfilEditorial({ selloNombre, setActiveTab, onSelectMov
                 }`}
               >
                 {isFollowing ? <Check size={17}/> : <UserPlus size={17}/>}
-                {isFollowing ? 'Siguiendo' : 'Seguir editorial'}
+                {!user?.id ? 'Entrar para seguir' : isFollowing ? 'Siguiendo' : 'Seguir editorial'}
               </button>
               {isFollowing && (
                 <button
@@ -108,6 +130,15 @@ export default function PerfilEditorial({ selloNombre, setActiveTab, onSelectMov
                   {notificationsEnabled ? <Bell size={17}/> : <BellOff size={17}/>}
                 </button>
               )}
+              <button
+                type="button"
+                onClick={shareEditorial}
+                className="h-11 px-4 rounded-xl border border-[#d2d2d7] bg-white hover:bg-[#f5f5f7] flex items-center gap-2 text-xs font-bold text-[#1d1d1f] transition-colors"
+                title="Compartir perfil editorial"
+              >
+                {shareStatus === 'idle' ? <Share2 size={16}/> : <Check size={16} className="text-emerald-600"/>}
+                {shareStatus === 'copied' ? 'Enlace copiado' : shareStatus === 'shared' ? 'Compartida' : 'Compartir'}
+              </button>
               <span className="text-xs font-bold text-[#86868b] px-2">
                 {followersCount} {followersCount === 1 ? 'seguidor' : 'seguidores'}
               </span>

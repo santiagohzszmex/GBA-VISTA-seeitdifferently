@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
+import { buildVistaPublicUrl } from '../utils/publicUrl';
 
 const SHARE_STATUS_DURATION = 1800;
 
 export function getEditionShareUrl(itemId) {
-  if (!itemId || typeof window === 'undefined') return '';
-  return `${window.location.origin}/api/edition?id=${encodeURIComponent(itemId)}`;
+  if (!itemId) return '';
+  return buildVistaPublicUrl(`/api/edition?id=${encodeURIComponent(itemId)}`);
 }
 
 export function useEditionShare(item, localizedContent = {}) {

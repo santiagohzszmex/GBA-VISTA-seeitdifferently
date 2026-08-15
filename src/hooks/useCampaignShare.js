@@ -1,13 +1,14 @@
 import { useCallback, useState } from 'react';
 import { useCampaigns } from './useCampaigns';
+import { buildVistaPublicUrl } from '../utils/publicUrl';
 
 const SHARE_STATUS_DURATION = 1800;
 
 const getCampaignAssets = (campaign) => campaign?.assets || campaign?.campania_assets || [];
 
 export function getCampaignShareUrl(campaignId) {
-  if (!campaignId || typeof window === 'undefined') return '';
-  return `${window.location.origin}/api/campaign?id=${encodeURIComponent(campaignId)}`;
+  if (!campaignId) return '';
+  return buildVistaPublicUrl(`/api/campaign?id=${encodeURIComponent(campaignId)}`);
 }
 
 export function getCampaignDiscordVideoUrl(campaign) {

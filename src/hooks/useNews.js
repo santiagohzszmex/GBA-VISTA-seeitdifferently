@@ -50,17 +50,29 @@ export function useNews() {
   }, []);
  
   // 2. Cargar el contenido y calcular métricas públicas de un Sello Editorial específico
-  const fetchEditorialProfile = useCallback(async (selloNombre) => {
-    if (!selloNombre) return;
+  const fetchEditorialProfile = useCallback(async (editorialKey) => {
+    if (!editorialKey) return;
     setLoading(true);
     try {
-      const { data: profile, error: profileError } = await supabase
+      const normalizedKey = editorialKey.trim();
+      let { data: profile, error: profileError } = await supabase
         .from('editoriales')
         .select('*')
-        .ilike('nombre', selloNombre)
+        .eq('slug', normalizedKey)
         .maybeSingle();
 
       if (profileError) throw profileError;
+
+      if (!profile) {
+        const fallback = await supabase
+          .from('editoriales')
+          .select('*')
+          .ilike('nombre', normalizedKey)
+          .maybeSingle();
+        if (fallback.error) throw fallback.error;
+        profile = fallback.data;
+      }
+
       setEditorialProfile(profile || null);
 
       let query = supabase
@@ -70,7 +82,7 @@ export function useNews() {
 
       query = profile?.id
         ? query.eq('editorial_id', profile.id)
-        : query.eq('sello_editorial', selloNombre);
+        : query.eq('sello_editorial', normalizedKey);
 
       const { data, error } = await query.order('created_at', { ascending: false });
  
@@ -84,7 +96,7 @@ export function useNews() {
  
       setEditorialStats({ totalVistas, totalLikes });
     } catch (err) {
-      console.error(`Error al compilar el perfil de ${selloNombre}:`, err);
+      console.error(`Error al compilar el perfil de ${editorialKey}:`, err);
     } finally {
       setLoading(false);
     }

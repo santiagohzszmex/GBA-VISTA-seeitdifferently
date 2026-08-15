@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
+import { buildVistaPublicUrl } from '../utils/publicUrl';
 
 const SHARE_STATUS_DURATION = 1800;
 
 export function getKeynoteShareUrl(slug) {
-  if (!slug || typeof window === 'undefined') return '';
-  return `${window.location.origin}/api/keynote?slug=${encodeURIComponent(slug)}`;
+  if (!slug) return '';
+  return buildVistaPublicUrl(`/api/keynote?slug=${encodeURIComponent(slug)}`);
 }
 
 export function useKeynoteShare(keynote) {

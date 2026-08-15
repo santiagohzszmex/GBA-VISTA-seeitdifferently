@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import NewsCard from '../components/news/NewsCard';
 import Estadisticas from './Estadisticas';
+import { buildVistaPublicUrl } from '../utils/publicUrl';
 
 export default function PerfilUsuario({ publicHandle = null, setActiveTab, initialSection = 'profile' }) {
   const { user, isDueño, refreshUser } = useAuth();
@@ -87,7 +88,7 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
   };
 
   const shareProfile = async () => {
-    const url = `${window.location.origin}${window.location.pathname}?profile=${encodeURIComponent(profile.handle)}`;
+    const url = buildVistaPublicUrl(`/?profile=${encodeURIComponent(profile.handle)}`);
     if (navigator.share) {
       await navigator.share({ title: profile.nombre_publico, url });
     } else {
