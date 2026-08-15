@@ -28,6 +28,7 @@ export default function VISTAHome() {
   const sharedEditionId = new URLSearchParams(window.location.search).get('edition');
   const sharedCampaignId = new URLSearchParams(window.location.search).get('campaign');
   const sharedKeynoteSlug = new URLSearchParams(window.location.search).get('keynote');
+  const sharedUpdateId = new URLSearchParams(window.location.search).get('update');
   const sharedNetwork = new URLSearchParams(window.location.search).get('network') === '1';
   const studioPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get('studio-preview') === '1';
   const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : sharedKeynoteSlug ? 'keynotes' : sharedNetwork ? 'network' : studioPreview ? 'publicar' : 'home');
@@ -87,6 +88,7 @@ export default function VISTAHome() {
             onNavigateNews={handleNavigateNews}
             onNavigateKeynotes={handleNavigateKeynotes}
             initialCampaignId={sharedCampaignId}
+            initialUpdateId={sharedUpdateId}
           />
         );
       case 'originals':
@@ -150,6 +152,7 @@ export default function VISTAHome() {
             onNavigateNews={handleNavigateNews}
             onNavigateKeynotes={handleNavigateKeynotes}
             initialCampaignId={sharedCampaignId}
+            initialUpdateId={sharedUpdateId}
           />
         );
       case 'workspace':
@@ -162,6 +165,7 @@ export default function VISTAHome() {
             onNavigateNews={handleNavigateNews}
             onNavigateKeynotes={handleNavigateKeynotes}
             initialCampaignId={sharedCampaignId}
+            initialUpdateId={sharedUpdateId}
           />
         );
     }

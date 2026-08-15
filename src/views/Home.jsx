@@ -6,8 +6,9 @@ import { useKeynotes } from '../hooks/useKeynotes';
 import { useLibrary } from '../hooks/useLibrary';
 import ContentRow from '../components/ContentRow';
 import KeynoteSpotlight from '../components/keynotes/KeynoteSpotlight';
+import ActivityFeed from '../components/social/ActivityFeed';
 import { CampaignDetailInline, CampaignLikeButton, getCampaignAudioAsset, getCampaignPrimaryAsset, getCampaignVideoAsset } from '../components/campaigns/CampaignShowcase';
-import { ArrowUpRight, ChevronDown, Film, Megaphone, Music, Play, Plus, Check, Info, Share2, Volume2, VolumeX } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, Compass, Film, Megaphone, Music, Play, Plus, Check, Info, Share2, Users, Volume2, VolumeX } from 'lucide-react';
 
 // ==========================================
 // HERO SECTION (Inmersivo, debajo del Sidebar)
@@ -311,7 +312,7 @@ const CampaignHeroSection = ({ campaign, onOpen, onScrollNext, isOpen }) => {
 // ==========================================
 // VISTA HOME PRINCIPAL (Controlador)
 // ==========================================
-export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigateKeynotes, initialCampaignId = null }) {
+export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigateKeynotes, initialCampaignId = null, initialUpdateId = null }) {
   const { getAllContent, getTop10, loading } = useContent();
   const { fetchActiveCampaigns, trackCampaignEvent } = useCampaigns();
   const { fetchPublishedKeynotes } = useKeynotes();
@@ -323,6 +324,8 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
   const [latestKeynote, setLatestKeynote] = useState(null);
   const [expandedCampaign, setExpandedCampaign] = useState(null);
   const [showCampaignReturn, setShowCampaignReturn] = useState(false);
+  const [homeMode, setHomeMode] = useState(initialUpdateId ? 'following' : 'featured');
+  const [focusedUpdateId, setFocusedUpdateId] = useState(initialUpdateId);
   const campaignDetailRef = useRef(null);
   const campaignHeroAnchorRef = useRef(null);
   const editorialHeroRef = useRef(null);
@@ -468,15 +471,6 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
     );
   }
 
-  if (featuredMovies.length === 0 && top10.length === 0 && campaigns.length === 0 && !latestKeynote) {
-    return (
-      <div className="w-full min-h-[80vh] flex flex-col items-center justify-center pt-24 px-6 text-center font-sans">
-        <h2 className="text-4xl font-serif italic text-[#1d1d1f] mb-4">Ecosistema en preparación.</h2>
-        <p className="text-[#86868b] max-w-md font-medium">No hay contenido oficial de GIMG publicado en este momento. La base de datos está inicializada.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="animate-in fade-in duration-1000 pb-20 relative font-sans">
 
@@ -549,14 +543,35 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
         </button>
       )}
 
-      {latestKeynote && (
+      <section className="max-w-[1500px] mx-auto px-6 md:px-12 pt-12 md:pt-16 relative z-20">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-5 pb-5 border-b border-[#d2d2d7]">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#0066FF]">Actividad VISTA</p>
+            <h2 className="font-serif italic text-3xl md:text-4xl mt-2">Ahora en la comunidad.</h2>
+          </div>
+          <div className="sm:ml-auto inline-flex self-start rounded-md bg-[#e8e8ed] p-1" role="tablist" aria-label="Feed de Inicio">
+            <button type="button" role="tab" aria-selected={homeMode === 'featured'} onClick={() => { setHomeMode('featured'); setFocusedUpdateId(null); }} className={`h-10 px-4 rounded flex items-center gap-2 text-xs font-bold transition-colors ${homeMode === 'featured' ? 'bg-white text-[#1d1d1f] shadow-sm' : 'text-[#6e6e73]'}`}><Compass size={15}/>Destacado</button>
+            <button type="button" role="tab" aria-selected={homeMode === 'following'} onClick={() => { setHomeMode('following'); setFocusedUpdateId(null); }} className={`h-10 px-4 rounded flex items-center gap-2 text-xs font-bold transition-colors ${homeMode === 'following' ? 'bg-white text-[#1d1d1f] shadow-sm' : 'text-[#6e6e73]'}`}><Users size={15}/>Siguiendo</button>
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-[1500px] mx-auto px-6 md:px-12 py-8 relative z-20">
+        <ActivityFeed
+          mode={homeMode}
+          focusId={focusedUpdateId}
+          showComposer
+        />
+      </section>
+
+      {homeMode === 'featured' && latestKeynote && (
         <div className="mt-10 md:mt-14">
           <KeynoteSpotlight keynote={latestKeynote} onOpen={onNavigateKeynotes}/>
         </div>
       )}
 
       {/* 2. CONTENIDO (Filas Editoriales) */}
-      <div className="px-6 md:px-12 space-y-16 mt-8 relative z-20">
+      {homeMode === 'featured' && <div className="px-6 md:px-12 space-y-16 mt-8 relative z-20">
         {top10.length > 0 && (
           <ContentRow title="Top 10: Lo más visto en GIMG" items={top10} onSelect={onSelectMovie} />
         )}
@@ -566,7 +581,7 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
             <ContentRow key={genero} title={genero} items={peliculas} onSelect={onSelectMovie} />
           )
         ))}
-      </div>
+      </div>}
 
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ChevronDown, MessageCircle, Send, Trash2 } from 'lucide-react';
+import { ChevronDown, CornerUpLeft, MessageCircle, Send, Trash2, X } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
 export default function ConversationPanel({ subjectType, subjectId, dark = false, className = '' }) {
@@ -7,6 +7,7 @@ export default function ConversationPanel({ subjectType, subjectId, dark = false
   const [messages, setMessages] = useState([]);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [replyTo, setReplyTo] = useState(null);
 
   const load = useCallback(async () => {
     if (!subjectId) return;
@@ -26,10 +27,11 @@ export default function ConversationPanel({ subjectType, subjectId, dark = false
       p_subject_type: subjectType,
       p_subject_id: subjectId,
       p_body: body.trim(),
-      p_parent_id: null
+      p_parent_id: replyTo?.id || null
     });
     if (!error) {
       setBody('');
+      setReplyTo(null);
       await load();
     }
     setSending(false);
@@ -52,12 +54,13 @@ export default function ConversationPanel({ subjectType, subjectId, dark = false
     </button>
     {open && <div className="pb-5">
       <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
-        {messages.map(message => <article key={message.id} className={`group py-3 border-b last:border-0 ${border}`}>
-          <div className="flex items-start gap-3"><button type="button" onClick={() => window.location.href = `/?profile=${encodeURIComponent(message.handle)}`} className={`w-8 h-8 rounded-md flex-shrink-0 text-[9px] font-black ${dark ? 'bg-white/10 text-white' : 'bg-[#f0f5ff] text-[#0066FF]'}`}>{message.display_name.slice(0, 2).toUpperCase()}</button><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><button type="button" onClick={() => window.location.href = `/?profile=${encodeURIComponent(message.handle)}`} className="text-[11px] font-bold hover:underline">{message.display_name}</button><span className={`text-[9px] ${muted}`}>@{message.handle}</span></div><p className={`text-xs leading-5 mt-1 whitespace-pre-wrap ${dark ? 'text-neutral-300' : 'text-[#55565a]'}`}>{message.body}</p></div>{message.can_delete && <button type="button" onClick={() => remove(message.id)} className="p-2 opacity-0 group-hover:opacity-100 text-red-500" title="Eliminar mensaje"><Trash2 size={13}/></button>}</div>
+        {messages.map(message => <article key={message.id} className={`group py-3 border-b last:border-0 ${border} ${message.parent_id ? 'ml-8 border-l pl-3' : ''}`}>
+          <div className="flex items-start gap-3"><button type="button" onClick={() => window.location.href = `/?profile=${encodeURIComponent(message.handle)}`} className={`w-8 h-8 rounded-md flex-shrink-0 text-[9px] font-black ${dark ? 'bg-white/10 text-white' : 'bg-[#f0f5ff] text-[#0066FF]'}`}>{message.display_name.slice(0, 2).toUpperCase()}</button><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><button type="button" onClick={() => window.location.href = `/?profile=${encodeURIComponent(message.handle)}`} className="text-[11px] font-bold hover:underline">{message.display_name}</button><span className={`text-[9px] ${muted}`}>@{message.handle}</span></div><p className={`text-xs leading-5 mt-1 whitespace-pre-wrap ${dark ? 'text-neutral-300' : 'text-[#55565a]'}`}>{message.body}</p><button type="button" onClick={() => setReplyTo(message)} className={`mt-2 inline-flex items-center gap-1 text-[9px] font-bold ${muted} hover:text-[#0066FF]`}><CornerUpLeft size={11}/>Responder</button></div>{message.can_delete && <button type="button" onClick={() => remove(message.id)} className="p-2 opacity-0 group-hover:opacity-100 text-red-500" title="Eliminar mensaje"><Trash2 size={13}/></button>}</div>
         </article>)}
         {!messages.length && <p className={`py-6 text-center text-xs ${muted}`}>Inicia una conversación sobre esta publicación.</p>}
       </div>
-      <div className={`mt-4 flex items-end gap-2 p-2 rounded-md border ${border} ${dark ? 'bg-white/5' : 'bg-white'}`}><textarea value={body} onChange={event => setBody(event.target.value)} maxLength={1200} rows="2" placeholder="Escribe un mensaje..." className={`min-w-0 flex-1 resize-none bg-transparent p-2 text-xs outline-none ${dark ? 'text-white placeholder:text-neutral-600' : ''}`}/><button type="button" onClick={send} disabled={!body.trim() || sending} className="w-10 h-10 rounded-md bg-[#0066FF] text-white flex items-center justify-center disabled:opacity-40" title="Enviar"><Send size={15}/></button></div>
+      {replyTo && <div className={`mt-4 px-3 py-2 rounded-md flex items-center gap-2 text-[10px] ${dark ? 'bg-white/5 text-neutral-300' : 'bg-[#f5f5f7] text-[#626269]'}`}><CornerUpLeft size={12}/><span className="truncate flex-1">Respondiendo a @{replyTo.handle}</span><button type="button" onClick={() => setReplyTo(null)} title="Cancelar respuesta"><X size={13}/></button></div>}
+      <div className={`${replyTo ? 'mt-2' : 'mt-4'} flex items-end gap-2 p-2 rounded-md border ${border} ${dark ? 'bg-white/5' : 'bg-white'}`}><textarea value={body} onChange={event => setBody(event.target.value)} maxLength={1200} rows="2" placeholder={replyTo ? `Responder a @${replyTo.handle}...` : 'Escribe un mensaje...'} className={`min-w-0 flex-1 resize-none bg-transparent p-2 text-xs outline-none ${dark ? 'text-white placeholder:text-neutral-600' : ''}`}/><button type="button" onClick={send} disabled={!body.trim() || sending} className="w-10 h-10 rounded-md bg-[#0066FF] text-white flex items-center justify-center disabled:opacity-40" title="Enviar"><Send size={15}/></button></div>
     </div>}
   </section>;
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BadgeCheck, Bell, CheckCheck, MessageCircle, Newspaper, UserPlus } from 'lucide-react';
+import { AtSign, BadgeCheck, Bell, CheckCheck, Heart, MessageCircle, Newspaper, UserPlus } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 
 export default function Notificaciones({ onNavigateNews }) {
@@ -9,6 +9,9 @@ export default function Notificaciones({ onNavigateNews }) {
     if (notification.tipo === 'nuevo_seguidor') return UserPlus;
     if (notification.tipo === 'credito_pendiente') return BadgeCheck;
     if (notification.tipo === 'conversacion') return MessageCircle;
+    if (notification.tipo === 'mencion') return AtSign;
+    if (notification.tipo === 'like_actualizacion') return Heart;
+    if (notification.tipo === 'nueva_actualizacion') return MessageCircle;
     return Newspaper;
   };
 
