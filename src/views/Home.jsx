@@ -560,7 +560,7 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
         <ActivityFeed
           mode={homeMode}
           focusId={focusedUpdateId}
-          showComposer
+          showComposer={homeMode === 'following'}
         />
       </section>
 

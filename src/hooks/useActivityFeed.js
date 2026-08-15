@@ -44,8 +44,19 @@ export function useActivityFeed({ mode = 'featured', profileId = null, focusId =
       p_profile_id: profileId,
       p_focus_id: focusId
     });
-    if (feedError) setError(feedError.message);
-    else setItems(data || []);
+    if (feedError) {
+      setError(feedError.message);
+    } else {
+      const nextItems = data || [];
+      if (mode === 'featured' && !focusId && !profileId) {
+        const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+        setItems(nextItems
+          .filter(item => new Date(item.created_at).getTime() >= oneDayAgo)
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+      } else {
+        setItems(nextItems);
+      }
+    }
     setLoading(false);
   }, [focusId, mode, previewMode, profileId]);
 

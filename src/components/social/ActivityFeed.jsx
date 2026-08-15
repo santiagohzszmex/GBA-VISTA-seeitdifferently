@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUpRight,
   Check,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Heart,
   Image as ImageIcon,
@@ -32,9 +34,9 @@ const relativeTime = value => {
 
 const identityLabel = type => ({ profile: 'GBA ID', editorial: 'Editorial', business: 'Network' }[type] || 'VISTA');
 
-function RichBody({ children }) {
+function RichBody({ children, className = '' }) {
   const parts = String(children || '').split(/(@[A-Za-z0-9_.-]{2,32})/g);
-  return <p className="text-[15px] md:text-base leading-7 text-[#343438] whitespace-pre-wrap break-words">
+  return <p className={`text-[15px] md:text-base leading-7 text-[#343438] whitespace-pre-wrap break-words ${className}`}>
     {parts.map((part, index) => part.startsWith('@')
       ? <button key={`${part}-${index}`} type="button" onClick={() => { window.location.href = `/?profile=${encodeURIComponent(part.slice(1))}`; }} className="text-[#0066FF] font-semibold hover:underline">{part}</button>
       : part)}
@@ -117,6 +119,44 @@ function FeedCard({ item, onToggleLike, onDelete }) {
   </article>;
 }
 
+function FeaturedCard({ item, onToggleLike }) {
+  const { share, status } = useUpdateShare(item);
+  const openActor = () => {
+    if (item.actor_type === 'profile') window.location.href = `/?profile=${encodeURIComponent(item.actor_handle)}`;
+    else if (item.actor_type === 'editorial') window.location.href = `/?editorial=${encodeURIComponent(item.actor_handle)}`;
+    else window.location.href = '/?network=1';
+  };
+  const openContent = () => { if (item.action_url) window.location.href = item.action_url; };
+
+  return <article className="w-[84vw] sm:w-[370px] h-[420px] flex-shrink-0 snap-start bg-white border border-[#d2d2d7] rounded-md overflow-hidden flex flex-col">
+    <header className="p-4 flex items-start gap-3">
+      <button type="button" onClick={openActor}><IdentityMark item={item} size="sm"/></button>
+      <div className="min-w-0 flex-1">
+        <button type="button" onClick={openActor} className="block max-w-full text-sm font-bold truncate hover:underline">{item.actor_name}</button>
+        <div className="flex items-center gap-2 text-[9px] text-[#86868b] mt-1"><span className="truncate">@{item.actor_handle}</span><span>·</span><time className="flex-shrink-0">{relativeTime(item.created_at)}</time></div>
+      </div>
+      <span className="text-[8px] font-black uppercase tracking-[0.12em] text-[#0066FF]">{identityLabel(item.actor_type)}</span>
+    </header>
+
+    <div className="px-4 min-h-0 flex-1 overflow-hidden">
+      {item.item_kind !== 'update' && <button type="button" onClick={openContent} className="w-full text-left group">
+        <span className="text-[8px] font-black uppercase tracking-[0.14em] text-[#0066FF] flex items-center gap-1.5">{item.item_kind === 'edition' ? <Newspaper size={12}/> : <FileText size={12}/>}{item.item_kind === 'edition' ? 'Nueva edición' : 'GBA Keynote'}</span>
+        <span className="block font-serif italic text-xl leading-tight mt-2 line-clamp-2 group-hover:text-[#0066FF]">{item.title}</span>
+      </button>}
+      <RichBody className={`${item.image_url ? 'line-clamp-2 mt-3' : 'line-clamp-6 mt-2'}`}>{item.body}</RichBody>
+      {item.image_url && <button type="button" onClick={openContent} className="block w-full h-40 mt-3 overflow-hidden rounded-md bg-[#f5f5f7] border border-[#e8e8ed]"><img src={item.image_url} alt="" className="w-full h-full object-cover" loading="lazy"/></button>}
+      {item.link_url && !item.image_url && <a href={item.link_url} target="_blank" rel="noreferrer" className="mt-3 h-10 px-3 border border-[#d2d2d7] rounded-md flex items-center gap-2 text-[10px] font-bold"><Link2 size={13} className="text-[#0066FF]"/><span className="truncate">{item.link_url.replace(/^https?:\/\//, '')}</span></a>}
+    </div>
+
+    <footer className="m-4 mt-3 pt-3 border-t border-[#e8e8ed] flex items-center gap-1">
+      {item.item_kind === 'update' ? <button type="button" onClick={() => onToggleLike(item.item_id)} className={`h-9 px-2.5 rounded-md flex items-center gap-1.5 text-[10px] font-bold ${item.is_liked ? 'text-red-600 bg-red-50' : 'text-[#626269] hover:bg-[#f5f5f7]'}`}><Heart size={15} className={item.is_liked ? 'fill-current' : ''}/>{item.likes_count || 0}</button> : item.item_kind === 'edition' ? <ContentLikeButton item={item}/> : null}
+      <span className="h-9 px-2.5 flex items-center gap-1.5 text-[10px] font-bold text-[#626269]"><MessageCircle size={15}/>{item.conversation_count || 0}</span>
+      {item.item_kind === 'update' && <button type="button" onClick={share} className="w-9 h-9 rounded-md flex items-center justify-center text-[#626269] hover:bg-[#f5f5f7]" title="Compartir">{status === 'idle' ? <Share2 size={15}/> : <Check size={15} className="text-emerald-600"/>}</button>}
+      <button type="button" onClick={openContent} className="ml-auto h-9 px-3 rounded-md bg-[#1d1d1f] text-white text-[10px] font-bold flex items-center gap-1.5">Abrir<ArrowUpRight size={13}/></button>
+    </footer>
+  </article>;
+}
+
 function UpdateComposer({ identities, onPublish }) {
   const [body, setBody] = useState('');
   const [identityId, setIdentityId] = useState('');
@@ -183,17 +223,32 @@ function UpdateComposer({ identities, onPublish }) {
 
 export default function ActivityFeed({ mode = 'featured', profileId = null, focusId = null, showComposer = false, previewMode = false, limitClass = 'max-w-3xl' }) {
   const { items, identities, loading, error, createUpdate, toggleLike, deleteUpdate } = useActivityFeed({ mode, profileId, focusId, previewMode });
+  const railRef = useRef(null);
+  const isFeaturedRail = mode === 'featured' && !profileId && !focusId;
 
   const remove = async itemId => {
     if (!window.confirm('¿Eliminar esta actualización?')) return;
     try { await deleteUpdate(itemId); } catch (deleteError) { window.alert(deleteError.message || 'No se pudo eliminar.'); }
   };
 
-  return <div className={`${limitClass} mx-auto w-full space-y-3`}>
+  const scrollRail = direction => {
+    railRef.current?.scrollBy({ left: direction * 390, behavior: 'smooth' });
+  };
+
+  return <div className={`${isFeaturedRail ? 'max-w-none' : limitClass} mx-auto w-full space-y-3`}>
     {showComposer && <UpdateComposer identities={identities} onPublish={createUpdate}/>} 
     {loading && <div className="py-16 text-center text-xs font-bold uppercase tracking-widest text-[#86868b]">Actualizando VISTA...</div>}
     {error && <div className="border border-red-200 bg-red-50 rounded-md px-5 py-4 text-xs font-bold text-red-700">Ejecuta la migración de Actividad VISTA para abrir este feed.</div>}
-    {!loading && !error && items.map(item => <FeedCard key={`${item.item_kind}:${item.item_id}`} item={item} onToggleLike={toggleLike} onDelete={remove}/>)}
-    {!loading && !error && !items.length && <div className="py-16 px-6 border border-dashed border-[#d2d2d7] rounded-md text-center"><UserRound size={24} className="mx-auto text-[#86868b]"/><p className="font-bold mt-4">Tu feed está listo para crecer.</p><p className="text-xs text-[#86868b] mt-2">Sigue personas y editoriales para ver aquí sus próximas publicaciones.</p></div>}
+    {!loading && !error && items.length > 0 && isFeaturedRail && <div>
+      <div className="flex justify-end gap-2 mb-3">
+        <button type="button" onClick={() => scrollRail(-1)} className="w-9 h-9 rounded-md border border-[#d2d2d7] bg-white flex items-center justify-center text-[#626269] hover:text-[#1d1d1f]" title="Anteriores"><ChevronLeft size={16}/></button>
+        <button type="button" onClick={() => scrollRail(1)} className="w-9 h-9 rounded-md border border-[#d2d2d7] bg-white flex items-center justify-center text-[#626269] hover:text-[#1d1d1f]" title="Siguientes"><ChevronRight size={16}/></button>
+      </div>
+      <div ref={railRef} className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 [scrollbar-width:thin] [scrollbar-color:#c7c7cc_transparent]">
+        {items.map(item => <FeaturedCard key={`${item.item_kind}:${item.item_id}`} item={item} onToggleLike={toggleLike}/>)}
+      </div>
+    </div>}
+    {!loading && !error && items.length > 0 && !isFeaturedRail && items.map(item => <FeedCard key={`${item.item_kind}:${item.item_id}`} item={item} onToggleLike={toggleLike} onDelete={remove}/>)}
+    {!loading && !error && !items.length && <div className="py-12 px-6 border border-dashed border-[#d2d2d7] rounded-md text-center"><UserRound size={24} className="mx-auto text-[#86868b]"/><p className="font-bold mt-4">{isFeaturedRail ? 'Sin publicaciones en las últimas 24 horas.' : 'Tu feed está listo para crecer.'}</p>{!isFeaturedRail && <p className="text-xs text-[#86868b] mt-2">Sigue personas y editoriales para ver aquí sus próximas publicaciones.</p>}</div>}
   </div>;
 }
