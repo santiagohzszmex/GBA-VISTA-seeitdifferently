@@ -7,13 +7,14 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (options = {}) => {
+    const silent = options?.silent === true;
     if (!user?.id) {
       setNotifications([]);
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
     const { data, error } = await supabase
       .from('notificaciones')
       .select('*')
@@ -21,7 +22,7 @@ export function useNotifications() {
       .order('created_at', { ascending: false })
       .limit(80);
     if (!error) setNotifications(data || []);
-    setLoading(false);
+    if (!silent) setLoading(false);
   }, [user?.id]);
 
   useEffect(() => {
@@ -38,9 +39,24 @@ export function useNotifications() {
         schema: 'public',
         table: 'notificaciones',
         filter: `usuario_id=eq.${user.id}`
-      }, fetchNotifications)
+      }, () => fetchNotifications({ silent: true }))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+  }, [fetchNotifications, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState !== 'hidden') {
+        fetchNotifications({ silent: true });
+      }
+    };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [fetchNotifications, user?.id]);
 
   const markAsRead = async (id) => {
