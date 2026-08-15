@@ -153,7 +153,7 @@ as $$
     b.logo_url
   from public.network_businesses b
   where b.owner_id = auth.uid() and b.estado = 'aprobado'
-  order by identity_type, display_name;
+  order by 1, 3;
 $$;
 
 create or replace function public.vista_notify_mentions(
