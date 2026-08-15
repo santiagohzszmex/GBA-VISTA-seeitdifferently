@@ -389,7 +389,27 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  with feed as (
+  with feed (
+    item_kind,
+    item_id,
+    subject_type,
+    subject_id,
+    actor_type,
+    actor_id,
+    actor_name,
+    actor_handle,
+    actor_image,
+    title,
+    body,
+    image_url,
+    link_url,
+    action_url,
+    likes_count,
+    conversation_count,
+    is_liked,
+    can_delete,
+    created_at
+  ) as (
     select
       'update'::text as item_kind,
       a.id as item_id,
