@@ -7,6 +7,8 @@ import { useEditionShare } from '../../hooks/useEditionShare';
 // IMPORTAMOS LOS MÓDULOS DE I18N
 import { useContentLanguage } from '../../hooks/useContentLanguage';
 import LanguageSwitcher from '../common/LanguageSwitcher';
+import CreditsPanel from '../social/CreditsPanel';
+import ConversationPanel from '../social/ConversationPanel';
 
 const FLIP_DURATION = 700; // ms — misma referencia usada en NewsCard, para consistencia visual
 
@@ -150,6 +152,11 @@ function ExpandedPanel({ item, content, onClose }) {
               </p>
             </div>
           )}
+
+          <div className="max-w-5xl mx-auto w-full">
+            <CreditsPanel subjectType="content" subjectId={item.id} dark/>
+            <ConversationPanel subjectType="content" subjectId={item.id} dark/>
+          </div>
 
           <div className="flex justify-center pt-8 border-t border-white/10 mt-8">
             <button

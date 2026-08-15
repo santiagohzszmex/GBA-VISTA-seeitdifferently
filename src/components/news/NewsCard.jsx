@@ -6,6 +6,8 @@ import { useEditionShare } from '../../hooks/useEditionShare';
 import { useContentLanguage } from '../../hooks/useContentLanguage';
 import LanguageSwitcher from '../common/LanguageSwitcher';
 import { getEditorialCategoryLabel } from '../../utils/editorialCategories';
+import CreditsPanel from '../social/CreditsPanel';
+import ConversationPanel from '../social/ConversationPanel';
 
 const FLIP_DURATION = 700; // ms — una sola fuente de verdad para JS y CSS
 
@@ -246,6 +248,11 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
                 <p className="text-sm font-mono uppercase font-bold">Documento sin archivos digitales anexos</p>
               </div>
             )}
+
+            {isFlipped && <div className="max-w-5xl mx-auto w-full">
+              <CreditsPanel subjectType="content" subjectId={item.id} dark/>
+              <ConversationPanel subjectType="content" subjectId={item.id} dark/>
+            </div>}
 
             {/* Botón de Cierre Inferior (Para no tener que subir todo el scroll) */}
             <div className="flex justify-center pt-8 border-t border-white/10 mt-8">

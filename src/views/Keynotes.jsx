@@ -4,6 +4,8 @@ import KeynoteSpotlight from '../components/keynotes/KeynoteSpotlight';
 import MarkdownPublication from '../components/keynotes/MarkdownPublication';
 import { useKeynotes } from '../hooks/useKeynotes';
 import { useKeynoteShare } from '../hooks/useKeynoteShare';
+import CreditsPanel from '../components/social/CreditsPanel';
+import ConversationPanel from '../components/social/ConversationPanel';
 
 const formatDate = value => new Date(`${value}T12:00:00`).toLocaleDateString('es-MX', {
   day: 'numeric', month: 'long', year: 'numeric'
@@ -38,7 +40,11 @@ function KeynoteArticle({ keynote, onBack }) {
           <p className="flex items-center gap-2 mt-6 text-sm text-[#86868b]"><CalendarDays size={15}/>{formatDate(keynote.keynote_date)}</p>
           <p className="font-serif italic text-xl md:text-2xl leading-9 text-[#4a4a4f] mt-10 max-w-3xl">{keynote.summary}</p>
         </header>
-        <div className="pt-5 pb-20"><MarkdownPublication>{keynote.content_markdown}</MarkdownPublication></div>
+        <div className="pt-5"><MarkdownPublication>{keynote.content_markdown}</MarkdownPublication></div>
+        <div className="pb-20">
+          <CreditsPanel subjectType="keynote" subjectId={keynote.id}/>
+          <ConversationPanel subjectType="keynote" subjectId={keynote.id}/>
+        </div>
       </div>
     </article>
   );

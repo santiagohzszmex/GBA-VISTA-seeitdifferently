@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { X, Play, Plus, Check } from 'lucide-react';
 import { useLibrary } from '../../hooks/useLibrary';
 import { isVideoContent } from '../../utils/contentTypes';
+import CreditsPanel from '../social/CreditsPanel';
+import ConversationPanel from '../social/ConversationPanel';
 
 export default function ContentDetailModal({ movie, onClose, onPlay }) {
   // Conectamos el hook de biblioteca para que el botón "+" funcione aquí también
@@ -147,6 +149,11 @@ export default function ContentDetailModal({ movie, onClose, onPlay }) {
               </div>
             </div>
           )}
+
+          <div className="mt-10">
+            <CreditsPanel subjectType="content" subjectId={movie.id} dark/>
+            <ConversationPanel subjectType="content" subjectId={movie.id} dark/>
+          </div>
 
         </div>
       </div>

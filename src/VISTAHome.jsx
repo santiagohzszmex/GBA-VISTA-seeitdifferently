@@ -28,8 +28,9 @@ export default function VISTAHome() {
   const sharedEditionId = new URLSearchParams(window.location.search).get('edition');
   const sharedCampaignId = new URLSearchParams(window.location.search).get('campaign');
   const sharedKeynoteSlug = new URLSearchParams(window.location.search).get('keynote');
+  const sharedNetwork = new URLSearchParams(window.location.search).get('network') === '1';
   const studioPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get('studio-preview') === '1';
-  const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : sharedKeynoteSlug ? 'keynotes' : studioPreview ? 'publicar' : 'home');
+  const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : sharedKeynoteSlug ? 'keynotes' : sharedNetwork ? 'network' : studioPreview ? 'publicar' : 'home');
 
   // Estados locales para el control de overlays e interacciones globales
   const [playingVideo, setPlayingVideo] = useState(null);

@@ -16,6 +16,7 @@ import {
 import { uploadToCloudinary } from '../../cloudinary';
 import { supabase } from '../../supabaseClient';
 import { useNetworkBusiness } from '../../hooks/useNetworkBusiness';
+import CreditsPanel from '../social/CreditsPanel';
 
 const CATEGORIES = ['Negocios', 'Talento', 'Proyectos', 'Medios'];
 const BUSINESS_STYLES = `.studio-input{width:100%;min-height:44px;border:1px solid #d2d2d7;border-radius:6px;background:#fff;padding:10px 12px;color:#1d1d1f;font-size:13px;outline:none}.studio-input:focus{border-color:#0066ff;box-shadow:0 0 0 2px rgba(0,102,255,.09)}.studio-input:disabled{background:#f5f5f7;color:#6e6e73}.studio-label{display:flex;align-items:center;gap:5px;margin-bottom:7px;color:#86868b;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}`;
@@ -246,6 +247,8 @@ export default function NetworkBusinessStudio({ userId, previewMode = false }) {
         </label>
         {form.busca_colaboradores && <div className="grid gap-5 mt-5"><label><span className="studio-label">Titulo de la oportunidad</span><input required minLength="5" maxLength="120" disabled={!editable} value={form.oportunidad_titulo} onChange={event => setForm({ ...form, oportunidad_titulo: event.target.value })} className="studio-input" placeholder="Buscamos colaboradores para..."/></label><label><span className="studio-label">Descripcion de la oportunidad</span><textarea maxLength="500" rows="4" disabled={!editable} value={form.oportunidad_descripcion} onChange={event => setForm({ ...form, oportunidad_descripcion: event.target.value })} className="studio-input resize-none"/></label></div>}
       </section>
+
+      <CreditsPanel subjectType="business" subjectId={profile.id} editable={editable}/>
 
       {editable && <div className="flex justify-end"><button type="submit" disabled={saving} className="h-11 px-5 rounded-md bg-[#0066FF] text-white text-sm font-bold flex items-center gap-2 disabled:opacity-50"><Save size={16}/>{saving ? 'Guardando' : 'Guardar perfil'}</button></div>}
     </form></>

@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BarChart3, Edit3, Eye, Heart, Newspaper, Save, Server, Share2, UserRound, X } from 'lucide-react';
+import { ArrowLeft, BarChart3, Edit3, Eye, Heart, Newspaper, Save, Server, Share2, UserCheck, UserPlus, UserRound, Users, X } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import NewsCard from '../components/news/NewsCard';
 import Estadisticas from './Estadisticas';
 import { buildVistaPublicUrl } from '../utils/publicUrl';
+import ProfileCollaborations from '../components/social/ProfileCollaborations';
 
 export default function PerfilUsuario({ publicHandle = null, setActiveTab, initialSection = 'profile' }) {
   const { user, isDueño, refreshUser } = useAuth();
@@ -18,6 +19,8 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeSection, setActiveSection] = useState(initialSection);
+  const [followState, setFollowState] = useState({ is_following: false, followers: 0, following: 0 });
+  const [followLoading, setFollowLoading] = useState(false);
   const [draft, setDraft] = useState({ nombre_publico: '', bio: '', servidor: '', nacion: '', discord_id: '', perfil_publico: true });
 
   useEffect(() => {
@@ -47,6 +50,9 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
         setLoadingProfile(false);
         return;
       }
+
+      const { data: nextFollowState } = await supabase.rpc('vista_profile_follow_state', { p_profile_id: resolved.id });
+      if (nextFollowState) setFollowState(nextFollowState);
 
       const { data: content } = await supabase
         .from('contenido')
@@ -98,6 +104,17 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
     }
   };
 
+  const toggleFollow = async () => {
+    if (!profile?.id || isOwnProfile || followLoading) return;
+    setFollowLoading(true);
+    const { data } = await supabase.rpc('vista_set_profile_follow', {
+      p_profile_id: profile.id,
+      p_follow: !followState.is_following
+    });
+    if (data) setFollowState(data);
+    setFollowLoading(false);
+  };
+
   if (loadingProfile) {
     return <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center text-[#86868b] font-medium">Cargando perfil GBA ID...</div>;
   }
@@ -131,16 +148,18 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
             </div>
           </div>
           <div className="flex md:flex-col gap-2">
+            {!isOwnProfile && <button type="button" onClick={toggleFollow} disabled={followLoading} className={`px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 border ${followState.is_following ? 'bg-white border-[#d2d2d7] text-[#1d1d1f]' : 'bg-[#0066FF] border-[#0066FF] text-white'} disabled:opacity-50`}>{followState.is_following ? <UserCheck size={16}/> : <UserPlus size={16}/>} {followState.is_following ? 'Siguiendo' : 'Seguir'}</button>}
             <button type="button" onClick={shareProfile} className="px-5 py-3 bg-[#1d1d1f] text-white rounded-xl font-bold flex items-center justify-center gap-2"><Share2 size={16}/>{copied ? 'Copiado' : 'Compartir'}</button>
             {isOwnProfile && <button type="button" onClick={() => setEditing(true)} className="px-5 py-3 bg-white border border-[#d2d2d7] rounded-xl font-bold flex items-center justify-center gap-2"><Edit3 size={16}/>Editar</button>}
           </div>
         </header>
 
-        <section className="grid grid-cols-3 gap-4 py-8 border-b border-[#d2d2d7]/60">
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-4 py-8 border-b border-[#d2d2d7]/60">
           {[
             ['Publicaciones', profile.publicaciones || publications.length, Newspaper],
             ['Lecturas', profile.vistas || 0, Eye],
-            ['Likes', profile.likes || 0, Heart]
+            ['Likes', profile.likes || 0, Heart],
+            ['Seguidores', followState.followers || profile.seguidores || 0, Users]
           ].map(([label, value, Icon]) => (
             <div key={label} className="text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2 text-[#86868b] text-[10px] font-black uppercase tracking-widest"><Icon size={13}/>{label}</div>
@@ -174,6 +193,7 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
             ) : <div className="py-20 border border-dashed border-[#d2d2d7] rounded-2xl text-center text-[#86868b]">Este perfil todavía no tiene aportaciones públicas.</div>}
           </section>
         )}
+        {activeSection !== 'analytics' && <ProfileCollaborations userId={profile.id}/>}
       </div>
 
       {editing && (

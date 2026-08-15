@@ -8,6 +8,7 @@ import EditorialProfileSettings from '../components/studio/EditorialProfileSetti
 import EditorialStudioHeader from '../components/studio/EditorialStudioHeader';
 import EditorialTeamManager from '../components/studio/EditorialTeamManager';
 import NetworkBusinessStudio from '../components/studio/NetworkBusinessStudio';
+import CreditsPanel from '../components/social/CreditsPanel';
 import { 
   PenTool, 
   Upload, 
@@ -66,6 +67,7 @@ export default function Publicar({ initialSection = 'publish' }) {
   const [enviando, setEnviando] = useState(false);
   const [publicacionExitosa, setPublicacionExitosa] = useState(false);
   const [historialPublicaciones, setHistorialPublicaciones] = useState([]);
+  const [creditsPublicationId, setCreditsPublicationId] = useState(null);
 
   // ================= NUEVO: ESTADOS DE TRADUCCIONES DINÁMICAS =================
   const [traducciones, setTraducciones] = useState([]);
@@ -76,6 +78,7 @@ export default function Publicar({ initialSection = 'publish' }) {
 
     if (activeEditorial) {
       setSelloPublicacion(activeEditorial.nombre);
+      setCreditsPublicationId(null);
       cargarHistorialAduana();
     } else {
       comprobarSolicitudPrevia();
@@ -108,8 +111,7 @@ export default function Publicar({ initialSection = 'publish' }) {
         .from('contenido')
         .select('id, titulo, estado_publicacion, created_at, autor_id')
         .eq('editorial_id', activeEditorial.id)
-        .order('created_at', { ascending: false })
-        .limit(12);
+        .order('created_at', { ascending: false });
       
       if (data) setHistorialPublicaciones(data);
     } catch (err) {
@@ -676,12 +678,14 @@ export default function Publicar({ initialSection = 'publish' }) {
                       {pub.estado_publicacion === 'rechazado' && (
                         <span className="inline-flex items-center gap-1 text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest"><XCircle size={10}/> Rechazado</span>
                       )}
+                      {puedePublicar && <button type="button" onClick={() => setCreditsPublicationId(current => current === pub.id ? null : pub.id)} className="block mt-2 text-[10px] font-bold text-[#0066FF] hover:underline">{creditsPublicationId === pub.id ? 'Cerrar créditos' : 'Editar créditos y colaboraciones'}</button>}
                     </div>
                   ))}
                 </div>
               ) : (
                 <p className="text-xs text-[#86868b] font-medium text-center py-4">No tienes documentos en el historial de la aduana.</p>
               )}
+              {creditsPublicationId && <CreditsPanel subjectType="content" subjectId={creditsPublicationId} editable className="mt-5"/>}
             </div>
           </div>
 

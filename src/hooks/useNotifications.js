@@ -28,6 +28,20 @@ export function useNotifications() {
     fetchNotifications();
   }, [fetchNotifications]);
 
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    const channel = supabase
+      .channel(`vista-notifications-${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notificaciones',
+        filter: `usuario_id=eq.${user.id}`
+      }, fetchNotifications)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchNotifications, user?.id]);
+
   const markAsRead = async (id) => {
     setNotifications(prev => prev.map(item => item.id === id ? { ...item, leida: true } : item));
     await supabase.from('notificaciones').update({ leida: true }).eq('id', id).eq('usuario_id', user.id);

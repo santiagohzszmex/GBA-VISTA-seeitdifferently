@@ -20,6 +20,7 @@ import {
   X
 } from 'lucide-react';
 import { DOCUMENT_STATUS, ROLE_RANK } from './workspaceData';
+import CreditsPanel from '../components/social/CreditsPanel';
 
 const STATUS_STYLES = {
   draft: 'bg-neutral-100 text-neutral-600',
@@ -278,6 +279,7 @@ export default function WorkspaceDocuments({
                 <div className="p-4 bg-[#f7f8fa] border border-[#e2e4e9] rounded-md"><p className="text-[9px] font-black uppercase tracking-wider text-[#8b9099]">Documento aprobado</p><p className="font-serif italic text-xl mt-2">{draft.title}</p><p className="text-[10px] text-[#8b9099] mt-2">La publicación guardará una copia de esta revisión.</p></div>
                 <label><span className="ws-label">Fecha de la Keynote</span><input required type="date" value={publicationForm.keynoteDate} onChange={event => setPublicationForm(current => ({ ...current, keynoteDate: event.target.value }))} className="ws-input"/></label>
                 <label><span className="ws-label">Resumen público</span><textarea required minLength="20" maxLength="600" rows="5" value={publicationForm.summary} onChange={event => setPublicationForm(current => ({ ...current, summary: event.target.value }))} className="ws-input resize-none" placeholder="Explica brevemente qué se presentó en esta Keynote."/><span className="block text-right text-[9px] text-[#9a9ea6] mt-1">{publicationForm.summary.length}/600</span></label>
+                {publication?.id && <CreditsPanel subjectType="keynote" subjectId={publication.id} editable/>}
               </div>
               <footer className="p-4 bg-[#f7f8fa] border-t border-[#e2e4e9] flex flex-wrap items-center justify-end gap-2">
                 {publication?.is_published && <button type="button" onClick={removePublication} disabled={publishing} className="h-10 px-3 mr-auto rounded-md text-red-600 inline-flex items-center gap-2 text-[10px] font-bold hover:bg-red-50"><Trash2 size={14}/>Retirar</button>}

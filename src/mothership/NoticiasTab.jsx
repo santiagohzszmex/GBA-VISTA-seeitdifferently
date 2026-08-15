@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { uploadToCloudinary } from '../cloudinary';
 import { EDITORIAL_CATEGORIES } from '../utils/editorialCategories';
+import CreditsPanel from '../components/social/CreditsPanel';
 import { 
   Save, 
   Edit3, 
@@ -629,6 +630,7 @@ export default function NoticiasTab() {
             </button>
 
           </form>
+          {editingItem && <CreditsPanel subjectType="content" subjectId={editingItem.id} editable dark className="mt-7"/>}
         </div>
       </div>
 

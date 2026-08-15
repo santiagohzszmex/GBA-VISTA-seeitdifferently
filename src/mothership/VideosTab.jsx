@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Save, Edit3, PlusCircle, X, Trash2, Eye, Image as ImageIcon, Star, MonitorPlay } from 'lucide-react';
 import { VIDEO_CATEGORIES } from '../utils/contentTypes';
+import CreditsPanel from '../components/social/CreditsPanel';
 
 export default function VideosTab() {
   const [loading, setLoading] = useState(false);
@@ -320,6 +321,7 @@ export default function VideosTab() {
             </div>
 
           </form>
+          {editingId && <CreditsPanel subjectType="content" subjectId={editingId} editable dark className="mt-7"/>}
         </div>
       </div>
 
