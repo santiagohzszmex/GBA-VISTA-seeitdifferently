@@ -102,17 +102,20 @@ export function useCampaigns() {
   }, []);
 
   const trackCampaignEvent = useCallback(async (campaignId, evento, assetId = null) => {
-    if (!campaignId || !evento) return;
+    if (!campaignId || !evento || !user?.id) return false;
 
     try {
-      await supabase.from('campania_interacciones').insert({
+      const { error: interactionError } = await supabase.from('campania_interacciones').insert({
         campania_id: campaignId,
         asset_id: assetId,
-        usuario_id: user?.id || null,
+        usuario_id: user.id,
         evento
       });
+      if (interactionError) throw interactionError;
+      return true;
     } catch (err) {
       console.error('No se pudo registrar interacción de campaña:', err);
+      return false;
     }
   }, [user?.id]);
 

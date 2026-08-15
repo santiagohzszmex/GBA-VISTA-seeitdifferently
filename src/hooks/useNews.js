@@ -1,11 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
  
-// Código estándar de Postgres para violación de restricción única/llave primaria.
-// Lo usamos para detectar "este usuario ya había visto esta noticia" sin
-// tratarlo como un error real.
-const PG_UNIQUE_VIOLATION = '23505';
- 
 export function useNews() {
   const [loading, setLoading] = useState(false);
   const [allNews, setAllNews] = useState([]);
@@ -102,48 +97,26 @@ export function useNews() {
     }
   }, []);
  
-  // 3. Registrar +1 vista, pero UNA SOLA VEZ POR USUARIO por noticia.
-  //
-  // Si hay sesión iniciada: intentamos insertar (usuario_id, contenido_id) en
-  // "vistas_usuario". Esa tabla tiene una llave primaria compuesta, así que si
-  // el usuario ya había visto esta noticia (desde este u otro dispositivo), el
-  // insert falla con el código 23505 y simplemente no volvemos a incrementar
-  // el contador. Solo cuando el insert es exitoso (primera vez) llamamos al RPC
-  // que suma +1 en el contador global de "contenido".
-  //
-  // Si NO hay sesión (usuario anónimo), no hay forma confiable de identificarlo
-  // a nivel de base de datos, así que incrementamos el contador directamente
-  // (el filtro por navegador vía localStorage en Noticias.jsx sigue cubriendo
-  // ese caso para evitar spam accidental de un mismo dispositivo).
+  // Registra una lectura única por GBA ID. El servidor rechaza sesiones anónimas.
   const registrarVisita = async (itemId) => {
-    if (!itemId) return;
+    if (!itemId) return false;
     try {
       const { data: { user } } = await supabase.auth.getUser();
- 
-      if (user) {
-        const { error: insertError } = await supabase
-          .from('vistas_usuario')
-          .insert({ usuario_id: user.id, contenido_id: itemId });
- 
-        if (insertError) {
-          if (insertError.code === PG_UNIQUE_VIOLATION) {
-            // Ya la había visto este usuario: no sumamos de nuevo.
-            return;
-          }
-          throw insertError;
-        }
-      }
- 
-      const { error } = await supabase.rpc('increment_vistas_contenido', {
-        contenido_id: itemId
+      if (!user?.id) return false;
+
+      const { data: counted, error } = await supabase.rpc('vista_register_content_view', {
+        p_content_id: itemId
       });
- 
       if (error) throw error;
- 
-      setAllNews(prev => prev.map(item => item.id === itemId ? { ...item, vistas: (item.vistas || 0) + 1 } : item));
-      setEditorialContent(prev => prev.map(item => item.id === itemId ? { ...item, vistas: (item.vistas || 0) + 1 } : item));
+
+      if (counted) {
+        setAllNews(prev => prev.map(item => item.id === itemId ? { ...item, vistas: (item.vistas || 0) + 1 } : item));
+        setEditorialContent(prev => prev.map(item => item.id === itemId ? { ...item, vistas: (item.vistas || 0) + 1 } : item));
+      }
+      return Boolean(counted);
     } catch (err) {
       console.error("No se pudo registrar la métrica de lectura:", err);
+      return false;
     }
   };
  

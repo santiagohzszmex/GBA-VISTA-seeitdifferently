@@ -103,7 +103,7 @@ export default async function handler(request, response) {
         <h1 class="title">${escapeHtml(title)}</h1>
         <p class="description">${escapeHtml(description)}</p>
         <div class="meta"><span>${editions.length} ediciones</span><span>${views} lecturas</span><span>${likes} likes</span></div>
-        <a class="open" href="${escapeHtml(appUrl)}">Ver perfil editorial</a>
+        <a class="open" href="${escapeHtml(appUrl)}">Ver perfil con GBA ID</a>
       </div>
     </article>
   </body>

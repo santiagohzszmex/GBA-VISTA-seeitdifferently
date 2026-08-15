@@ -88,7 +88,7 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
   };
 
   const shareProfile = async () => {
-    const url = buildVistaPublicUrl(`/?profile=${encodeURIComponent(profile.handle)}`);
+    const url = buildVistaPublicUrl(`/api/profile?handle=${encodeURIComponent(profile.handle)}`);
     if (navigator.share) {
       await navigator.share({ title: profile.nombre_publico, url });
     } else {

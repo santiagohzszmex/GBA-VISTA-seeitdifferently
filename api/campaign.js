@@ -132,7 +132,7 @@ export default async function handler(request, response) {
         <div class="eyebrow">Campaña VISTA</div>
         <h1 class="title">${escapeHtml(title)}</h1>
         <p class="description">${escapeHtml(description)}</p>
-        <div class="actions"><a class="open" href="${escapeHtml(appUrl)}">Abrir campaña en VISTA</a><span class="meta">${Number(campaign.likes_count) || 0} likes</span></div>
+        <div class="actions"><a class="open" href="${escapeHtml(appUrl)}">Ver campaña con GBA ID</a><span class="meta">${Number(campaign.likes_count) || 0} likes</span></div>
       </div>
     </article>
   </body>

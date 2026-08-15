@@ -1,5 +1,3 @@
-import { micromark } from 'micromark';
-
 const escapeHtml = (value = '') => String(value)
   .replaceAll('&', '&amp;')
   .replaceAll('<', '&lt;')
@@ -31,7 +29,7 @@ export default async function handler(request, response) {
 
   let keynote;
   try {
-    const fields = 'slug,title,summary,content_markdown,keynote_date,published_at';
+    const fields = 'slug,title,summary,keynote_date,published_at';
     const endpoint = `${supabaseUrl}/rest/v1/gba_keynotes?slug=eq.${encodeURIComponent(slug)}&is_published=eq.true&select=${encodeURIComponent(fields)}&limit=1`;
     const result = await fetch(endpoint, { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } });
     if (!result.ok) throw new Error(`Supabase respondió ${result.status}`);
@@ -55,8 +53,6 @@ export default async function handler(request, response) {
   const appUrl = `${origin}/?keynote=${encodeURIComponent(keynote.slug)}`;
   const canonicalUrl = `${origin}/api/keynote?slug=${encodeURIComponent(keynote.slug)}`;
   const formattedDate = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${keynote.keynote_date}T12:00:00Z`));
-  const renderedContent = micromark(keynote.content_markdown || '');
-
   const html = `<!doctype html>
 <html lang="es">
   <head>
@@ -75,10 +71,10 @@ export default async function handler(request, response) {
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
     <style>
-      *{box-sizing:border-box}body{margin:0;background:#fbfbfd;color:#1d1d1f;font-family:Inter,system-ui,sans-serif}.page{width:min(850px,100%);margin:0 auto;padding:64px 24px 96px}.eyebrow{font-size:10px;font-weight:900;letter-spacing:.22em;text-transform:uppercase;color:#06f}.title{font-family:Georgia,serif;font-style:italic;font-size:clamp(42px,8vw,72px);line-height:1.03;margin:18px 0}.date{color:#86868b;font-size:13px}.summary{font-family:Georgia,serif;font-style:italic;font-size:clamp(20px,4vw,27px);line-height:1.5;color:#4a4a4f;margin:42px 0;padding-bottom:42px;border-bottom:1px solid #d2d2d7}.body{font-size:16px;line-height:1.9;color:#454549}.body h1,.body h2{font-family:Georgia,serif;font-style:italic;color:#1d1d1f;margin:42px 0 16px}.body h2{font-size:30px}.body h3{font-size:20px;margin:32px 0 14px}.body p,.body ul,.body ol{margin:0 0 24px}.body li{margin:8px 0}.body a{color:#06f}.body blockquote{border-left:2px solid #06f;margin:28px 0;padding-left:20px;font-family:Georgia,serif;font-style:italic}.open{display:inline-flex;margin-top:48px;background:#1d1d1f;color:#fff;text-decoration:none;padding:14px 20px;border-radius:6px;font-weight:800}
+      *{box-sizing:border-box}body{margin:0;background:#fbfbfd;color:#1d1d1f;font-family:Inter,system-ui,sans-serif;min-height:100vh;display:grid;place-items:center}.page{width:min(850px,100%);margin:0 auto;padding:64px 24px 96px}.eyebrow{font-size:10px;font-weight:900;letter-spacing:.22em;text-transform:uppercase;color:#06f}.title{font-family:Georgia,serif;font-style:italic;font-size:clamp(42px,8vw,72px);line-height:1.03;margin:18px 0}.date{color:#86868b;font-size:13px}.summary{font-family:Georgia,serif;font-style:italic;font-size:clamp(20px,4vw,27px);line-height:1.5;color:#4a4a4f;margin:42px 0;padding-bottom:42px;border-bottom:1px solid #d2d2d7}.access{color:#6e6e73;line-height:1.7;max-width:620px}.open{display:inline-flex;margin-top:32px;background:#1d1d1f;color:#fff;text-decoration:none;padding:14px 20px;border-radius:6px;font-weight:800}
     </style>
   </head>
-  <body><article class="page"><div class="eyebrow">GBA Keynote</div><h1 class="title">${escapeHtml(title)}</h1><p class="date">${escapeHtml(formattedDate)}</p><p class="summary">${escapeHtml(keynote.summary)}</p><div class="body">${renderedContent}</div><a class="open" href="${escapeHtml(appUrl)}">Abrir en VISTA</a></article></body>
+  <body><article class="page"><div class="eyebrow">GBA Keynote</div><h1 class="title">${escapeHtml(title)}</h1><p class="date">${escapeHtml(formattedDate)}</p><p class="summary">${escapeHtml(keynote.summary)}</p><p class="access">La publicación completa está disponible para miembros de VISTA.</p><a class="open" href="${escapeHtml(appUrl)}">Leer con GBA ID</a></article></body>
 </html>`;
 
   sendHtml(response, 200, html);

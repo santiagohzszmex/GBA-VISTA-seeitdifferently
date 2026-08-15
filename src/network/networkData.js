@@ -13,7 +13,8 @@ export const NETWORK_PROFILES = [
     contact: '@LibreriaHorizonte',
     action: 'Ver negocio',
     featured: true,
-    promoted: true
+    promoted: true,
+    linkedEditorial: { id: 'preview-liberty-times', slug: 'the-liberty-times', name: 'The Liberty Times', verified: true }
   },
   {
     id: 'aurea-builds',

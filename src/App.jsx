@@ -20,8 +20,12 @@ function MainApp() {
 
   if (networkPreview) return <NetworkPreview previewMode />;
   if (workspacePreview) return <WorkspaceView previewMode />;
-  if (publicHandle) return <PerfilUsuario publicHandle={publicHandle} />;
-  if (publicEditorial) return <PerfilEditorial selloNombre={publicEditorial} publicEditorial />;
+  if (publicHandle) return user
+    ? <PerfilUsuario publicHandle={publicHandle} />
+    : <VISTAAuth onLogin={() => {}} />;
+  if (publicEditorial) return user
+    ? <PerfilEditorial selloNombre={publicEditorial} publicEditorial />
+    : <VISTAAuth onLogin={() => {}} />;
   
   // El Router Maestro: Si hay sesión, entra a VISTA. Si no, al muro de Auth.
   return user ? <VISTAHome /> : <VISTAAuth onLogin={() => {}} />;

@@ -64,6 +64,12 @@ export default function VISTAHome() {
     setActiveTab('publicar');
   };
 
+  const handleOpenEditorial = editorialKey => {
+    if (!editorialKey) return;
+    setSelloSeleccionado(editorialKey);
+    setActiveTab('perfil_editorial');
+  };
+
   const handleSidebarNavigation = tab => {
     if (tab === 'publicar') setStudioInitialSection('publish');
     setActiveTab(tab);
@@ -99,7 +105,7 @@ export default function VISTAHome() {
           />
         );
       case 'network':
-        return <NetworkView onOpenStudio={handleOpenNetworkStudio} />;
+        return <NetworkView onOpenStudio={handleOpenNetworkStudio} onOpenEditorial={handleOpenEditorial} />;
       case 'perfil_editorial': // <-- Nueva ruta interna para la prensa indexada
         return (
           <PerfilEditorialView 

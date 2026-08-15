@@ -5,6 +5,7 @@ import {
   Clock3,
   Image as ImageIcon,
   Link2,
+  Newspaper,
   Save,
   ShieldCheck,
   Store,
@@ -25,7 +26,8 @@ const emptyRequest = {
   categoria: 'Negocios',
   headline: '',
   descripcion: '',
-  contacto: ''
+  contacto: '',
+  editorial_id: ''
 };
 
 const profileToForm = profile => ({
@@ -41,7 +43,8 @@ const profileToForm = profile => ({
   tags: (profile?.tags || []).join(', '),
   busca_colaboradores: Boolean(profile?.busca_colaboradores),
   oportunidad_titulo: profile?.oportunidad_titulo || '',
-  oportunidad_descripcion: profile?.oportunidad_descripcion || ''
+  oportunidad_descripcion: profile?.oportunidad_descripcion || '',
+  editorial_id: profile?.editorial_id || ''
 });
 
 const statusConfig = {
@@ -52,13 +55,17 @@ const statusConfig = {
 };
 
 export default function NetworkBusinessStudio({ userId, previewMode = false }) {
-  const { profile, loading, error, requestProfile, updateProfile } = useNetworkBusiness(userId, previewMode);
+  const { profile, editorials, loading, error, requestProfile, updateProfile, linkEditorial } = useNetworkBusiness(userId, previewMode);
   const [request, setRequest] = useState(emptyRequest);
   const [form, setForm] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState(null);
+  const eligibleEditorials = useMemo(
+    () => editorials.filter(editorial => ['owner', 'admin'].includes(editorial.role)),
+    [editorials]
+  );
 
   useEffect(() => {
     if (!profile) return;
@@ -105,6 +112,7 @@ export default function NetworkBusinessStudio({ userId, previewMode = false }) {
         p_descripcion: request.descripcion,
         p_contacto: request.contacto
       });
+      if (request.editorial_id) await linkEditorial(business.id, request.editorial_id);
       await notifyRequest(business);
       setNotice({ type: 'success', message: 'Solicitud enviada a la Aduana de VISTA.' });
     } catch (requestError) {
@@ -142,6 +150,9 @@ export default function NetworkBusinessStudio({ userId, previewMode = false }) {
         p_oportunidad_titulo: form.oportunidad_titulo,
         p_oportunidad_descripcion: form.oportunidad_descripcion
       });
+      if ((profile.editorial_id || '') !== form.editorial_id) {
+        await linkEditorial(profile.id, form.editorial_id);
+      }
       setLogoFile(null);
       setCoverFile(null);
       setNotice({ type: 'success', message: profile.estado === 'rechazado' ? 'Cambios enviados nuevamente a revision.' : 'Perfil de Network actualizado.' });
@@ -169,6 +180,7 @@ export default function NetworkBusinessStudio({ userId, previewMode = false }) {
             <label className="sm:col-span-2"><span className="studio-label">Presentacion breve</span><input maxLength="160" value={request.headline} onChange={event => setRequest({ ...request, headline: event.target.value })} className="studio-input" placeholder="Una frase que presente lo que haces"/></label>
             <label className="sm:col-span-2"><span className="studio-label">Descripcion</span><textarea required minLength="20" maxLength="800" rows="5" value={request.descripcion} onChange={event => setRequest({ ...request, descripcion: event.target.value })} className="studio-input resize-none" placeholder="Que hace, para quien trabaja y que lo distingue."/></label>
             <label className="sm:col-span-2"><span className="studio-label"><Link2 size={12}/>Contacto</span><input required maxLength="160" value={request.contacto} onChange={event => setRequest({ ...request, contacto: event.target.value })} className="studio-input" placeholder="Usuario de Discord o enlace de contacto"/></label>
+            {eligibleEditorials.length > 0 && <label className="sm:col-span-2"><span className="studio-label"><Newspaper size={12}/>Editorial vinculada</span><select value={request.editorial_id} onChange={event => setRequest({ ...request, editorial_id: event.target.value })} className="studio-input"><option value="">Ninguna editorial</option>{eligibleEditorials.map(editorial => <option key={editorial.id} value={editorial.id}>{editorial.nombre}</option>)}</select><span className="block mt-1 text-[9px] text-[#86868b]">Solo puedes vincular editoriales donde administras el equipo.</span></label>}
           </div>
           <button type="submit" disabled={saving} className="h-12 px-5 rounded-md bg-[#1d1d1f] text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"><ShieldCheck size={16}/>{saving ? 'Enviando' : 'Solicitar cuenta'}</button>
         </form>
@@ -224,6 +236,7 @@ export default function NetworkBusinessStudio({ userId, previewMode = false }) {
         <label><span className="studio-label">Ubicacion</span><input disabled={!editable} value={form.ubicacion} onChange={event => setForm({ ...form, ubicacion: event.target.value })} className="studio-input" placeholder="Distrito o ciudad de Empyria"/></label>
         <label><span className="studio-label"><Link2 size={12}/>Contacto</span><input disabled={!editable} value={form.contacto} onChange={event => setForm({ ...form, contacto: event.target.value })} className="studio-input"/></label>
         <label className="sm:col-span-2"><span className="studio-label">Etiquetas</span><input disabled={!editable} value={form.tags} onChange={event => setForm({ ...form, tags: event.target.value })} className="studio-input" placeholder="Libros, Cultura, Comercio"/><span className="block mt-1 text-[9px] text-[#86868b]">Separa hasta seis etiquetas con comas.</span></label>
+        <label className="sm:col-span-2"><span className="studio-label"><Newspaper size={12}/>Editorial vinculada</span><select disabled={!editable} value={form.editorial_id} onChange={event => setForm({ ...form, editorial_id: event.target.value })} className="studio-input"><option value="">Ninguna editorial</option>{eligibleEditorials.map(editorial => <option key={editorial.id} value={editorial.id}>{editorial.nombre}</option>)}</select><span className="block mt-1 text-[9px] text-[#86868b]">Vincularla presenta este negocio como la empresa de esa editorial. Se requiere rol de dueño o administrador.</span></label>
       </section>
 
       <section className="border-b border-[#d2d2d7] pb-8">

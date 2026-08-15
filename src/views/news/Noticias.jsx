@@ -10,8 +10,6 @@ import { CampaignDetailInline, getCampaignPrimaryAsset } from '../../components/
 import { Radio, Newspaper, Activity, Megaphone, ArrowUpRight, Bell, BellOff, Check, UserPlus } from 'lucide-react';
 import { EDITORIAL_CATEGORIES } from '../../utils/editorialCategories';
 
-// Clave de localStorage donde guardamos qué noticias ya registró este navegador/usuario
-const VISTAS_KEY = 'vista_gimg_registradas';
 const formatMetric = new Intl.NumberFormat('es-MX', { notation: 'compact', maximumFractionDigits: 1 });
 
 function GimgInstitutionalHeader({ news }) {
@@ -75,24 +73,6 @@ function GimgInstitutionalHeader({ news }) {
       </div>
     </section>
   );
-}
-
-function obtenerVistasRegistradas() {
-  try {
-    const raw = localStorage.getItem(VISTAS_KEY);
-    return new Set(raw ? JSON.parse(raw) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function guardarVistasRegistradas(set) {
-  try {
-    localStorage.setItem(VISTAS_KEY, JSON.stringify([...set]));
-  } catch {
-    // Si localStorage no está disponible (modo privado, cuotas, etc.) simplemente no persistimos;
-    // la vista se seguirá contando en el servidor cada vez, pero no rompemos la app.
-  }
 }
 
 export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNewsId }) {
@@ -199,18 +179,8 @@ export default function Noticias({ setActiveTab, setSelloSeleccionado, focusedNe
     [setSelloSeleccionado, setActiveTab]
   );
 
-  // Registra la visita SOLO la primera vez por usuario/navegador, sin importar
-  // cuántas veces vuelva a abrir/voltear la misma tarjeta después.
   const handleRegisterView = useCallback(
-    async (item) => {
-      const vistos = obtenerVistasRegistradas();
-      if (vistos.has(item.id)) return; // ya se contó antes, no volvemos a llamar al backend
-
-      vistos.add(item.id);
-      guardarVistasRegistradas(vistos);
-
-      await registrarVisita(item.id);
-    },
+    async item => registrarVisita(item.id),
     [registrarVisita]
   );
 

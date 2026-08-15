@@ -88,7 +88,7 @@ export default async function handler(request, response) {
         <h1 class="title">${escapeHtml(title)}</h1>
         <p class="description">${escapeHtml(description)}</p>
         <div class="meta"><span>${Number(edition.vistas) || 0} lecturas</span><span>${Number(edition.likes_count) || 0} likes</span></div>
-        <a class="open" href="${escapeHtml(appUrl)}">Abrir edicion en VISTA</a>
+        <a class="open" href="${escapeHtml(appUrl)}">Leer con GBA ID</a>
       </div>
     </article>
   </body>
