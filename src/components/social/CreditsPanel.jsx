@@ -1,8 +1,78 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, ExternalLink, Pencil, Plus, Trash2, UserCheck, X } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Check, ExternalLink, Loader2, Pencil, Plus, Search, Trash2, UserCheck, X } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
-const emptyCredit = () => ({ key: crypto.randomUUID(), role: '', handle: '', display_name: '' });
+const emptyCredit = () => ({ key: crypto.randomUUID(), role: '', handle: '', display_name: '', verified: false });
+
+function GbaIdLookup({ credit, onChange, onSelect }) {
+  const [focused, setFocused] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [results, setResults] = useState([]);
+
+  useEffect(() => {
+    const query = credit.handle.replace(/^@/, '').trim();
+    if (query.length < 2 || credit.verified) {
+      setResults([]);
+      setSearched(false);
+      setLoading(false);
+      return undefined;
+    }
+
+    let active = true;
+    setLoading(true);
+    setSearched(false);
+    const timer = window.setTimeout(async () => {
+      const { data, error } = await supabase.rpc('vista_search_public_profiles', { p_query: query });
+      if (!active) return;
+      setResults(error ? [] : (data || []));
+      setSearched(true);
+      setLoading(false);
+    }, 220);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [credit.handle, credit.verified]);
+
+  const queryLongEnough = credit.handle.replace(/^@/, '').trim().length >= 2;
+  const showMenu = focused && queryLongEnough && !credit.verified;
+
+  return <div className="relative min-w-0">
+    <div className="relative">
+      <Search size={13} className="absolute left-3 top-3.5 text-[#86868b]"/>
+      <input
+        value={credit.handle}
+        onFocus={() => setFocused(true)}
+        onBlur={() => window.setTimeout(() => setFocused(false), 140)}
+        onChange={event => onChange(event.target.value)}
+        placeholder="@GBAID"
+        autoComplete="off"
+        className={`w-full h-10 pl-8 pr-8 rounded-md border text-xs outline-none ${credit.verified ? 'border-emerald-400 bg-emerald-50' : 'border-[#d2d2d7] focus:border-[#0066FF]'}`}
+      />
+      {loading && <Loader2 size={13} className="absolute right-3 top-3.5 text-[#0066FF] animate-spin"/>}
+      {credit.verified && <Check size={14} className="absolute right-3 top-3.5 text-emerald-600"/>}
+    </div>
+
+    {credit.verified && <span className="block mt-1 text-[9px] font-bold text-emerald-700">GBA ID verificado</span>}
+
+    {showMenu && <div className="absolute z-30 top-11 left-0 right-0 min-w-[240px] bg-white border border-[#d2d2d7] rounded-md shadow-xl overflow-hidden">
+      {results.map(profile => <button
+        key={profile.user_id}
+        type="button"
+        onMouseDown={event => event.preventDefault()}
+        onClick={() => { onSelect(profile); setFocused(false); }}
+        className="w-full px-3 py-2.5 text-left flex items-center gap-3 hover:bg-[#f5f5f7] border-b border-[#eeeeef] last:border-0"
+      >
+        <span className="w-8 h-8 rounded-md bg-[#f0f5ff] text-[#0066FF] flex items-center justify-center text-[9px] font-black flex-shrink-0">{profile.profile_name.slice(0, 2).toUpperCase()}</span>
+        <span className="min-w-0 flex-1"><strong className="block text-[11px] truncate">{profile.profile_name}</strong><span className="block text-[9px] text-[#0066FF] font-bold truncate">@{profile.handle}</span></span>
+        <span className="text-[8px] font-bold uppercase text-[#86868b]">{profile.platform_role || 'GBA ID'}</span>
+      </button>)}
+      {!loading && searched && results.length === 0 && <p className="px-3 py-4 text-[10px] text-[#86868b] text-center">No encontramos un GBA ID público con esa búsqueda.</p>}
+    </div>}
+  </div>;
+}
 
 export default function CreditsPanel({ subjectType, subjectId, editable = false, dark = false, className = '' }) {
   const [credits, setCredits] = useState([]);
@@ -42,7 +112,8 @@ export default function CreditsPanel({ subjectType, subjectId, editable = false,
       key: credit.id,
       role: credit.role,
       handle: credit.handle ? `@${credit.handle}` : '',
-      display_name: credit.display_name
+      display_name: credit.display_name,
+      verified: Boolean(credit.handle)
     })));
     setError('');
     setManagerOpen(true);
@@ -74,6 +145,7 @@ export default function CreditsPanel({ subjectType, subjectId, editable = false,
   };
 
   const updateDraft = (key, field, value) => setDraft(current => current.map(item => item.key === key ? { ...item, [field]: value } : item));
+  const updateCredit = (key, patch) => setDraft(current => current.map(item => item.key === key ? { ...item, ...patch } : item));
   const shell = dark ? 'border-white/10 text-white' : 'border-[#d2d2d7] text-[#1d1d1f]';
   const muted = dark ? 'text-neutral-400' : 'text-[#86868b]';
 
@@ -106,7 +178,11 @@ export default function CreditsPanel({ subjectType, subjectId, editable = false,
         <div className="p-5 space-y-3">
           {draft.map((credit, index) => <div key={credit.key} className="grid sm:grid-cols-[150px_1fr_1fr_36px] gap-2 p-3 border border-[#e5e5e7] rounded-md bg-[#fbfbfd]">
             <input value={credit.role} onChange={event => updateDraft(credit.key, 'role', event.target.value)} placeholder="Rol: Periodista" className="h-10 px-3 rounded-md border border-[#d2d2d7] text-xs outline-none focus:border-[#0066FF]"/>
-            <input value={credit.handle} onChange={event => updateDraft(credit.key, 'handle', event.target.value)} placeholder="@GBAID (preferido)" className="h-10 px-3 rounded-md border border-[#d2d2d7] text-xs outline-none focus:border-[#0066FF]"/>
+            <GbaIdLookup
+              credit={credit}
+              onChange={value => updateCredit(credit.key, { handle: value, verified: false })}
+              onSelect={profile => updateCredit(credit.key, { handle: `@${profile.handle}`, display_name: profile.profile_name, verified: true })}
+            />
             <input value={credit.display_name} onChange={event => updateDraft(credit.key, 'display_name', event.target.value)} placeholder="Nombre mostrado" className="h-10 px-3 rounded-md border border-[#d2d2d7] text-xs outline-none focus:border-[#0066FF]"/>
             <button type="button" onClick={() => setDraft(current => current.filter(item => item.key !== credit.key))} className="w-9 h-10 rounded-md text-red-600 hover:bg-red-50 flex items-center justify-center" title={`Eliminar crédito ${index + 1}`}><Trash2 size={15}/></button>
           </div>)}
