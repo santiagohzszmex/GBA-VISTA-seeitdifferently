@@ -16,6 +16,7 @@ import NotificacionesView from './views/Notificaciones';
 import PerfilUsuarioView from './views/PerfilUsuario';
 import NetworkView from './views/NetworkPreview';
 import WelcomeOverlay from './components/onboarding/WelcomeOverlay';
+import SiteFooter from './components/common/SiteFooter';
 
 const KeynotesView = lazy(() => import('./views/Keynotes'));
 
@@ -48,6 +49,7 @@ export default function VISTAHome() {
   const [focusedKeynoteSlug, setFocusedKeynoteSlug] = useState(sharedKeynoteSlug || null);
   const [showWelcome, setShowWelcome] = useState(() => window.localStorage.getItem('vista_show_welcome') === '1');
   const [studioInitialSection, setStudioInitialSection] = useState('publish');
+  const showsSiteFooter = !['mothership', 'workspace', 'publicar', 'settings', 'notifications'].includes(activeTab);
 
   // Manejadores de acciones que serán inyectados a las vistas hijas
   const handlePlayVideo = (youtubeId) => {
@@ -203,6 +205,7 @@ export default function VISTAHome() {
       {/* ESCENARIO DE RENDERIZADO DINÁMICO */}
       <main className="flex-1 md:ml-24 pb-24 md:pb-0 overflow-x-hidden animate-in fade-in duration-500">
         {renderView()}
+        {showsSiteFooter && <SiteFooter />}
       </main>
 
       {/* =================================================== */}
