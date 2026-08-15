@@ -14,6 +14,7 @@ import MothershipView from './views/Mothership';
 import WorkspaceView from './views/Workspace';
 import NotificacionesView from './views/Notificaciones';
 import PerfilUsuarioView from './views/PerfilUsuario';
+import NetworkView from './views/NetworkPreview';
 import WelcomeOverlay from './components/onboarding/WelcomeOverlay';
 
 const KeynotesView = lazy(() => import('./views/Keynotes'));
@@ -37,6 +38,7 @@ export default function VISTAHome() {
   const [focusedNewsId, setFocusedNewsId] = useState(sharedEditionId || null);
   const [focusedKeynoteSlug, setFocusedKeynoteSlug] = useState(sharedKeynoteSlug || null);
   const [showWelcome, setShowWelcome] = useState(() => window.localStorage.getItem('vista_show_welcome') === '1');
+  const [studioInitialSection, setStudioInitialSection] = useState('publish');
 
   // Manejadores de acciones que serán inyectados a las vistas hijas
   const handlePlayVideo = (youtubeId) => {
@@ -55,6 +57,16 @@ export default function VISTAHome() {
   const handleNavigateKeynotes = (keynote = null) => {
     setFocusedKeynoteSlug(keynote?.slug || null);
     setActiveTab('keynotes');
+  };
+
+  const handleOpenNetworkStudio = () => {
+    setStudioInitialSection('network');
+    setActiveTab('publicar');
+  };
+
+  const handleSidebarNavigation = tab => {
+    if (tab === 'publicar') setStudioInitialSection('publish');
+    setActiveTab(tab);
   };
 
   // El cerebro del tráfico: decide qué archivo montar según el Sidebar u acciones del usuario
@@ -86,6 +98,8 @@ export default function VISTAHome() {
             focusedNewsId={focusedNewsId}
           />
         );
+      case 'network':
+        return <NetworkView onOpenStudio={handleOpenNetworkStudio} />;
       case 'perfil_editorial': // <-- Nueva ruta interna para la prensa indexada
         return (
           <PerfilEditorialView 
@@ -118,7 +132,7 @@ export default function VISTAHome() {
         return <PerfilUsuarioView setActiveTab={setActiveTab} initialSection="analytics" />;
       case 'publicar':
       case 'settings':
-        return <PublicarView />;
+        return <PublicarView initialSection={studioInitialSection} />;
       case 'mothership':
         return isDueño ? (
           <MothershipView />
@@ -150,7 +164,7 @@ export default function VISTAHome() {
     <div className="min-h-screen bg-[#fbfbfd] text-[#1d1d1f] font-sans selection:bg-[#1d1d1f] selection:text-white flex">
       
       {/* BARRA DE NAVEGACIÓN LATERAL */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
+      <Sidebar activeTab={activeTab} setActiveTab={handleSidebarNavigation} user={user} />
 
       {/* ESCENARIO DE RENDERIZADO DINÁMICO */}
       <main className="flex-1 md:ml-24 pb-24 md:pb-0 overflow-x-hidden animate-in fade-in duration-500">

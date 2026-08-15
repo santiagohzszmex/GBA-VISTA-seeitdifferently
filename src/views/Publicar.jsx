@@ -7,6 +7,7 @@ import EditorialInvitations from '../components/studio/EditorialInvitations';
 import EditorialProfileSettings from '../components/studio/EditorialProfileSettings';
 import EditorialStudioHeader from '../components/studio/EditorialStudioHeader';
 import EditorialTeamManager from '../components/studio/EditorialTeamManager';
+import NetworkBusinessStudio from '../components/studio/NetworkBusinessStudio';
 import { 
   PenTool, 
   Upload, 
@@ -31,7 +32,7 @@ import { EDITORIAL_CATEGORIES } from '../utils/editorialCategories';
 
 const StudioStyles = () => <style>{`.studio-input{width:100%;min-height:44px;border:1px solid #d2d2d7;border-radius:6px;background:#fff;padding:10px 12px;color:#1d1d1f;font-size:13px;outline:none}.studio-input:focus{border-color:#0066ff;box-shadow:0 0 0 2px rgba(0,102,255,.09)}.studio-input:disabled{background:#f5f5f7;color:#6e6e73}.studio-label{display:flex;align-items:center;gap:5px;margin-bottom:7px;color:#86868b;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}`}</style>;
 
-export default function Publicar() {
+export default function Publicar({ initialSection = 'publish' }) {
   const { user, isDueño } = useAuth();
   const {
     editorials,
@@ -45,7 +46,7 @@ export default function Publicar() {
     updateEditorial,
     previewMode
   } = useEditorialWorkspace(user?.id);
-  const [studioSection, setStudioSection] = useState('publish');
+  const [studioSection, setStudioSection] = useState(initialSection);
   const puedePublicar = Boolean(activeEditorial && ['owner', 'admin', 'editor', 'collaborator'].includes(activeEditorial.role));
 
   // ================= ESTADOS CIUDADANO =================
@@ -80,6 +81,10 @@ export default function Publicar() {
       comprobarSolicitudPrevia();
     }
   }, [user, activeEditorial?.id, activeEditorial?.nombre, workspaceLoading]);
+
+  useEffect(() => {
+    if (initialSection === 'network' || initialSection === 'publish') setStudioSection(initialSection);
+  }, [initialSection]);
 
   const comprobarSolicitudPrevia = async () => {
     try {
@@ -310,6 +315,24 @@ export default function Publicar() {
     return <div className="min-h-screen flex items-center justify-center text-xs font-bold uppercase tracking-widest text-[#86868b]">Abriendo VISTA Studio...</div>;
   }
 
+  if (studioSection === 'network') {
+    return (
+      <div className="w-full min-h-screen bg-[#fbfbfd] pb-24">
+        <StudioStyles/>
+        <div className="max-w-6xl mx-auto pt-10 px-6 md:px-10">
+          <header className="mb-8 border-b border-[#d2d2d7] pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-5">
+              <div><div className="flex items-center gap-2 text-[#0066FF] mb-3"><ShieldCheck size={18}/><span className="text-[10px] font-bold tracking-widest uppercase">GBA ID · Network Beta</span></div><h1 className="text-4xl md:text-5xl font-serif italic tracking-tight text-[#1d1d1f]">VISTA Studio</h1><p className="text-sm text-[#86868b] mt-2">Administra una cuenta de negocio o empresa dentro de Empyria.</p></div>
+              <button type="button" onClick={() => setStudioSection('publish')} className="sm:ml-auto h-10 px-4 rounded-md border border-[#d2d2d7] bg-white text-xs font-bold text-[#5f6368] hover:text-[#1d1d1f]">Volver a Editorial</button>
+            </div>
+            <nav className="flex items-center gap-1 mt-7 -mb-6 overflow-x-auto" aria-label="Areas de VISTA Studio"><button type="button" onClick={() => setStudioSection('publish')} className="h-11 px-4 flex items-center gap-2 text-xs font-bold border-b-2 border-transparent text-[#86868b]"><FileText size={15}/>Editorial</button><button type="button" className="h-11 px-4 flex items-center gap-2 text-xs font-bold border-b-2 border-[#0066FF] text-[#0066FF]"><Building size={15}/>Network Beta</button></nav>
+          </header>
+          <NetworkBusinessStudio userId={user?.id} previewMode={previewMode}/>
+        </div>
+      </div>
+    );
+  }
+
   if (workspaceError) {
     return <div className="min-h-screen flex items-center justify-center px-6"><div className="max-w-lg border border-red-200 bg-red-50 rounded-md p-6 text-center"><AlertCircle size={24} className="mx-auto text-red-600"/><h2 className="font-bold mt-3">Studio no pudo cargar las organizaciones</h2><p className="text-xs text-red-700 mt-2">{workspaceError}</p></div></div>;
   }
@@ -331,6 +354,7 @@ export default function Publicar() {
           >
             Ir a Mothership Command
           </button>
+          <button type="button" onClick={() => setStudioSection('network')} className="w-full mt-3 border border-[#d2d2d7] bg-white text-[#1d1d1f] font-bold py-4 rounded-xl flex items-center justify-center gap-2 text-sm"><Building size={16}/>Cuenta de negocio o empresa</button>
         </div>
       </div>
     );
@@ -354,6 +378,8 @@ export default function Publicar() {
           <p className="text-[#86868b] text-base md:text-lg font-medium max-w-xl mx-auto mb-12">
             VISTA Studio es el espacio de publicación para equipos editoriales. Registra una organización o acepta una invitación con tu GBA ID.
           </p>
+
+          <button type="button" onClick={() => setStudioSection('network')} className="h-11 px-4 mb-8 mx-auto rounded-md border border-[#d2d2d7] bg-white text-sm font-bold flex items-center justify-center gap-2"><Building size={16} className="text-[#0066FF]"/>Solicitar cuenta de negocio o empresa</button>
 
           {solicitudExistente ? (
             <div className="bg-white border border-[#d2d2d7] rounded-3xl p-8 max-w-lg mx-auto flex flex-col items-center shadow-[0_10px_30px_rgba(0,0,0,0.02)] animate-in fade-in">

@@ -15,7 +15,8 @@ import {
   Bell,
   FileUp,
   User,
-  PanelsTopLeft
+  PanelsTopLeft,
+  Globe2
 } from 'lucide-react';
 
 function AllianceLogo({ className = "hover:scale-105 transition-transform duration-300" }) {
@@ -76,11 +77,13 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: 'home', label: 'Inicio', icon: <Home size={22} strokeWidth={1.5} /> },
     { id: 'originals', label: 'Originals', icon: <Tv size={22} strokeWidth={1.5} /> }, 
     { id: 'news', label: 'Noticias', icon: <Radio size={22} strokeWidth={1.5} /> },
+    { id: 'network', label: 'Network', icon: <Globe2 size={22} strokeWidth={1.5} /> },
     { id: 'publicar', label: 'Studio', icon: <PenTool size={22} strokeWidth={1.5} /> },
     { id: 'search', label: 'Buscar', icon: <Search size={22} strokeWidth={1.5} /> },
     { id: 'library', label: 'Biblioteca', icon: <Library size={22} strokeWidth={1.5} /> },
     { id: 'notifications', label: 'Avisos', icon: <Bell size={22} strokeWidth={1.5} /> },
   ];
+  const mobileNavItems = ['home', 'news', 'network', 'publicar'].map(id => navItems.find(item => item.id === id));
 
   return (
     <>
@@ -181,7 +184,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       ========================================================= */}
       <div className="md:hidden fixed bottom-0 left-0 w-full h-[84px] bg-[#fbfbfd]/90 backdrop-blur-2xl border-t border-[#d2d2d7]/50 z-[900] flex items-center justify-between px-4 pb-4 pt-2 shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
         {/* Mostramos los primeros 4 items principales para no saturar */}
-        {navItems.slice(0, 4).map((item) => (
+        {mobileNavItems.map((item) => (
           <button
             key={item.id}
             onClick={() => { setActiveTab(item.id); setShowMenu(false); }}
@@ -238,6 +241,9 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             
             {/* Buscador / Biblioteca en Móvil (Ya que no cabían en la barra inferior) */}
             <div className="md:hidden pt-1 border-t border-[#d2d2d7]/40 mt-1">
+              <button onClick={() => {setActiveTab('originals'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
+                <Tv size={16} className="text-[#86868b]"/> VISTA Originals
+              </button>
               <button onClick={() => {setActiveTab('search'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
                 <Search size={16} className="text-[#86868b]"/> Explorar Bóveda
               </button>

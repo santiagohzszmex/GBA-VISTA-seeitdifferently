@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileUp, Settings2, ShieldCheck, Users } from 'lucide-react';
+import { FileUp, Settings2, ShieldCheck, Store, Users } from 'lucide-react';
 
 const ROLE_LABELS = {
   owner: 'Propietario',
@@ -12,7 +12,8 @@ const ROLE_LABELS = {
 const TABS = [
   { id: 'publish', label: 'Publicar', icon: FileUp },
   { id: 'profile', label: 'Perfil', icon: Settings2 },
-  { id: 'team', label: 'Equipo', icon: Users }
+  { id: 'team', label: 'Equipo', icon: Users },
+  { id: 'network', label: 'Network Beta', icon: Store }
 ];
 
 export default function EditorialStudioHeader({ editorials, activeEditorial, activeSection, onSelectEditorial, onSelectSection }) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Check, X, Eye, FileText, ExternalLink, ShieldAlert, ShieldCheck, Image, Layers, UserCheck, Edit3, Save } from 'lucide-react';
 import { EDITORIAL_CATEGORIES } from '../utils/editorialCategories';
+import NetworkBusinessReview from './NetworkBusinessReview';
 
 export default function AduanaTab() {
   const [activeSubTab, setActiveSubTab] = useState('ediciones'); 
@@ -21,6 +22,10 @@ export default function AduanaTab() {
   const fetchAduanaData = async () => {
     setLoading(true);
     try {
+      if (activeSubTab === 'negocios') {
+        setLoading(false);
+        return;
+      }
       if (activeSubTab === 'ediciones') {
         const { data, error } = await supabase
           .from('contenido')
@@ -267,9 +272,16 @@ export default function AduanaTab() {
           Peticiones de Sellos ({pendingRequests.length})
           {activeSubTab === 'sellos' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-red-500 animate-in fade-in" />}
         </button>
+        <button
+          onClick={() => { setActiveSubTab('negocios'); setSelectedItem(null); }}
+          className={`pb-2 text-sm font-bold tracking-wider uppercase transition-colors relative ${activeSubTab === 'negocios' ? 'text-blue-400' : 'text-neutral-500 hover:text-neutral-300'}`}
+        >
+          Cuentas Network
+          {activeSubTab === 'negocios' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 animate-in fade-in" />}
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      {activeSubTab === 'negocios' ? <NetworkBusinessReview/> : <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
         {/* COLUMNA IZQUIERDA: LISTAS PENDIENTES */}
         <div className="lg:col-span-2 space-y-4">
@@ -499,7 +511,7 @@ export default function AduanaTab() {
           )}
         </div>
 
-      </div>
+      </div>}
 
     </div>
   );
