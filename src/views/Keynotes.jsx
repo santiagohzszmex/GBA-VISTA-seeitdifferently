@@ -50,7 +50,7 @@ function KeynoteArticle({ keynote, onBack }) {
   );
 }
 
-export default function Keynotes({ initialSlug = null, onBackHome }) {
+export default function Keynotes({ initialSlug = null, onSelectionChange, onBackHome }) {
   const { keynotes, loading, error, fetchPublishedKeynotes } = useKeynotes();
   const [selectedSlug, setSelectedSlug] = useState(initialSlug);
 
@@ -59,9 +59,13 @@ export default function Keynotes({ initialSlug = null, onBackHome }) {
 
   const selected = useMemo(() => keynotes.find(keynote => keynote.slug === selectedSlug) || null, [keynotes, selectedSlug]);
   const latest = keynotes[0] || null;
+  const selectKeynote = slug => {
+    setSelectedSlug(slug || null);
+    onSelectionChange?.(slug || null);
+  };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-[#86868b]">Cargando Keynotes...</div>;
-  if (selected) return <KeynoteArticle keynote={selected} onBack={() => setSelectedSlug(null)}/>;
+  if (selected) return <KeynoteArticle keynote={selected} onBack={() => selectKeynote(null)}/>;
 
   return (
     <div className="min-h-screen bg-[#fbfbfd] text-[#1d1d1f] pb-24">
@@ -71,7 +75,7 @@ export default function Keynotes({ initialSlug = null, onBackHome }) {
         <h1 className="font-serif italic text-5xl md:text-7xl tracking-tight mt-4">GBA Keynote.</h1>
       </header>
 
-      {latest && <KeynoteSpotlight keynote={latest} onOpen={item => setSelectedSlug(item.slug)}/>}
+      {latest && <KeynoteSpotlight keynote={latest} onOpen={item => selectKeynote(item.slug)}/>}
 
       <main className="max-w-[1200px] mx-auto px-6 md:px-12 pt-14">
         <div className="flex items-center gap-3 pb-5 border-b border-[#d2d2d7]"><FileText size={17}/><h2 className="text-sm font-black uppercase tracking-[0.18em]">Todas las Keynotes</h2></div>
@@ -81,7 +85,7 @@ export default function Keynotes({ initialSlug = null, onBackHome }) {
               <article key={keynote.id} className="py-8 grid md:grid-cols-[150px_minmax(0,1fr)_150px] gap-5 md:gap-8 items-start">
                 <time className="text-xs font-bold text-[#86868b]">{formatDate(keynote.keynote_date)}</time>
                 <div className="min-w-0"><h3 className="font-serif italic text-2xl md:text-3xl">{keynote.title}</h3><p className="text-sm leading-6 text-[#6e6e73] mt-3 line-clamp-3">{keynote.summary}</p></div>
-                <div className="flex items-center gap-2 md:justify-end"><ShareButton keynote={keynote} compact/><button type="button" onClick={() => setSelectedSlug(keynote.slug)} className="h-11 px-4 rounded-md bg-[#1d1d1f] text-white inline-flex items-center gap-2 text-xs font-bold">Ver completa<ArrowUpRight size={14}/></button></div>
+                <div className="flex items-center gap-2 md:justify-end"><ShareButton keynote={keynote} compact/><button type="button" onClick={() => selectKeynote(keynote.slug)} className="h-11 px-4 rounded-md bg-[#1d1d1f] text-white inline-flex items-center gap-2 text-xs font-bold">Ver completa<ArrowUpRight size={14}/></button></div>
               </article>
             ))}
           </div>

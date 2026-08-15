@@ -19,6 +19,13 @@ import WelcomeOverlay from './components/onboarding/WelcomeOverlay';
 
 const KeynotesView = lazy(() => import('./views/Keynotes'));
 
+const replaceVistaLocation = (parameter = null, value = null) => {
+  const url = new URL(window.location.href);
+  url.search = '';
+  if (parameter && value) url.searchParams.set(parameter, value);
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+};
+
 // Importación de los componentes de interacción global
 import VideoPlayer from './components/player/VideoPlayer'; // <-- Importado
 import ContentDetailModal from './components/modals/ContentDetailModal'; // <-- Importado
@@ -52,28 +59,44 @@ export default function VISTAHome() {
   };
 
   const handleNavigateNews = (item = null) => {
-    setFocusedNewsId(item?.id || null);
+    const editionId = item?.id || null;
+    setFocusedNewsId(editionId);
+    setFocusedKeynoteSlug(null);
+    replaceVistaLocation(editionId ? 'edition' : null, editionId);
     setActiveTab('news');
   };
 
   const handleNavigateKeynotes = (keynote = null) => {
-    setFocusedKeynoteSlug(keynote?.slug || null);
+    const keynoteSlug = keynote?.slug || null;
+    setFocusedKeynoteSlug(keynoteSlug);
+    setFocusedNewsId(null);
+    replaceVistaLocation(keynoteSlug ? 'keynote' : null, keynoteSlug);
     setActiveTab('keynotes');
+  };
+
+  const handleKeynoteSelection = slug => {
+    setFocusedKeynoteSlug(slug || null);
+    replaceVistaLocation(slug ? 'keynote' : null, slug);
   };
 
   const handleOpenNetworkStudio = () => {
     setStudioInitialSection('network');
+    replaceVistaLocation();
     setActiveTab('publicar');
   };
 
   const handleOpenEditorial = editorialKey => {
     if (!editorialKey) return;
     setSelloSeleccionado(editorialKey);
+    replaceVistaLocation();
     setActiveTab('perfil_editorial');
   };
 
   const handleSidebarNavigation = tab => {
     if (tab === 'publicar') setStudioInitialSection('publish');
+    setFocusedNewsId(null);
+    setFocusedKeynoteSlug(null);
+    replaceVistaLocation();
     setActiveTab(tab);
   };
 
@@ -102,7 +125,7 @@ export default function VISTAHome() {
         return (
           <NoticiasView 
             onSelectMovie={handleSelectMovieInfo} 
-            setActiveTab={setActiveTab}
+            setActiveTab={handleSidebarNavigation}
             setSelloSeleccionado={setSelloSeleccionado}
             focusedNewsId={focusedNewsId}
           />
@@ -113,7 +136,7 @@ export default function VISTAHome() {
         return (
           <PerfilEditorialView 
             selloNombre={selloSeleccionado}
-            setActiveTab={setActiveTab}
+            setActiveTab={handleSidebarNavigation}
             onSelectMovie={handleSelectMovieInfo}
           />
         );
@@ -134,11 +157,11 @@ export default function VISTAHome() {
       case 'notifications':
         return <NotificacionesView onNavigateNews={handleNavigateNews} />;
       case 'keynotes':
-        return <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-[#86868b]">Abriendo Keynote...</div>}><KeynotesView initialSlug={focusedKeynoteSlug} onBackHome={() => setActiveTab('home')} /></Suspense>;
+        return <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-[#86868b]">Abriendo Keynote...</div>}><KeynotesView initialSlug={focusedKeynoteSlug} onSelectionChange={handleKeynoteSelection} onBackHome={() => handleSidebarNavigation('home')} /></Suspense>;
       case 'profile':
-        return <PerfilUsuarioView setActiveTab={setActiveTab} />;
+        return <PerfilUsuarioView setActiveTab={handleSidebarNavigation} />;
       case 'estadisticas': 
-        return <PerfilUsuarioView setActiveTab={setActiveTab} initialSection="analytics" />;
+        return <PerfilUsuarioView setActiveTab={handleSidebarNavigation} initialSection="analytics" />;
       case 'publicar':
       case 'settings':
         return <PublicarView initialSection={studioInitialSection} />;
@@ -209,7 +232,7 @@ export default function VISTAHome() {
       {showWelcome && (
         <WelcomeOverlay
           onClose={() => setShowWelcome(false)}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleSidebarNavigation}
           onSelectContent={handleSelectMovieInfo}
         />
       )}
