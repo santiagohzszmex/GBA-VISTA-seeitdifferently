@@ -16,8 +16,10 @@ import {
   FileUp,
   User,
   PanelsTopLeft,
-  Globe2
+  Globe2,
+  Mail
 } from 'lucide-react';
+import { GBA_MAIL } from './config/mail';
 
 function AllianceLogo({ className = "hover:scale-105 transition-transform duration-300" }) {
   return (
@@ -238,6 +240,18 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             <button onClick={() => {setActiveTab('profile'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
               <User size={16} className="text-[#86868b]"/> {isEditor ? 'Mi perfil y estadísticas' : 'Mi perfil'}
             </button>
+            {isDueño && (
+              <a
+                href={GBA_MAIL.inboxUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setShowMenu(false)}
+                className="w-full flex items-center justify-between px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]"
+              >
+                <span className="flex items-center gap-3"><Mail size={16} className="text-[#86868b]"/> Correo personal</span>
+                <span className="text-[9px] font-black text-[#86868b]">ZOHO</span>
+              </a>
+            )}
             
             {/* Buscador y Originals en móvil (no caben en la barra inferior). */}
             <div className="md:hidden pt-1 border-t border-[#d2d2d7]/40 mt-1">

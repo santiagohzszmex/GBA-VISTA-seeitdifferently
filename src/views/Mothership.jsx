@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Monitor, Film, Newspaper, ShieldCheck, Cpu, Megaphone, Terminal, Server, BrainCircuit } from 'lucide-react';
+import { Monitor, Film, Newspaper, ShieldCheck, Cpu, Megaphone, Terminal, Server, BrainCircuit, Mail } from 'lucide-react';
 
 // Importamos los submódulos subiendo un nivel en la estructura de carpetas (../)
 import VideosTab from '../mothership/VideosTab';
@@ -9,6 +9,7 @@ import GBAForgeTab from '../mothership/GBAForgeTab'; // <-- Importación del Lab
 import CampaniasTab from '../mothership/CampaniasTab';
 import InfrastructureTab from '../mothership/InfrastructureTab';
 import AnimaTab from '../mothership/AnimaTab';
+import CommunicationsTab from '../mothership/CommunicationsTab';
 
 export default function Mothership() {
   const [activeSection, setActiveSection] = useState('videos');
@@ -37,6 +38,8 @@ export default function Mothership() {
         return <CampaniasTab />;
       case 'anima':
         return <AnimaTab />;
+      case 'communications':
+        return <CommunicationsTab />;
       default:
         return <VideosTab />;
     }
@@ -107,6 +110,15 @@ export default function Mothership() {
             }`}
           >
             <BrainCircuit size={16} /> ANIMA
+          </button>
+
+          <button
+            onClick={() => setActiveSection('communications')}
+            className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all whitespace-nowrap ${
+              activeSection === 'communications' ? 'bg-emerald-400 text-black shadow-lg shadow-emerald-400/10' : 'text-neutral-500 hover:text-white'
+            }`}
+          >
+            <Mail size={16} /> Comunicaciones
           </button>
 
           <button 
