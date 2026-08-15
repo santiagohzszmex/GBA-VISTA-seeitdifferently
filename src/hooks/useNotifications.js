@@ -30,8 +30,9 @@ export function useNotifications() {
 
   useEffect(() => {
     if (!user?.id) return undefined;
+    const instanceId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel(`vista-notifications-${user.id}`)
+      .channel(`vista-notifications-${user.id}-${instanceId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
