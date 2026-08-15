@@ -10,6 +10,7 @@ export function useNews() {
   const [loading, setLoading] = useState(false);
   const [allNews, setAllNews] = useState([]);
   const [editorialContent, setEditorialContent] = useState([]);
+  const [editorialProfile, setEditorialProfile] = useState(null);
   const [editorialStats, setEditorialStats] = useState({ totalVistas: 0, totalLikes: 0 });
 
   useEffect(() => {
@@ -53,12 +54,25 @@ export function useNews() {
     if (!selloNombre) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data: profile, error: profileError } = await supabase
+        .from('editoriales')
+        .select('*')
+        .ilike('nombre', selloNombre)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+      setEditorialProfile(profile || null);
+
+      let query = supabase
         .from('contenido')
         .select('*')
-        .eq('sello_editorial', selloNombre)
-        .eq('estado_publicacion', 'aprobado')
-        .order('created_at', { ascending: false });
+        .eq('estado_publicacion', 'aprobado');
+
+      query = profile?.id
+        ? query.eq('editorial_id', profile.id)
+        : query.eq('sello_editorial', selloNombre);
+
+      const { data, error } = await query.order('created_at', { ascending: false });
  
       if (error) throw error;
  
@@ -125,6 +139,7 @@ export function useNews() {
     loading,
     allNews,
     editorialContent,
+    editorialProfile,
     editorialStats,
     fetchGlobalNews,
     fetchEditorialProfile,

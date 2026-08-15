@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { uploadToCloudinary } from '../cloudinary';
+import { useEditorialWorkspace } from '../hooks/useEditorialWorkspace';
+import EditorialInvitations from '../components/studio/EditorialInvitations';
+import EditorialProfileSettings from '../components/studio/EditorialProfileSettings';
+import EditorialStudioHeader from '../components/studio/EditorialStudioHeader';
+import EditorialTeamManager from '../components/studio/EditorialTeamManager';
 import { 
   PenTool, 
   Upload, 
@@ -24,9 +29,24 @@ import {
 } from 'lucide-react';
 import { EDITORIAL_CATEGORIES } from '../utils/editorialCategories';
 
+const StudioStyles = () => <style>{`.studio-input{width:100%;min-height:44px;border:1px solid #d2d2d7;border-radius:6px;background:#fff;padding:10px 12px;color:#1d1d1f;font-size:13px;outline:none}.studio-input:focus{border-color:#0066ff;box-shadow:0 0 0 2px rgba(0,102,255,.09)}.studio-input:disabled{background:#f5f5f7;color:#6e6e73}.studio-label{display:flex;align-items:center;gap:5px;margin-bottom:7px;color:#86868b;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}`}</style>;
+
 export default function Publicar() {
   const { user, isDueño } = useAuth();
-  const puedePublicar = user?.rol === 'Editor';
+  const {
+    editorials,
+    invitations,
+    activeEditorial,
+    loading: workspaceLoading,
+    error: workspaceError,
+    refresh: refreshEditorials,
+    selectEditorial,
+    respondToInvitation,
+    updateEditorial,
+    previewMode
+  } = useEditorialWorkspace(user?.id);
+  const [studioSection, setStudioSection] = useState('publish');
+  const puedePublicar = Boolean(activeEditorial && ['owner', 'admin', 'editor', 'collaborator'].includes(activeEditorial.role));
 
   // ================= ESTADOS CIUDADANO =================
   const [nombreNoticiero, setNombreNoticiero] = useState('');
@@ -51,18 +71,15 @@ export default function Publicar() {
 
   // ================= EFECTOS =================
   useEffect(() => {
-    if (!user || isDueño) return; 
-    
-    if (user.sello_editorial) {
-      setSelloPublicacion(user.sello_editorial);
-    }
+    if (!user || workspaceLoading) return;
 
-    if (puedePublicar) {
+    if (activeEditorial) {
+      setSelloPublicacion(activeEditorial.nombre);
       cargarHistorialAduana();
     } else {
       comprobarSolicitudPrevia();
     }
-  }, [user, puedePublicar, isDueño]);
+  }, [user, activeEditorial?.id, activeEditorial?.nombre, workspaceLoading]);
 
   const comprobarSolicitudPrevia = async () => {
     try {
@@ -75,12 +92,19 @@ export default function Publicar() {
 
   const cargarHistorialAduana = async () => {
     try {
+      if (previewMode) {
+        setHistorialPublicaciones([
+          { id: 'preview-edition-18', titulo: 'Edición N.º 18 · The Liberty Times', estado_publicacion: 'aprobado', autor_id: user.id },
+          { id: 'preview-edition-19', titulo: 'Edición N.º 19 · Nuevas fronteras', estado_publicacion: 'pendiente', autor_id: 'preview-leandro' }
+        ]);
+        return;
+      }
       const { data } = await supabase
         .from('contenido')
-        .select('id, titulo, estado_publicacion, created_at')
-        .eq('autor_id', user.id)
+        .select('id, titulo, estado_publicacion, created_at, autor_id')
+        .eq('editorial_id', activeEditorial.id)
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(12);
       
       if (data) setHistorialPublicaciones(data);
     } catch (err) {
@@ -181,7 +205,12 @@ export default function Publicar() {
       return;
     }
 
-    const selloFinal = selloPublicacion.trim() || 'Editorial Independiente';
+    if (!activeEditorial || !puedePublicar) {
+      alert('Tu GBA ID no tiene permisos para publicar en esta editorial.');
+      return;
+    }
+
+    const selloFinal = activeEditorial.nombre;
     setEnviando(true);
 
     try {
@@ -247,6 +276,7 @@ export default function Publicar() {
         es_comunidad: true,
         estado_publicacion: 'pendiente', 
         autor_id: user.id,
+        editorial_id: activeEditorial.id,
         sello_editorial: selloFinal,
         categoria: 'Periódico',
         categoria_editorial: categoriaEditorial,
@@ -266,7 +296,7 @@ export default function Publicar() {
       const permissionDenied = err?.code === '42501'
         || /row-level security|permission denied/i.test(err?.message || '');
       alert(permissionDenied
-        ? 'Tu GBA ID no tiene permisos editoriales activos para publicar. Cierra sesion, vuelve a entrar y, si el problema continua, solicita a un administrador que revise tu rango Editor.'
+        ? 'Tu GBA ID no tiene permisos para publicar en esta organización. Solicita a un administrador editorial que revise tu membresía.'
         : err.message || "Error al inyectar el documento.");
     } finally {
       setEnviando(false);
@@ -276,7 +306,15 @@ export default function Publicar() {
   // ========================================================
   // RENDER INTERFAZ ZERO: INTERCEPTOR PARA DUEÑOS/ADMINS
   // ========================================================
-  if (isDueño || user?.rol === 'Admin') {
+  if (workspaceLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-xs font-bold uppercase tracking-widest text-[#86868b]">Abriendo VISTA Studio...</div>;
+  }
+
+  if (workspaceError) {
+    return <div className="min-h-screen flex items-center justify-center px-6"><div className="max-w-lg border border-red-200 bg-red-50 rounded-md p-6 text-center"><AlertCircle size={24} className="mx-auto text-red-600"/><h2 className="font-bold mt-3">Studio no pudo cargar las organizaciones</h2><p className="text-xs text-red-700 mt-2">{workspaceError}</p></div></div>;
+  }
+
+  if ((isDueño || user?.rol === 'Admin') && !activeEditorial && invitations.length === 0) {
     return (
       <div className="w-full min-h-screen bg-[#fbfbfd] pt-12 px-6 md:px-12 flex flex-col items-center justify-center animate-in fade-in">
         <div className="bg-white border border-[#d2d2d7] rounded-3xl p-12 max-w-lg mx-auto text-center shadow-[0_20px_40px_rgba(0,0,0,0.02)]">
@@ -299,9 +337,11 @@ export default function Publicar() {
   }
 
   // ================= RENDER INTERFAZ A: CIUDADANOS =================
-  if (!puedePublicar) {
+  if (!activeEditorial) {
     return (
-      <div className="w-full min-h-screen bg-[#fbfbfd] pt-12 px-6 md:px-12 flex flex-col items-center">
+      <div className="w-full min-h-screen bg-[#fbfbfd] pt-12 flex flex-col">
+        <EditorialInvitations invitations={invitations} onRespond={respondToInvitation}/>
+        <div className="px-6 md:px-12 flex flex-col items-center">
          <div className="w-full max-w-3xl mt-12 text-center">
           
           <div className="w-20 h-20 bg-blue-50 text-[#0066FF] rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-100 shadow-sm">
@@ -312,7 +352,7 @@ export default function Publicar() {
             Tu voz, en la Alianza.
           </h2>
           <p className="text-[#86868b] text-base md:text-lg font-medium max-w-xl mx-auto mb-12">
-            VISTA Studio es el motor periodístico de GlobalBank. Registra tu marca informativa independiente para desbloquear las herramientas de carga.
+            VISTA Studio es el espacio de publicación para equipos editoriales. Registra una organización o acepta una invitación con tu GBA ID.
           </p>
 
           {solicitudExistente ? (
@@ -350,33 +390,50 @@ export default function Publicar() {
               </button>
             </form>
           )}
+         </div>
         </div>
       </div>
     );
   }
 
-  // ================= RENDER INTERFAZ B (EDITORES) =================
-  return (
-    <div className="w-full min-h-screen bg-[#fbfbfd] pt-12 px-6 md:px-12 pb-24">
-      <div className="max-w-4xl mx-auto">
-        
-        <header className="mb-10">
-          <div className="flex items-center gap-2 text-[#0066FF] mb-3">
-            <ShieldCheck size={18} />
-            <span className="text-[10px] font-bold tracking-widest uppercase">
-              Operador Acreditado • Sello: {user?.sello_editorial || 'Autor Independiente'}
-            </span>
-          </div>
-          <h2 className="text-4xl md:text-5xl font-serif italic tracking-tight text-[#1d1d1f]">
-            Aduana Editorial.
-          </h2>
-          <div className="h-px w-full bg-[#d2d2d7]/50 mt-6"></div>
-        </header>
+  const studioFrame = children => (
+    <div className="w-full min-h-screen bg-[#fbfbfd] pb-24">
+      <StudioStyles/>
+      <EditorialInvitations invitations={invitations} onRespond={respondToInvitation}/>
+      <div className="max-w-6xl mx-auto pt-10 px-6 md:px-10">
+        <EditorialStudioHeader
+          editorials={editorials}
+          activeEditorial={activeEditorial}
+          activeSection={studioSection}
+          onSelectEditorial={selectEditorial}
+          onSelectSection={setStudioSection}
+        />
+        {children}
+      </div>
+    </div>
+  );
 
+  if (studioSection === 'profile') {
+    return studioFrame(<EditorialProfileSettings editorial={activeEditorial} onUpdated={updateEditorial} previewMode={previewMode}/>);
+  }
+
+  if (studioSection === 'team') {
+    return studioFrame(<EditorialTeamManager editorial={activeEditorial} onEditorialRefresh={refreshEditorials} previewMode={previewMode}/>);
+  }
+
+  // ================= RENDER INTERFAZ B (EDITORES) =================
+  return studioFrame(
+      <div className="max-w-5xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           
           <div className="lg:col-span-2">
-            {publicacionExitosa ? (
+            {!puedePublicar ? (
+              <div className="border border-[#d2d2d7] rounded-md p-8 bg-white">
+                <ShieldCheck size={24} className="text-[#86868b]"/>
+                <h2 className="text-xl font-bold mt-4">Acceso de revisión</h2>
+                <p className="text-sm text-[#86868b] mt-2 leading-relaxed">Puedes consultar el archivo y el equipo. Para cargar páginas necesitas el rol Colaborador, Editor, Administrador o Propietario.</p>
+              </div>
+            ) : publicacionExitosa ? (
               <div className="bg-white border border-[#d2d2d7] rounded-3xl p-12 text-center shadow-sm animate-in fade-in">
                 <div className="w-20 h-20 bg-blue-50 text-[#0066FF] rounded-full flex items-center justify-center mx-auto mb-6">
                   <Send size={32} />
@@ -399,8 +456,8 @@ export default function Publicar() {
                         <label className="block text-[10px] text-[#86868b] uppercase tracking-widest mb-1.5 font-bold">Sello Editorial</label>
                         <input 
                           type="text" required placeholder="Tu marca editorial..."
-                          value={selloPublicacion} onChange={(e) => setSelloPublicacion(e.target.value)}
-                          className="w-full bg-[#f0f5ff] border border-blue-200 text-[#0066FF] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#0066FF] font-bold text-sm outline-none"
+                          value={selloPublicacion} readOnly
+                          className="w-full bg-[#f0f5ff] border border-blue-200 text-[#0066FF] rounded-xl px-4 py-3 font-bold text-sm outline-none"
                         />
                       </div>
                       <div>
@@ -602,7 +659,6 @@ export default function Publicar() {
             </div>
           </div>
 
-        </div>
       </div>
     </div>
   );

@@ -58,19 +58,32 @@ Deno.serve(async (request: Request) => {
   } else if (payload.event === 'edition_submitted') {
     const { data: editionData } = await context.supabase
       .from('contenido')
-      .select('autor_id, titulo, sello_editorial, idioma_original, titulo_i18n')
+      .select('autor_id, editorial_id, titulo, sello_editorial, idioma_original, titulo_i18n')
       .eq('id', payload.edition_id)
       .single();
     const edition = editionData as {
       autor_id: string;
+      editorial_id: string | null;
       titulo: string;
       sello_editorial: string | null;
       idioma_original: string | null;
       titulo_i18n: Record<string, unknown> | null;
     } | null;
 
-    if (!edition || edition.autor_id !== userId || profile.rol !== 'Editor') {
+    if (!edition || edition.autor_id !== userId || !edition.editorial_id) {
       return respond({ error: 'Edition not found' }, 404);
+    }
+
+    const { data: membershipData } = await context.supabase
+      .from('editorial_members')
+      .select('role')
+      .eq('editorial_id', edition.editorial_id)
+      .eq('usuario_id', userId)
+      .eq('status', 'active')
+      .maybeSingle();
+    const membership = membershipData as { role: string } | null;
+    if (!membership || !['owner', 'admin', 'editor', 'collaborator'].includes(membership.role)) {
+      return respond({ error: 'Editorial membership required' }, 403);
     }
 
     const languageCount = edition.titulo_i18n && typeof edition.titulo_i18n === 'object'

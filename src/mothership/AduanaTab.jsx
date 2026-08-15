@@ -178,31 +178,28 @@ export default function AduanaTab() {
     setSelectedItem(null);
 
     try {
-      const { error: userError } = await supabase
-        .from('usuarios')
-        .update({ 
-          rol: 'Editor',
-          sello_editorial: reviewDraft.nombre_noticiero
-        })
-        .eq('id', req.usuario_id);
+      if (reviewDraft.nombre_noticiero !== req.nombre_noticiero || reviewDraft.descripcion !== (req.descripcion || '')) {
+        const { error: correctionError } = await supabase
+          .from('solicitudes_editoriales')
+          .update({ nombre_noticiero: reviewDraft.nombre_noticiero, descripcion: reviewDraft.descripcion })
+          .eq('id', req.id);
+        if (correctionError) throw correctionError;
+      }
 
-      if (userError) throw userError;
-
-      const { error: deleteError } = await supabase
-        .from('solicitudes_editoriales')
-        .delete()
-        .eq('id', req.id);
-
-      if (deleteError) throw deleteError; 
+      const { data: editorial, error: approvalError } = await supabase.rpc('vista_approve_editorial_request', {
+        p_request_id: req.id
+      });
+      if (approvalError) throw approvalError;
+      const approvedEditorial = Array.isArray(editorial) ? editorial[0] : editorial;
 
       await enviarLogDiscord(
-        "✨ NUEVO SELLO EDITORIAL AUTORIZADO",
-        `La solicitud para el noticiero **"${reviewDraft.nombre_noticiero}"** ha sido concedida.\n\n**Estatus:** Ascendido a **Editor** en la base maestro.`,
+        "✨ NUEVA ORGANIZACIÓN EDITORIAL AUTORIZADA",
+        `La solicitud para **"${approvedEditorial?.nombre || reviewDraft.nombre_noticiero}"** ha sido concedida.\n\n**Estatus:** Organización creada y solicitante registrado como **Propietario**.`,
         255
       );
     } catch (err) {
       console.error("Fallo al autorizar sello en Supabase:", err);
-      alert("Error de privilegios: No se pudo completar el ascenso del usuario.");
+      alert(err.message || "No se pudo crear la organización editorial.");
       setPendingRequests(estadoPrevio);
     }
   };
@@ -473,7 +470,7 @@ export default function AduanaTab() {
 
                   <div className="p-4 bg-yellow-500/5 border border-yellow-500/10 text-yellow-400/80 rounded-xl text-[11px] font-medium leading-normal flex gap-3">
                     <ShieldAlert size={24} className="flex-shrink-0 text-yellow-500" />
-                    <span>Aprobar este registro modificará permanentemente el perfil del ciudadano a <strong>Editor</strong>, otorgándole permisos para inyectar datos al servidor sin restricciones de Aduana.</span>
+                    <span>Aprobar este registro creará una <strong>organización editorial</strong>. El solicitante será su propietario y podrá invitar colaboradores mediante sus GBA ID.</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 pt-2">

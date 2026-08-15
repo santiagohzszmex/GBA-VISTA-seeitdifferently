@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
-export function useEditorialFollow(selloEditorial) {
+export function useEditorialFollow(editorial) {
   const { user } = useAuth();
+  const editorialId = typeof editorial === 'object' ? editorial?.id : null;
+  const selloEditorial = typeof editorial === 'object' ? editorial?.nombre : editorial;
   const [isFollowing, setIsFollowing] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [followersCount, setFollowersCount] = useState(0);
@@ -12,9 +14,9 @@ export function useEditorialFollow(selloEditorial) {
   const refresh = useCallback(async () => {
     if (!selloEditorial) return;
 
-    const { data: countData } = await supabase.rpc('get_editorial_followers_count', {
-      p_sello: selloEditorial
-    });
+    const { data: countData } = editorialId
+      ? await supabase.rpc('get_editorial_followers_count_by_id', { p_editorial_id: editorialId })
+      : await supabase.rpc('get_editorial_followers_count', { p_sello: selloEditorial });
     setFollowersCount(Number(countData) || 0);
 
     if (!user?.id) {
@@ -22,18 +24,20 @@ export function useEditorialFollow(selloEditorial) {
       return;
     }
 
-    const { data, error } = await supabase
+    let followQuery = supabase
       .from('editoriales_seguidas')
       .select('notificar')
-      .eq('usuario_id', user.id)
-      .eq('sello_editorial', selloEditorial)
-      .maybeSingle();
+      .eq('usuario_id', user.id);
+    followQuery = editorialId
+      ? followQuery.eq('editorial_id', editorialId)
+      : followQuery.eq('sello_editorial', selloEditorial);
+    const { data, error } = await followQuery.maybeSingle();
 
     if (!error) {
       setIsFollowing(Boolean(data));
       setNotificationsEnabled(data?.notificar ?? true);
     }
-  }, [selloEditorial, user?.id]);
+  }, [editorialId, selloEditorial, user?.id]);
 
   useEffect(() => {
     refresh();
@@ -46,9 +50,18 @@ export function useEditorialFollow(selloEditorial) {
     setIsFollowing(!previous);
     setFollowersCount(count => Math.max(0, count + (previous ? -1 : 1)));
 
-    const query = previous
-      ? supabase.from('editoriales_seguidas').delete().eq('usuario_id', user.id).eq('sello_editorial', selloEditorial)
-      : supabase.from('editoriales_seguidas').insert({ usuario_id: user.id, sello_editorial: selloEditorial, notificar: true });
+    let query;
+    if (previous) {
+      query = supabase.from('editoriales_seguidas').delete().eq('usuario_id', user.id);
+      query = editorialId ? query.eq('editorial_id', editorialId) : query.eq('sello_editorial', selloEditorial);
+    } else {
+      query = supabase.from('editoriales_seguidas').insert({
+        usuario_id: user.id,
+        editorial_id: editorialId,
+        sello_editorial: selloEditorial,
+        notificar: true
+      });
+    }
     const { error } = await query;
 
     if (error) {
@@ -66,11 +79,12 @@ export function useEditorialFollow(selloEditorial) {
     if (!user?.id || !isFollowing || loading) return;
     const next = !notificationsEnabled;
     setNotificationsEnabled(next);
-    const { error } = await supabase
+    let updateQuery = supabase
       .from('editoriales_seguidas')
       .update({ notificar: next })
-      .eq('usuario_id', user.id)
-      .eq('sello_editorial', selloEditorial);
+      .eq('usuario_id', user.id);
+    updateQuery = editorialId ? updateQuery.eq('editorial_id', editorialId) : updateQuery.eq('sello_editorial', selloEditorial);
+    const { error } = await updateQuery;
     if (error) setNotificationsEnabled(!next);
   };
 
