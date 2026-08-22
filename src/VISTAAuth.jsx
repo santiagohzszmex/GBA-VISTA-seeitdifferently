@@ -3,6 +3,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, ChevronLeft, ArrowRight, Loader2, AlertCircle, KeyRound, LogIn, UserPlus } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
+const gbaIdExists = async handle => {
+  const { data, error } = await supabase.rpc('vista_gba_id_exists', { p_handle: handle });
+  if (!error) return Boolean(data);
+
+  const missingFunction = ['PGRST202', '42883'].includes(error.code)
+    || error.message?.toLowerCase().includes('schema cache')
+    || error.message?.toLowerCase().includes('could not find the function');
+  if (!missingFunction) throw error;
+
+  // Compatibilidad temporal mientras la migración de seguridad llega a producción.
+  const { data: legacyMatch, error: legacyError } = await supabase
+    .from('usuarios')
+    .select('nombre')
+    .ilike('nombre', handle.trim())
+    .maybeSingle();
+  if (legacyError) throw legacyError;
+  return Boolean(legacyMatch);
+};
+
 function AllianceLogo() {
   return (
     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="hover:scale-105 transition-transform duration-300">
@@ -108,8 +127,8 @@ export default function VISTAAuth({ onLogin }) {
             setLoading(false);
             return;
           }
-          const { data } = await supabase.from('usuarios').select('nombre').ilike('nombre', nombre.trim()).maybeSingle();
-          if (data) {
+          const exists = await gbaIdExists(nombre);
+          if (exists) {
             setError('Este GBA ID ya está en uso.');
             setLoading(false);
             return;
@@ -117,8 +136,8 @@ export default function VISTAAuth({ onLogin }) {
           setStep('profile');
         } 
         else if (flow === 'recover') {
-          const { data } = await supabase.from('usuarios').select('nombre').ilike('nombre', nombre.trim()).maybeSingle();
-          if (!data) {
+          const exists = await gbaIdExists(nombre);
+          if (!exists) {
             setError('Este GBA ID no existe.');
             setLoading(false);
             return;
