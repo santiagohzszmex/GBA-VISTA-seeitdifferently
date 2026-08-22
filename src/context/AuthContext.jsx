@@ -8,6 +8,22 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let lastActivityUserId = null;
+    let lastActivityAt = 0;
+    const activityIntervalMs = 10 * 60 * 1000;
+
+    const recordActivity = async (userId) => {
+      if (!userId) return;
+      const now = Date.now();
+      if (lastActivityUserId === userId && now - lastActivityAt < activityIntervalMs) return;
+
+      const { error } = await supabase.rpc('vista_record_user_activity');
+      if (!error) {
+        lastActivityUserId = userId;
+        lastActivityAt = now;
+      }
+    };
+
     // 1. Buscar sesión guardada al abrir la página (Persistencia Automática)
     const fetchSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -28,6 +44,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           // Si todo está bien, seteamos al usuario correctamente
           setUser(userData);
+          void recordActivity(session.user.id);
         }
       }
       setLoading(false);
@@ -49,13 +66,25 @@ export const AuthProvider = ({ children }) => {
           setUser(null);
         } else {
           setUser(userData);
+          void recordActivity(session.user.id);
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        lastActivityUserId = null;
+        lastActivityAt = 0;
       }
     });
 
+    const recordVisibleSession = async () => {
+      if (document.visibilityState !== 'visible') return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) void recordActivity(session.user.id);
+    };
+
+    document.addEventListener('visibilitychange', recordVisibleSession);
+
     return () => {
+      document.removeEventListener('visibilitychange', recordVisibleSession);
       authListener.subscription.unsubscribe();
     };
   }, []);
