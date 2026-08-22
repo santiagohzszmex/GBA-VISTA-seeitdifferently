@@ -92,7 +92,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       ========================================================= */}
       <div 
         ref={sidebarRef}
-        className="hidden md:flex fixed left-0 top-0 h-screen w-24 hover:w-64 flex-col bg-[#fbfbfd]/90 backdrop-blur-2xl border-r border-[#d2d2d7]/50 z-[900] transition-all duration-500 group overflow-visible shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
+        className="hidden md:flex fixed left-0 top-0 h-screen w-24 hover:w-64 flex-col bg-[#fbfbfd]/90 backdrop-blur-2xl border-r border-[#d2d2d7]/50 z-[1300] transition-all duration-500 group overflow-visible shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
       >
         <div className="p-8 mb-4 flex items-center gap-5">
           <div className="min-w-[34px] flex items-center justify-center">
@@ -213,7 +213,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       {showMenu && (
         <div 
           ref={menuRef}
-          className="fixed left-4 right-4 bottom-24 md:left-28 md:right-auto md:bottom-6 md:w-72 max-h-[calc(100vh-7rem)] md:max-h-[calc(100vh-3rem)] overflow-y-auto bg-white/95 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.12)] p-2 animate-in slide-in-from-bottom-4 duration-300 z-[1000] text-[#1d1d1f] border border-[#d2d2d7]/60"
+          className="fixed left-4 right-4 bottom-24 md:left-28 md:right-auto md:bottom-6 md:w-72 max-h-[calc(100vh-7rem)] md:max-h-[calc(100vh-3rem)] overflow-y-auto bg-white/95 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.12)] p-2 animate-in slide-in-from-bottom-4 duration-300 z-[1400] text-[#1d1d1f] border border-[#d2d2d7]/60"
         >
           {/* IDENTIDAD */}
           <div className="p-5 bg-gradient-to-b from-white to-[#f5f5f7]/50 rounded-[2rem] border border-[#d2d2d7]/30 shadow-sm mb-2">

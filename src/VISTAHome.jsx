@@ -17,6 +17,7 @@ import PerfilUsuarioView from './views/PerfilUsuario';
 import NetworkView from './views/NetworkPreview';
 import WelcomeOverlay from './components/onboarding/WelcomeOverlay';
 import SiteFooter from './components/common/SiteFooter';
+import RadioLynexus from './views/RadioLynexus';
 
 const KeynotesView = lazy(() => import('./views/Keynotes'));
 
@@ -38,8 +39,9 @@ export default function VISTAHome() {
   const sharedKeynoteSlug = new URLSearchParams(window.location.search).get('keynote');
   const sharedUpdateId = new URLSearchParams(window.location.search).get('update');
   const sharedNetwork = new URLSearchParams(window.location.search).get('network') === '1';
+  const sharedRadioShortcode = new URLSearchParams(window.location.search).get('radio');
   const studioPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get('studio-preview') === '1';
-  const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : sharedKeynoteSlug ? 'keynotes' : sharedNetwork ? 'network' : studioPreview ? 'publicar' : 'home');
+  const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : sharedKeynoteSlug ? 'keynotes' : sharedRadioShortcode ? 'radio' : sharedNetwork ? 'network' : studioPreview ? 'publicar' : 'home');
 
   // Estados locales para el control de overlays e interacciones globales
   const [playingVideo, setPlayingVideo] = useState(null);
@@ -49,7 +51,7 @@ export default function VISTAHome() {
   const [focusedKeynoteSlug, setFocusedKeynoteSlug] = useState(sharedKeynoteSlug || null);
   const [showWelcome, setShowWelcome] = useState(() => window.localStorage.getItem('vista_show_welcome') === '1');
   const [studioInitialSection, setStudioInitialSection] = useState('publish');
-  const showsSiteFooter = !['mothership', 'workspace', 'publicar', 'settings', 'notifications'].includes(activeTab);
+  const showsSiteFooter = !['mothership', 'workspace', 'publicar', 'settings', 'notifications', 'radio'].includes(activeTab);
 
   // Manejadores de acciones que serán inyectados a las vistas hijas
   const handlePlayVideo = (youtubeId) => {
@@ -94,6 +96,18 @@ export default function VISTAHome() {
     setActiveTab('perfil_editorial');
   };
 
+  const handleOpenRadio = station => {
+    const shortcode = station?.station?.shortcode || station?.shortcode || sharedRadioShortcode || 'radio_lynexus';
+    replaceVistaLocation('radio', shortcode);
+    setActiveTab('radio');
+  };
+
+  React.useEffect(() => {
+    const handleGlobalRadioNavigation = event => handleOpenRadio(event.detail);
+    window.addEventListener('vista:navigate-radio', handleGlobalRadioNavigation);
+    return () => window.removeEventListener('vista:navigate-radio', handleGlobalRadioNavigation);
+  }, []);
+
   const handleSidebarNavigation = tab => {
     if (tab === 'publicar') setStudioInitialSection('publish');
     setFocusedNewsId(null);
@@ -112,6 +126,7 @@ export default function VISTAHome() {
             onPlay={handlePlayVideo} 
             onNavigateNews={handleNavigateNews}
             onNavigateKeynotes={handleNavigateKeynotes}
+            onOpenRadio={handleOpenRadio}
             initialCampaignId={sharedCampaignId}
             initialUpdateId={sharedUpdateId}
           />
@@ -134,6 +149,8 @@ export default function VISTAHome() {
         );
       case 'network':
         return <NetworkView onOpenStudio={handleOpenNetworkStudio} onOpenEditorial={handleOpenEditorial} />;
+      case 'radio':
+        return <RadioLynexus />;
       case 'perfil_editorial': // <-- Nueva ruta interna para la prensa indexada
         return (
           <PerfilEditorialView 
@@ -176,6 +193,7 @@ export default function VISTAHome() {
             onPlay={handlePlayVideo} 
             onNavigateNews={handleNavigateNews}
             onNavigateKeynotes={handleNavigateKeynotes}
+            onOpenRadio={handleOpenRadio}
             initialCampaignId={sharedCampaignId}
             initialUpdateId={sharedUpdateId}
           />
@@ -189,6 +207,7 @@ export default function VISTAHome() {
             onPlay={handlePlayVideo} 
             onNavigateNews={handleNavigateNews}
             onNavigateKeynotes={handleNavigateKeynotes}
+            onOpenRadio={handleOpenRadio}
             initialCampaignId={sharedCampaignId}
             initialUpdateId={sharedUpdateId}
           />

@@ -7,6 +7,7 @@ import { useLibrary } from '../hooks/useLibrary';
 import ContentRow from '../components/ContentRow';
 import KeynoteSpotlight from '../components/keynotes/KeynoteSpotlight';
 import ActivityFeed from '../components/social/ActivityFeed';
+import HomeRadioStrip from '../components/radio/HomeRadioStrip';
 import { CampaignDetailInline, CampaignLikeButton, getCampaignAudioAsset, getCampaignPrimaryAsset, getCampaignVideoAsset } from '../components/campaigns/CampaignShowcase';
 import { ArrowUpRight, ChevronDown, Compass, Film, Megaphone, Music, Play, Plus, Check, Info, Share2, Users, Volume2, VolumeX } from 'lucide-react';
 
@@ -312,7 +313,7 @@ const CampaignHeroSection = ({ campaign, onOpen, onScrollNext, isOpen }) => {
 // ==========================================
 // VISTA HOME PRINCIPAL (Controlador)
 // ==========================================
-export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigateKeynotes, initialCampaignId = null, initialUpdateId = null }) {
+export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigateKeynotes, onOpenRadio, initialCampaignId = null, initialUpdateId = null }) {
   const { getAllContent, getTop10, loading } = useContent();
   const { fetchActiveCampaigns, trackCampaignEvent } = useCampaigns();
   const { fetchPublishedKeynotes } = useKeynotes();
@@ -542,6 +543,8 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
           <Megaphone size={16} /> Volver a campaña
         </button>
       )}
+
+      <HomeRadioStrip onOpen={onOpenRadio} />
 
       <section className="max-w-[1500px] mx-auto px-6 md:px-12 pt-12 md:pt-16 relative z-20">
         <div className="flex flex-col sm:flex-row sm:items-end gap-5 pb-5 border-b border-[#d2d2d7]">

@@ -6,6 +6,8 @@ import PerfilUsuario from './views/PerfilUsuario';
 import PerfilEditorial from './views/news/PerfilEditorial';
 import WorkspaceView from './views/Workspace';
 import NetworkPreview from './views/NetworkPreview';
+import GlobalRadioPlayer from './components/radio/GlobalRadioPlayer';
+import { RadioProvider } from './radio/RadioContext';
 
 // Creamos un sub-componente para poder "sintonizar" el contexto
 function MainApp() {
@@ -33,10 +35,13 @@ function MainApp() {
 
 function App() {
   return (
-    // AuthProvider envuelve todo el edificio
-    <AuthProvider>
-      <MainApp />
-    </AuthProvider>
+    <RadioProvider>
+      {/* AuthProvider envuelve todo el edificio */}
+      <AuthProvider>
+        <MainApp />
+        <GlobalRadioPlayer />
+      </AuthProvider>
+    </RadioProvider>
   );
 }
 
