@@ -49,7 +49,7 @@ export default function VISTAHome() {
   const [selloSeleccionado, setSelloSeleccionado] = useState(''); // Estado para enrutar el Perfil Editorial
   const [focusedNewsId, setFocusedNewsId] = useState(sharedEditionId || null);
   const [focusedKeynoteSlug, setFocusedKeynoteSlug] = useState(sharedKeynoteSlug || null);
-  const [showWelcome, setShowWelcome] = useState(() => window.localStorage.getItem('vista_show_welcome') === '1');
+  const showWelcome = user?.onboarding_completado !== true;
   const [studioInitialSection, setStudioInitialSection] = useState('publish');
   const showsSiteFooter = !['mothership', 'workspace', 'publicar', 'settings', 'notifications', 'radio'].includes(activeTab);
 
@@ -253,7 +253,6 @@ export default function VISTAHome() {
 
       {showWelcome && (
         <WelcomeOverlay
-          onClose={() => setShowWelcome(false)}
           setActiveTab={handleSidebarNavigation}
           onSelectContent={handleSelectMovieInfo}
         />

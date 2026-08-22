@@ -204,8 +204,6 @@ export default function VISTAAuth({ onLogin }) {
         });
 
         if (signUpError) throw signUpError;
-        window.localStorage.setItem('vista_show_welcome', '1');
-
         const profilePayload = {
           frase_seguridad: frase.trim().toLowerCase(),
           nombre_publico: nombre.trim(),

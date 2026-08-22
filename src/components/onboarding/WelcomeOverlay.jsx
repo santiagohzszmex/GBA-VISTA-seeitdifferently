@@ -10,7 +10,6 @@ import {
   Newspaper,
   Sparkles,
   UserRound,
-  X,
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
@@ -97,7 +96,7 @@ function DiscoveryEdition({ item, onOpen }) {
   );
 }
 
-export default function WelcomeOverlay({ onClose, setActiveTab, onSelectContent }) {
+export default function WelcomeOverlay({ setActiveTab, onSelectContent }) {
   const { user, refreshUser } = useAuth();
   const [step, setStep] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
@@ -106,6 +105,8 @@ export default function WelcomeOverlay({ onClose, setActiveTab, onSelectContent 
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState('');
+  const [completing, setCompleting] = useState(false);
+  const [completionError, setCompletionError] = useState('');
   const contentRef = useRef(null);
   const [profile, setProfile] = useState({
     bio: user?.bio || '',
@@ -203,18 +204,36 @@ export default function WelcomeOverlay({ onClose, setActiveTab, onSelectContent 
   };
 
   const finish = async (destination = 'home') => {
-    window.localStorage.removeItem('vista_show_welcome');
-    if (user?.id) {
-      await supabase.from('usuarios').update({ onboarding_completado: true }).eq('id', user.id);
-      await refreshUser();
+    if (!user?.id || step !== ONBOARDING_STEPS.length - 1 || completing) return false;
+
+    setCompleting(true);
+    setCompletionError('');
+    const { data, error } = await supabase
+      .from('usuarios')
+      .update({ onboarding_completado: true })
+      .eq('id', user.id)
+      .select('onboarding_completado')
+      .single();
+
+    if (error || data?.onboarding_completado !== true) {
+      setCompletionError('No pudimos completar tu bienvenida. Intenta de nuevo.');
+      setCompleting(false);
+      return false;
+    }
+
+    const refreshedUser = await refreshUser();
+    if (refreshedUser?.onboarding_completado !== true) {
+      setCompletionError('Guardamos el avance, pero no pudimos confirmar tu bienvenida. Intenta de nuevo.');
+      setCompleting(false);
+      return false;
     }
     setActiveTab(destination);
-    onClose();
+    return true;
   };
 
   const openContent = async item => {
-    await finish('home');
-    onSelectContent?.(item);
+    const completed = await finish('home');
+    if (completed) onSelectContent?.(item);
   };
 
   return (
@@ -232,21 +251,18 @@ export default function WelcomeOverlay({ onClose, setActiveTab, onSelectContent 
           )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-bold">@{user?.nombre || 'gba-id'}</p>
-            <p className="text-[10px] text-[#86868b]">{ONBOARDING_STEPS[step]}</p>
+            <p className="text-[10px] text-[#86868b]">{ONBOARDING_STEPS[step]} · Paso {step + 1} de {ONBOARDING_STEPS.length}</p>
           </div>
           <div className="hidden items-center gap-2 sm:flex" aria-label={`${step + 1} de ${ONBOARDING_STEPS.length}`}>
             {ONBOARDING_STEPS.map((label, index) => <span key={label} className={`h-1.5 w-10 rounded-full ${index <= step ? 'bg-[#0066FF]' : 'bg-[#d2d2d7]'}`}/>) }
           </div>
-          <button type="button" onClick={() => finish('home')} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#e8e8ed]" title="Continuar después">
-            <X size={17}/>
-          </button>
         </header>
 
         <div ref={contentRef} className="overflow-y-auto px-5 py-7 md:px-10 md:py-9">
           {step === 0 && (
             <section className="mx-auto max-w-2xl">
               <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-md bg-blue-50 text-[#0066FF]"><UserRound size={21}/></div>
-              <p className="mb-2 text-[10px] font-black uppercase text-[#0066FF]">Tu GBA ID ya está listo</p>
+              <p className="mb-2 text-[10px] font-black uppercase text-[#0066FF]">Tu perfil en VISTA</p>
               <h1 className="font-serif text-4xl font-bold leading-tight md:text-5xl">Haz que te reconozcan.</h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-[#68686d]">Cuenta qué haces en Empyria. Esto aparecerá cuando publiques, colabores o alguien visite tu perfil.</p>
 
@@ -318,11 +334,12 @@ export default function WelcomeOverlay({ onClose, setActiveTab, onSelectContent 
               )}
 
               <div className="mt-8 flex flex-col-reverse gap-3 border-t border-[#d2d2d7]/70 pt-6 sm:flex-row sm:justify-end">
-                <button type="button" onClick={() => finish('news')} className="h-12 px-5 text-sm font-bold text-[#68686d] hover:text-[#1d1d1f]">Explorar el Kiosco</button>
-                <button type="button" onClick={() => finish('home')} className="flex h-12 items-center justify-center gap-2 rounded-md bg-[#0066FF] px-6 text-sm font-bold text-white hover:bg-[#0052cc]">
-                  Entrar a mi VISTA <ArrowRight size={17}/>
+                <button type="button" onClick={() => finish('news')} disabled={completing} className="h-12 px-5 text-sm font-bold text-[#68686d] hover:text-[#1d1d1f] disabled:opacity-50">Explorar el Kiosco</button>
+                <button type="button" onClick={() => finish('home')} disabled={completing} className="flex h-12 items-center justify-center gap-2 rounded-md bg-[#0066FF] px-6 text-sm font-bold text-white hover:bg-[#0052cc] disabled:opacity-50">
+                  {completing ? <Loader2 size={17} className="animate-spin"/> : <ArrowRight size={17}/>} Entrar a mi VISTA
                 </button>
               </div>
+              {completionError && <p className="mt-4 text-right text-xs font-bold text-red-600">{completionError}</p>}
             </section>
           )}
         </div>
