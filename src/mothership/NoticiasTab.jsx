@@ -20,8 +20,21 @@ import {
   ChevronDown,
   Maximize2,
   Replace,
-  Images
+  Images,
+  Film,
+  Clock3,
+  UploadCloud
 } from 'lucide-react';
+
+const toDateTimeLocal = value => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+};
+
+const toIsoDate = value => value ? new Date(value).toISOString() : null;
 
 const parseStoredPages = (value) => {
   if (!value) return [];
@@ -148,6 +161,8 @@ export default function NoticiasTab() {
 
   // Estados para archivos físicos (Idioma Base)
   const [portadaArchivo, setPortadaArchivo] = useState(null);
+  const [gimgVideoArchivo, setGimgVideoArchivo] = useState(null);
+  const [gimgVideoPortadaArchivo, setGimgVideoPortadaArchivo] = useState(null);
   const [paginas, setPaginas] = useState([]);
   const [previewPage, setPreviewPage] = useState(null);
 
@@ -160,6 +175,12 @@ export default function NoticiasTab() {
     portada_url: '', 
     enlace_pdf: '',  
     youtube_id: '',
+    gimg_video_url: '',
+    gimg_video_portada_url: '',
+    gimg_video_titulo: '',
+    gimg_video_descripcion: '',
+    gimg_video_estreno_at: '',
+    publicar_at: '',
     idioma_original: 'es',
     categoria_editorial: 'comunidad'
   };
@@ -231,6 +252,12 @@ export default function NoticiasTab() {
       portada_url: item.poster_url || item.banner_url || '',
       enlace_pdf: item.enlace_pdf || '', 
       youtube_id: item.youtube_id || '',
+      gimg_video_url: item.gimg_video_url || '',
+      gimg_video_portada_url: item.gimg_video_portada_url || '',
+      gimg_video_titulo: item.gimg_video_titulo || '',
+      gimg_video_descripcion: item.gimg_video_descripcion || '',
+      gimg_video_estreno_at: toDateTimeLocal(item.gimg_video_estreno_at),
+      publicar_at: toDateTimeLocal(item.publicar_at),
       idioma_original: baseLang,
       categoria_editorial: item.categoria_editorial || 'comunidad'
     });
@@ -254,6 +281,8 @@ export default function NoticiasTab() {
     
     setTraducciones(loadedTraducciones);
     setPortadaArchivo(null);
+    setGimgVideoArchivo(null);
+    setGimgVideoPortadaArchivo(null);
     setPaginas(existingPages(storedBasePages));
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -281,6 +310,8 @@ export default function NoticiasTab() {
 
     try {
       let finalPortadaUrl = formData.portada_url;
+      let finalGimgVideoUrl = formData.gimg_video_url;
+      let finalGimgVideoPortadaUrl = formData.gimg_video_portada_url;
       let finalPaginas = [];
 
       const isComunidad = editingItem ? editingItem.es_comunidad : false;
@@ -288,6 +319,26 @@ export default function NoticiasTab() {
       const sanitizedSello = selloStr.replace(/[^a-zA-Z0-9]/g, '_');
       const folderPath = `Mothership_Prensa/${sanitizedSello}/${Date.now()}`;
 
+      if (!isComunidad && gimgVideoArchivo) {
+        setStatus({ type: 'info', msg: 'Subiendo presentación de Global Insight...' });
+        finalGimgVideoUrl = await uploadToCloudinary(gimgVideoArchivo, `${folderPath}/Premiere`);
+        if (!finalGimgVideoUrl) throw new Error('No se pudo subir el video de la presentación.');
+      }
+
+      if (!isComunidad && gimgVideoPortadaArchivo) {
+        setStatus({ type: 'info', msg: 'Subiendo imagen previa del estreno...' });
+        finalGimgVideoPortadaUrl = await uploadToCloudinary(gimgVideoPortadaArchivo, `${folderPath}/Premiere`);
+        if (!finalGimgVideoPortadaUrl) throw new Error('No se pudo subir la imagen previa.');
+      }
+
+      const videoReleaseAt = toIsoDate(formData.gimg_video_estreno_at);
+      const editionReleaseAt = toIsoDate(formData.publicar_at);
+      if (!isComunidad && finalGimgVideoUrl && !videoReleaseAt) {
+        throw new Error('Indica la fecha y hora en que se estrenará el video.');
+      }
+      if (!isComunidad && finalGimgVideoUrl && editionReleaseAt && new Date(videoReleaseAt) >= new Date(editionReleaseAt)) {
+        throw new Error('El estreno del video debe ocurrir antes de publicar la edición.');
+      }
       // 1. Subida del Idioma Base (Portada)
       if (portadaArchivo) {
         setStatus({ type: 'info', msg: 'Subiendo ilustración principal...' });
@@ -355,6 +406,12 @@ export default function NoticiasTab() {
         banner_url: finalPortadaUrl,
         enlace_pdf: finalPaginasJsonStr || null, 
         youtube_id: formData.youtube_id || null,
+        gimg_video_url: isComunidad ? null : (finalGimgVideoUrl || null),
+        gimg_video_portada_url: isComunidad ? null : (finalGimgVideoPortadaUrl || null),
+        gimg_video_titulo: isComunidad ? null : (formData.gimg_video_titulo || null),
+        gimg_video_descripcion: isComunidad ? null : (formData.gimg_video_descripcion || null),
+        gimg_video_estreno_at: isComunidad ? null : videoReleaseAt,
+        publicar_at: isComunidad ? null : editionReleaseAt,
         es_comunidad: isComunidad,
         categoria: editingItem ? editingItem.categoria : 'Noticia',
         categoria_editorial: formData.categoria_editorial,
@@ -408,6 +465,8 @@ export default function NoticiasTab() {
     setEditingItem(null);
     setFormData(initialFormState);
     setPortadaArchivo(null);
+    setGimgVideoArchivo(null);
+    setGimgVideoPortadaArchivo(null);
     paginas.forEach((page) => {
       if (page.type === 'file') URL.revokeObjectURL(page.preview);
     });
@@ -515,6 +574,49 @@ export default function NoticiasTab() {
                 label="Paginas del documento base"
               />
             </div>
+
+            {(!editingItem || !editingItem.es_comunidad) && (
+              <div className="space-y-5 p-5 bg-black/40 rounded-2xl border border-blue-500/20">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest flex items-center gap-1.5"><Film size={13}/>Presentación de Global Insight</p>
+                  <p className="text-[10px] text-neutral-500 mt-1.5 leading-relaxed">Adjunta un video a esta misma edición y programa su estreno antes de liberar las páginas.</p>
+                </div>
+
+                <label className="flex items-center justify-center gap-3 min-h-20 border border-white/10 border-dashed rounded-xl cursor-pointer hover:bg-white/5 transition-colors px-4 text-center">
+                  <UploadCloud size={20} className={gimgVideoArchivo || formData.gimg_video_url ? 'text-blue-400' : 'text-neutral-600'}/>
+                  <span className="text-xs font-bold text-white/80 truncate">{gimgVideoArchivo?.name || (formData.gimg_video_url ? 'Sustituir video actual' : 'Seleccionar video')}</span>
+                  <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={event => setGimgVideoArchivo(event.target.files?.[0] || null)} className="hidden"/>
+                </label>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Título del video</label>
+                    <input type="text" name="gimg_video_titulo" placeholder="Ej. Presentación oficial de la Edición 1" value={formData.gimg_video_titulo} onChange={handleChange} className="w-full bg-transparent border-b border-white/10 p-2 text-sm font-bold outline-none focus:border-blue-500"/>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Descripción breve</label>
+                    <textarea name="gimg_video_descripcion" rows="2" placeholder="Texto que aparecerá en el coverflow antes de la edición." value={formData.gimg_video_descripcion} onChange={handleChange} className="w-full bg-transparent border-b border-white/10 p-2 text-xs resize-none outline-none focus:border-blue-500"/>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1 flex items-center gap-1"><Clock3 size={11}/>Estreno del video</label>
+                    <input type="datetime-local" name="gimg_video_estreno_at" value={formData.gimg_video_estreno_at} onChange={handleChange} className="w-full bg-transparent border-b border-white/10 p-2 text-xs outline-none focus:border-blue-500 [color-scheme:dark]"/>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1 flex items-center gap-1"><Clock3 size={11}/>Publicación de la edición</label>
+                    <input type="datetime-local" name="publicar_at" value={formData.publicar_at} onChange={handleChange} className="w-full bg-transparent border-b border-white/10 p-2 text-xs outline-none focus:border-blue-500 [color-scheme:dark]"/>
+                  </div>
+                </div>
+
+                <label className="flex items-center justify-center gap-3 min-h-16 border border-white/10 border-dashed rounded-xl cursor-pointer hover:bg-white/5 transition-colors px-4 text-center">
+                  <ImageIcon size={18} className={gimgVideoPortadaArchivo || formData.gimg_video_portada_url ? 'text-blue-400' : 'text-neutral-600'}/>
+                  <span className="text-[11px] font-bold text-white/70 truncate">{gimgVideoPortadaArchivo?.name || (formData.gimg_video_portada_url ? 'Sustituir portada del video' : 'Portada del video (opcional)')}</span>
+                  <input type="file" accept="image/*" onChange={event => setGimgVideoPortadaArchivo(event.target.files?.[0] || null)} className="hidden"/>
+                </label>
+              </div>
+            )}
 
             {/* =========================================================
                 NUEVO BLOQUE: TRADUCCIONES DINÁMICAS (EN LÍNEA)
