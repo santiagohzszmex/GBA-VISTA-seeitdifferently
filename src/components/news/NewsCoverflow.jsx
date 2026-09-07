@@ -11,6 +11,8 @@ import CreditsPanel from '../social/CreditsPanel';
 import ConversationPanel from '../social/ConversationPanel';
 
 const FLIP_DURATION = 700; // ms — misma referencia usada en NewsCard, para consistencia visual
+const AUTO_ADVANCE_DELAY = 8000;
+const INTERACTION_PAUSE_DELAY = 12000;
 
 const parseReleaseTime = value => {
   if (!value) return null;
@@ -156,8 +158,16 @@ function ExpandedPanel({ item, content, onClose, now }) {
           )}
 
           {premiere.isPremierePhase && (
-            <div className="max-w-4xl mx-auto w-full border-t border-white/10 pt-7 text-center">
+            <div className="max-w-4xl mx-auto w-full border-t border-white/10 pt-7 text-center flex flex-col items-center gap-4">
               <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/45"><CalendarDays size={14}/>La edición completa estará disponible {formatReleaseDate(item.publicar_at)}</span>
+              <button
+                type="button"
+                onClick={shareEdition}
+                className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2.5 rounded-full text-white/90 transition-all active:scale-95"
+              >
+                {shareStatus === 'idle' ? <Share2 size={16}/> : <Check size={16}/>}
+                <span className="text-xs font-bold">{shareStatus === 'copied' ? 'Enlace copiado' : shareStatus === 'shared' ? 'Compartida' : 'Compartir presentación'}</span>
+              </button>
             </div>
           )}
 
@@ -389,7 +399,13 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
   const [activeIndex, setActiveIndex] = useState(0);
   const [coverflowItems, setCoverflowItems] = useState([]);
   const [expanded, setExpanded] = useState(false);
+  const [isPointerInside, setIsPointerInside] = useState(false);
+  const [hasFocusWithin, setHasFocusWithin] = useState(false);
+  const [isInteractionPaused, setIsInteractionPaused] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(() => typeof document === 'undefined' || document.visibilityState === 'visible');
+  const [isInViewport, setIsInViewport] = useState(true);
   const stageRef = useRef(null);
+  const interactionTimerRef = useRef(null);
   const [clock, setClock] = useState(() => Date.now());
   const now = nowOverride ?? clock;
 
@@ -428,6 +444,32 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
     }
   }, [news, focusedNewsId]);
 
+  useEffect(() => {
+    const handleVisibility = () => setIsPageVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  useEffect(() => {
+    const node = stageRef.current;
+    if (!node || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsInViewport(entry.isIntersecting && entry.intersectionRatio >= 0.45);
+    }, { threshold: [0, 0.45, 0.75] });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => () => window.clearTimeout(interactionTimerRef.current), []);
+
+  const pauseForInteraction = useCallback(() => {
+    setIsInteractionPaused(true);
+    window.clearTimeout(interactionTimerRef.current);
+    interactionTimerRef.current = window.setTimeout(() => {
+      setIsInteractionPaused(false);
+    }, INTERACTION_PAUSE_DELAY);
+  }, []);
+
   const nextSlide = useCallback(() => {
     if (expanded) return; 
     setActiveIndex((current) => (current === coverflowItems.length - 1 ? 0 : current + 1));
@@ -443,14 +485,38 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
     setActiveIndex(idx);
   }, [expanded]);
 
-  // Auto-Play
+  // Recorre una sola vez el contenido y solo mientras el usuario está realmente inactivo.
   useEffect(() => {
-    if (expanded) return;
-    const timer = setInterval(() => {
-      nextSlide();
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [nextSlide, expanded]);
+    const shouldPause = expanded
+      || coverflowItems.length < 2
+      || activeIndex >= coverflowItems.length - 1
+      || isPointerInside
+      || hasFocusWithin
+      || isInteractionPaused
+      || !isPageVisible
+      || !isInViewport;
+    if (shouldPause) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setActiveIndex(current => Math.min(current + 1, coverflowItems.length - 1));
+    }, AUTO_ADVANCE_DELAY);
+    return () => window.clearTimeout(timer);
+  }, [activeIndex, coverflowItems.length, expanded, hasFocusWithin, isInViewport, isInteractionPaused, isPageVisible, isPointerInside]);
+
+  const handleNext = useCallback(() => {
+    pauseForInteraction();
+    nextSlide();
+  }, [nextSlide, pauseForInteraction]);
+
+  const handlePrevious = useCallback(() => {
+    pauseForInteraction();
+    prevSlide();
+  }, [pauseForInteraction, prevSlide]);
+
+  const handleGoTo = useCallback((idx) => {
+    pauseForInteraction();
+    goTo(idx);
+  }, [goTo, pauseForInteraction]);
 
   const handleOpen = useCallback((item) => {
     const premiere = getGimgPremiereState(item, now);
@@ -472,20 +538,31 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
   const isGimgOfficial = activeItem && (!activeItem.es_comunidad || (activeItem.sello_editorial && activeItem.sello_editorial.toUpperCase().includes('GIMG')));
 
   return (
-    <div ref={stageRef} className="relative w-full flex flex-col items-center bg-gradient-to-b from-[#fbfbfd] to-white">
+    <div
+      ref={stageRef}
+      className="relative w-full flex flex-col items-center bg-gradient-to-b from-[#fbfbfd] to-white"
+      onPointerEnter={(event) => event.pointerType !== 'touch' && setIsPointerInside(true)}
+      onPointerLeave={(event) => event.pointerType !== 'touch' && setIsPointerInside(false)}
+      onPointerDown={pauseForInteraction}
+      onWheel={pauseForInteraction}
+      onFocusCapture={() => setHasFocusWithin(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setHasFocusWithin(false);
+      }}
+    >
 
       {/* Escenario 3D Coverflow */}
       <div className="relative w-full h-[420px] md:h-[560px] flex items-start justify-center pt-4 overflow-hidden group">
 
         <button
-          onClick={prevSlide}
+          onClick={handlePrevious}
           className={`absolute left-4 md:left-12 z-50 p-4 rounded-full bg-white/50 backdrop-blur-md border border-[#d2d2d7] text-[#1d1d1f] transition-all duration-300 hover:scale-110 hover:bg-white shadow-lg ${expanded ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}
         >
           <ChevronLeft size={24} />
         </button>
 
         <button
-          onClick={nextSlide}
+          onClick={handleNext}
           className={`absolute right-4 md:right-12 z-50 p-4 rounded-full bg-white/50 backdrop-blur-md border border-[#d2d2d7] text-[#1d1d1f] transition-all duration-300 hover:scale-110 hover:bg-white shadow-lg ${expanded ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}
         >
           <ChevronRight size={24} />
@@ -512,7 +589,7 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
           {coverflowItems.map((_, idx) => (
             <button
               key={idx}
-              onClick={() => goTo(idx)}
+              onClick={() => handleGoTo(idx)}
               className={`h-1.5 rounded-full transition-all duration-500 ${idx === activeIndex ? 'w-8 bg-[#1d1d1f]' : 'w-2 bg-[#d2d2d7] hover:bg-[#86868b]'}`}
             />
           ))}
@@ -558,11 +635,18 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
             <p className="h-10 text-sm md:text-base text-[#86868b] line-clamp-2 font-medium flex-1 text-center sm:text-right overflow-hidden">
               {activeContent.descripcion}
             </p>
-            {activePremiere.editionReleased && <div className="h-12 flex flex-shrink-0 items-center gap-3">
-              <QuickLikeButton key={activeItem.id} itemId={activeItem.id} />
-              <QuickSaveButton key={`save-${activeItem.id}`} item={activeItem} />
-              <QuickShareButton key={`share-${activeItem.id}`} item={activeItem} content={{ titulo: activeContent.titulo, descripcion: activeContent.descripcion }} />
-            </div>}
+            <div className="h-12 flex flex-shrink-0 items-center gap-3">
+              {activePremiere.editionReleased && <QuickLikeButton key={activeItem.id} itemId={activeItem.id} />}
+              {activePremiere.editionReleased && <QuickSaveButton key={`save-${activeItem.id}`} item={activeItem} />}
+              <QuickShareButton
+                key={`share-${activeItem.id}`}
+                item={activeItem}
+                content={{
+                  titulo: activePremiere.isPremierePhase ? (activeItem.gimg_video_titulo || activeContent.titulo) : activeContent.titulo,
+                  descripcion: activePremiere.isPremierePhase ? (activeItem.gimg_video_descripcion || activeContent.descripcion) : activeContent.descripcion
+                }}
+              />
+            </div>
           </div>
 
           <div className="h-10 flex items-center gap-4">

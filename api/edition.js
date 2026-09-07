@@ -29,7 +29,7 @@ export default async function handler(request, response) {
 
   let edition;
   try {
-    const fields = 'id,titulo,descripcion,poster_url,banner_url,sello_editorial,vistas,likes_count,estado_publicacion';
+    const fields = '*';
     const endpoint = `${supabaseUrl}/rest/v1/contenido?id=eq.${encodeURIComponent(id)}&estado_publicacion=eq.aprobado&select=${fields}&limit=1`;
     const result = await fetch(endpoint, {
       headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` }
@@ -51,12 +51,27 @@ export default async function handler(request, response) {
   const protocol = request.headers['x-forwarded-proto'] || 'https';
   const host = request.headers['x-forwarded-host'] || request.headers.host;
   const origin = `${protocol}://${host}`;
-  const title = compactText(edition.titulo || 'Edicion de VISTA', 100);
-  const description = compactText(edition.descripcion || 'Una publicacion disponible en VISTA.');
-  const image = edition.poster_url || edition.banner_url || '';
+  const now = Date.now();
+  const editionReleaseAt = edition.publicar_at ? new Date(edition.publicar_at).getTime() : null;
+  const videoReleaseAt = edition.gimg_video_estreno_at ? new Date(edition.gimg_video_estreno_at).getTime() : null;
+  const isPremierePhase = Boolean(edition.gimg_video_url && editionReleaseAt && now < editionReleaseAt);
+  const videoReleased = isPremierePhase && (!videoReleaseAt || now >= videoReleaseAt);
+  const title = compactText(
+    (isPremierePhase && edition.gimg_video_titulo) || edition.titulo || 'Edicion de VISTA',
+    100
+  );
+  const description = compactText(
+    (isPremierePhase && edition.gimg_video_descripcion) || edition.descripcion || 'Una publicacion disponible en VISTA.'
+  );
+  const image = (isPremierePhase && edition.gimg_video_portada_url) || edition.poster_url || edition.banner_url || '';
+  const video = videoReleased ? edition.gimg_video_url : '';
   const appUrl = `${origin}/?edition=${encodeURIComponent(edition.id)}`;
   const canonicalUrl = `${origin}/api/edition?id=${encodeURIComponent(edition.id)}`;
   const publisher = compactText(edition.sello_editorial || 'Global Insight Media Group', 80);
+  const releaseLabel = isPremierePhase && editionReleaseAt
+    ? new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'America/Mexico_City' }).format(new Date(editionReleaseAt))
+    : '';
+  const actionLabel = videoReleased ? 'Ver presentacion con GBA ID' : 'Leer con GBA ID';
 
   const html = `<!doctype html>
 <html lang="es">
@@ -66,12 +81,17 @@ export default async function handler(request, response) {
     <title>${escapeHtml(title)} | VISTA</title>
     <meta name="description" content="${escapeHtml(description)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
-    <meta property="og:type" content="article" />
+    <meta property="og:type" content="${video ? 'video.other' : 'article'}" />
     <meta property="og:site_name" content="VISTA | Global Insight Media Group" />
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
     <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
     ${image ? `<meta property="og:image" content="${escapeHtml(image)}" />` : ''}
+    ${video ? `<meta property="og:video" content="${escapeHtml(video)}" />
+    <meta property="og:video:secure_url" content="${escapeHtml(video)}" />
+    <meta property="og:video:type" content="video/mp4" />
+    <meta property="og:video:width" content="1280" />
+    <meta property="og:video:height" content="720" />` : ''}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
@@ -87,8 +107,8 @@ export default async function handler(request, response) {
         <div class="publisher">${escapeHtml(publisher)}</div>
         <h1 class="title">${escapeHtml(title)}</h1>
         <p class="description">${escapeHtml(description)}</p>
-        <div class="meta"><span>${Number(edition.vistas) || 0} lecturas</span><span>${Number(edition.likes_count) || 0} likes</span></div>
-        <a class="open" href="${escapeHtml(appUrl)}">Leer con GBA ID</a>
+        <div class="meta">${isPremierePhase ? `<span>Proxima edicion</span><span>Disponible ${escapeHtml(releaseLabel)}</span>` : `<span>${Number(edition.vistas) || 0} lecturas</span><span>${Number(edition.likes_count) || 0} likes</span>`}</div>
+        <a class="open" href="${escapeHtml(appUrl)}">${escapeHtml(actionLabel)}</a>
       </div>
     </article>
   </body>
