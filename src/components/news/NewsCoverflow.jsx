@@ -405,6 +405,8 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
   const [isPageVisible, setIsPageVisible] = useState(() => typeof document === 'undefined' || document.visibilityState === 'visible');
   const [isInViewport, setIsInViewport] = useState(true);
   const stageRef = useRef(null);
+  const expandedPanelRef = useRef(null);
+  const openedFocusedRef = useRef(null);
   const interactionTimerRef = useRef(null);
   const [clock, setClock] = useState(() => Date.now());
   const now = nowOverride ?? clock;
@@ -523,7 +525,20 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
     if (premiere.isPremierePhase && !premiere.videoReleased) return;
     setExpanded(true);
     if (premiere.editionReleased) onRead && onRead(item);
+    window.setTimeout(() => {
+      expandedPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
   }, [now, onRead]);
+
+  useEffect(() => {
+    if (!focusedNewsId || activeItem?.id !== focusedNewsId || openedFocusedRef.current === focusedNewsId) return undefined;
+    openedFocusedRef.current = focusedNewsId;
+    const premiere = getGimgPremiereState(activeItem, now);
+    if (premiere.isPremierePhase && !premiere.videoReleased) return undefined;
+
+    const frame = window.requestAnimationFrame(() => handleOpen(activeItem));
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeItem, focusedNewsId, handleOpen, now]);
 
   const handleClose = useCallback((e) => {
     e.stopPropagation();
@@ -666,7 +681,7 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
 
       {/* Panel desplegado */}
       {activeItem && expanded && (
-        <div className="w-full px-6 md:px-0 md:max-w-4xl mb-16">
+        <div ref={expandedPanelRef} className="w-full px-6 md:px-0 md:max-w-4xl mb-16 scroll-mt-6">
           <ExpandedPanel item={activeItem} content={activeContent} onClose={handleClose} now={now} />
         </div>
       )}

@@ -29,10 +29,15 @@ export default async function handler(request, response) {
 
   let edition;
   try {
-    const fields = '*';
-    const endpoint = `${supabaseUrl}/rest/v1/contenido?id=eq.${encodeURIComponent(id)}&estado_publicacion=eq.aprobado&select=${fields}&limit=1`;
+    const endpoint = `${supabaseUrl}/rest/v1/rpc/vista_public_edition_preview`;
     const result = await fetch(endpoint, {
-      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` }
+      method: 'POST',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ p_content_id: id })
     });
 
     if (!result.ok) throw new Error(`Supabase respondio ${result.status}`);
@@ -54,7 +59,7 @@ export default async function handler(request, response) {
   const now = Date.now();
   const editionReleaseAt = edition.publicar_at ? new Date(edition.publicar_at).getTime() : null;
   const videoReleaseAt = edition.gimg_video_estreno_at ? new Date(edition.gimg_video_estreno_at).getTime() : null;
-  const isPremierePhase = Boolean(edition.gimg_video_url && editionReleaseAt && now < editionReleaseAt);
+  const isPremierePhase = Boolean(edition.has_gimg_premiere && editionReleaseAt && now < editionReleaseAt);
   const videoReleased = isPremierePhase && (!videoReleaseAt || now >= videoReleaseAt);
   const title = compactText(
     (isPremierePhase && edition.gimg_video_titulo) || edition.titulo || 'Edicion de VISTA',
