@@ -673,17 +673,17 @@ export default function NoticiasTab({ previewMode = false }) {
           <h3 className="text-xl font-bold mb-6 text-neutral-400 font-serif italic flex items-center gap-2">
             <Globe size={18} className="text-blue-500"/> Ediciones de GIMG.
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {gimgNews.map(item => (
               <div key={item.id} className="flex gap-4 bg-[#121212] border border-white/10 p-4 rounded-2xl hover:border-white/30 transition-all shadow-lg group">
                 <div className="w-20 h-24 bg-neutral-800 rounded-xl overflow-hidden flex-shrink-0">
                   <img src={item.poster_url} className="w-full h-full object-cover" alt="Cover" />
                 </div>
-                <div className="flex-1 flex flex-col justify-between">
+                <div className="flex-1 min-w-0 flex flex-col justify-between">
                   <div>
-                    <h4 className="font-bold text-white line-clamp-1">{item.titulo}</h4>
+                    <h4 className="font-bold text-white line-clamp-2">{item.titulo}</h4>
                     <p className="text-neutral-500 text-[11px] line-clamp-2 mt-1 font-medium">{item.descripcion}</p>
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       <span className="text-[8px] bg-white/10 text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">{item.idioma_original || 'ES'}</span>
                       {item.titulo_i18n && Object.keys(item.titulo_i18n).length > 1 && (
                         <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">+{Object.keys(item.titulo_i18n).length - 1} Lang</span>
@@ -693,7 +693,7 @@ export default function NoticiasTab({ previewMode = false }) {
                   </div>
                   <div className="flex gap-2 mt-3">
                     <button onClick={() => handleEdit(item)} className="bg-white/10 border border-white/10 hover:bg-white text-white hover:text-black px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 flex-1 justify-center"><Edit3 size={12}/> Editar</button>
-                    <button onClick={() => handleDelete(item.id)} className="bg-red-500/10 border border-red-500/20 hover:bg-red-600 text-red-500 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"><Trash2 size={12}/></button>
+                    <button aria-label={`Eliminar ${item.titulo}`} onClick={() => handleDelete(item.id)} className="bg-red-500/10 border border-red-500/20 hover:bg-red-600 text-red-500 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"><Trash2 size={12}/></button>
                   </div>
                 </div>
               </div>
@@ -707,22 +707,22 @@ export default function NoticiasTab({ previewMode = false }) {
           <h3 className="text-xl font-bold mb-6 text-neutral-400 font-serif italic flex items-center gap-2">
             <BookOpen size={18} className="text-green-500"/> Ediciones de la comunidad.
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {kioscoNews.map(item => (
               <div key={item.id} className="flex gap-4 bg-[#121212] border border-white/10 p-4 rounded-2xl hover:border-white/30 transition-all shadow-lg group">
                 <div className="w-20 h-24 bg-neutral-800 rounded-xl overflow-hidden flex-shrink-0">
                   <img src={item.poster_url} className="w-full h-full object-cover" alt="Cover" />
                 </div>
-                <div className="flex-1 flex flex-col justify-between">
+                <div className="flex-1 min-w-0 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start">
-                      <h4 className="font-bold text-white line-clamp-1 flex-1">{item.titulo}</h4>
-                      <span className="text-[8px] font-bold tracking-widest uppercase bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full truncate max-w-[90px] ml-2 border border-green-500/20">
+                      <h4 className="font-bold text-white line-clamp-2 flex-1">{item.titulo}</h4>
+                      <span className="text-[8px] font-bold tracking-widest uppercase bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full truncate max-w-[90px] shrink-0 ml-2 border border-green-500/20">
                         {item.sello_editorial || 'Sello Ext.'}
                       </span>
                     </div>
                     <p className="text-neutral-500 text-[11px] line-clamp-2 mt-1 font-medium">{item.descripcion}</p>
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
                       <span className="text-[8px] bg-white/10 text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">{item.idioma_original || 'ES'}</span>
                       {item.titulo_i18n && Object.keys(item.titulo_i18n).length > 1 && (
                         <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">+{Object.keys(item.titulo_i18n).length - 1} Lang</span>
@@ -734,7 +734,7 @@ export default function NoticiasTab({ previewMode = false }) {
                   </div>
                   <div className="flex gap-2 mt-3">
                     <button onClick={() => handleEdit(item)} className="bg-white/10 border border-white/10 hover:bg-white text-white hover:text-black px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 flex-1 justify-center"><Edit3 size={12}/> Editar</button>
-                    <button onClick={() => handleDelete(item.id)} className="bg-red-500/10 border border-red-500/20 hover:bg-red-600 text-red-500 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"><Trash2 size={12}/></button>
+                    <button aria-label={`Eliminar ${item.titulo}`} onClick={() => handleDelete(item.id)} className="bg-red-500/10 border border-red-500/20 hover:bg-red-600 text-red-500 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"><Trash2 size={12}/></button>
                   </div>
                 </div>
               </div>
