@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, CheckCircle2, Film, Globe2, Link2, Loader2, Newspaper, ShieldCheck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
@@ -92,7 +92,10 @@ export default function SurveyPage({previewMode=false}) {
   const [direction,setDirection]=useState(1);
   const [copied,setCopied]=useState(false);
   const [honeypot,setHoneypot]=useState('');
+  const [draftSaved,setDraftSaved]=useState(null);
   const headingRef=useRef(null),submitLock=useRef(false);
+  const pageRef=useRef(null),navigationRef=useRef(null);
+  const navigationVisible=Boolean(definition?.is_open&&!loadError&&!draft.submitted);
   const answers=draft.answers,steps=stepsFor(answers);
   const step=steps.includes(draft.step)?draft.step:'roles';
   const index=steps.indexOf(step);
@@ -106,7 +109,16 @@ export default function SurveyPage({previewMode=false}) {
     if(failed)setLoadError('No pudimos abrir la encuesta. Inténtalo de nuevo en unos momentos.');else setDefinition(data);
   };
   useEffect(()=>{loadDefinition();const original=document.title;document.title='Tu perspectiva · VISTA | See it differently';return()=>{document.title=original;};},[previewMode]);
-  useEffect(()=>{try{localStorage.setItem(STORAGE_KEY,JSON.stringify(draft));}catch{}},[draft]);
+  useEffect(()=>{try{localStorage.setItem(STORAGE_KEY,JSON.stringify(draft));setDraftSaved(true);}catch{setDraftSaved(false);}},[draft]);
+  useLayoutEffect(()=>{
+    if(!navigationVisible||!navigationRef.current)return;
+    const navigation=navigationRef.current;
+    const measure=()=>pageRef.current?.style.setProperty('--vs-navigation-height',`${navigation.getBoundingClientRect().height}px`);
+    measure();
+    const observer=new ResizeObserver(measure);
+    observer.observe(navigation);
+    return()=>observer.disconnect();
+  },[navigationVisible]);
   useEffect(()=>{headingRef.current?.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});},[step,draft.submitted]);
   const change=(name,value)=>{
     setError('');
@@ -138,7 +150,7 @@ export default function SurveyPage({previewMode=false}) {
   function next(){const problem=stepError(step,answers);if(problem){setError(problem);return;}if(step==='review')submit();else go(steps[index+1]);}
   const share=async()=>{try{await navigator.clipboard.writeText(`${window.location.origin}${SURVEY_PATH}`);setCopied(true);}catch{setError('Puedes copiar el enlace desde la barra de direcciones.');}};
   const success=draft.submitted;
-  return <div className={`vs-page ${reduced?'vs-reduced':''}`}>
+  return <div ref={pageRef} className={`vs-page ${navigationVisible?'vs-has-navigation':''} ${reduced?'vs-reduced':''}`}>
     <WorldScene step={success?'success':step} index={index} reduced={reduced}/>
     <header className="vs-header"><a href="/" className="vs-wordmark" aria-label="VISTA, inicio">VISTA.</a><span className="vs-brand-line">See it differently.</span><a href="/" className="vs-exit">Volver a VISTA <ArrowUpRight size={13}/></a></header>
     {previewMode&&<p className="vs-dev">Vista de desarrollo · El envío está desactivado</p>}
@@ -159,8 +171,10 @@ export default function SurveyPage({previewMode=false}) {
           </div>
         </motion.section></AnimatePresence>
         <label className="vs-honeypot" aria-hidden="true">Sitio de contacto<input tabIndex={-1} autoComplete="off" value={honeypot} onChange={e=>setHoneypot(e.target.value)}/></label>
-        {error&&<p className="vs-error" role="alert">{error}</p>}
-        <footer className="vs-navigation"><button type="button" className="vs-back" onClick={()=>go(steps[index-1],-1)} disabled={index===0||busy}><ArrowLeft size={16}/> Atrás</button><span className="vs-anonymous">Sin registro obligatorio<br/>Tu borrador se guarda en este dispositivo</span><button type="button" className="vs-primary" onClick={next} disabled={busy}>{busy?<><Loader2 size={16} className="vs-spinner"/> Enviando…</>:step==='review'?<>Enviar respuestas <Check size={16}/></>:step==='comment'&&!answers.comment?<>Continuar sin comentario <ArrowRight size={16}/></>:step==='vista'?<>Dar mi opinión <ArrowRight size={16}/></>:<>Continuar <ArrowRight size={16}/></>}</button></footer>
+        <footer ref={navigationRef} className="vs-navigation" aria-label="Acciones de la encuesta"><div className="vs-navigation-inner">
+          {error&&<p className="vs-error" role="alert">{error}</p>}
+          <div className="vs-navigation-controls"><button type="button" className="vs-back" onClick={()=>go(steps[index-1],-1)} disabled={index===0||busy}><ArrowLeft size={16}/> Atrás</button><span className={`vs-anonymous ${draftSaved===false?'vs-draft-unavailable':''}`} role="status">{draftSaved===false?'No pudimos guardar el borrador en este dispositivo. Mantén esta página abierta.':draftSaved?<><Check size={13}/> Borrador guardado en este dispositivo</>:'Guardando borrador…'}<small>{step==='review'?'Pulsa «Enviar respuestas» para que GBA las reciba.':'Sin registro obligatorio · Continúa a tu ritmo'}</small></span><button type="button" className={`vs-primary ${step==='review'?'vs-submit':''}`} onClick={next} disabled={busy}>{busy?<><Loader2 size={20} className="vs-spinner"/> Enviando…</>:step==='review'?<>Enviar respuestas <CheckCircle2 size={22}/></>:step==='comment'&&!answers.comment?<>Continuar sin comentario <ArrowRight size={18}/></>:step==='vista'?<>Dar mi opinión <ArrowRight size={18}/></>:<>Continuar <ArrowRight size={18}/></>}</button></div>
+        </div></footer>
       </>}
     </main><footer className="vs-bottom"><span>GBA · GLOBAL INSIGHT</span><span>Tu perspectiva. Nuestro siguiente capítulo.</span></footer>
   </div>;
