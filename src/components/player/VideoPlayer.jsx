@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { youtubeId as parseYoutubeId } from '../../utils/publishing';
 import { X, Maximize2, Volume2 } from 'lucide-react';
 
 export default function VideoPlayer({ youtubeId, onClose }) {
@@ -11,7 +12,8 @@ export default function VideoPlayer({ youtubeId, onClose }) {
     };
   }, []);
 
-  if (!youtubeId) return null;
+  const videoId = parseYoutubeId(youtubeId);
+  if (!videoId) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center animate-in fade-in duration-300">
@@ -28,7 +30,7 @@ export default function VideoPlayer({ youtubeId, onClose }) {
       <div className="w-full h-full md:h-[80vh] aspect-video relative group">
         <iframe
           className="w-full h-full"
-          src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&iv_load_policy=3`}
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&iv_load_policy=3`}
           title="Video Player"
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

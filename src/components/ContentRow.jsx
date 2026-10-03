@@ -1,4 +1,6 @@
 import React, { useRef } from 'react';
+import VideoCover from './VideoCover';
+import { isVideoContent, videoCategoryLabel } from '../utils/contentTypes';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ContentRow({ title, items = [], onSelect }) {
@@ -45,9 +47,9 @@ export default function ContentRow({ title, items = [], onSelect }) {
               className="flex-none w-48 sm:w-56 snap-start group/card cursor-pointer"
             >
               {/* Tarjeta de Contenido */}
-              <div className="relative aspect-[4/5] bg-[#f5f5f7] rounded-2xl overflow-hidden shadow-sm group-hover/card:shadow-xl transition-all duration-500 ease-out border border-[#d2d2d7]/30">
-                <img 
-                  src={item.poster_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80"} 
+              <div className={`relative ${item.es_comunidad && isVideoContent(item) ? 'aspect-video' : 'aspect-[4/5]'} bg-[#f5f5f7] rounded-2xl overflow-hidden shadow-sm group-hover/card:shadow-xl transition-all duration-500 ease-out border border-[#d2d2d7]/30`}>
+                <VideoCover
+                  item={item}
                   alt={item.titulo}
                   className="w-full h-full object-cover filter grayscale group-hover/card:grayscale-0 group-hover/card:scale-105 transition-all duration-700 ease-out"
                 />
@@ -59,7 +61,7 @@ export default function ContentRow({ title, items = [], onSelect }) {
                 {item.titulo}
               </h4>
               <p className="text-[10px] font-bold text-[#86868b] mt-0.5 px-1 tracking-widest uppercase">
-                {item.anio} • {item.categoria}
+                {item.es_comunidad && isVideoContent(item) ? [item.sello_editorial, videoCategoryLabel(item.categoria)].filter(Boolean).join(' · ') : [item.año || item.anio, videoCategoryLabel(item.categoria)].filter(Boolean).join(' · ')}
               </p>
             </div>
           ))}

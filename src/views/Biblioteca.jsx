@@ -2,22 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { PlayCircle, Trash2, Info } from 'lucide-react';
-import { isVideoContent } from '../utils/contentTypes';
+import VideoCover from '../components/VideoCover';
+import { youtubeId } from '../utils/publishing';
+import { isVideoContent, videoCategoryLabel } from '../utils/contentTypes';
 import { getEditorialCategoryLabel } from '../utils/editorialCategories';
 
 export default function Biblioteca({ onSelectMovie, onPlay }) {
   const { user } = useAuth();
   const [library, setLibrary] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Limpiador automático de imágenes (por si guardaron algo con el link sucio de YouTube)
-  const getCleanImg = (url) => {
-    if (!url) return '';
-    if (url.includes('img.youtube.com')) {
-      return url.replace(/&[^/]+/, '').replace(/\?[^/]+/, '');
-    }
-    return url;
-  };
 
   useEffect(() => {
     const fetchLibrary = async () => {
@@ -106,7 +99,7 @@ export default function Biblioteca({ onSelectMovie, onPlay }) {
       {library.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
           {library.map((movie) => {
-            const canPlay = isVideoContent(movie) && Boolean(movie.youtube_id);
+            const canPlay = isVideoContent(movie) && Boolean(youtubeId(movie.youtube_id));
 
             return (
               <div
@@ -115,8 +108,8 @@ export default function Biblioteca({ onSelectMovie, onPlay }) {
                 className="group relative aspect-[4/5] bg-[#f5f5f7] rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl border border-[#d2d2d7]/50 hover:-translate-y-2 transition-all duration-500 cursor-pointer"
               >
 
-                <img
-                  src={getCleanImg(movie.poster_url || movie.banner_url)}
+                <VideoCover
+                  item={movie}
                   alt={movie.titulo}
                   className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 z-10"
                 />
@@ -138,7 +131,7 @@ export default function Biblioteca({ onSelectMovie, onPlay }) {
                     className="absolute inset-0 z-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                     onClick={(e) => {
                       e.stopPropagation(); // Evita abrir el modal
-                      if (onPlay) onPlay(movie.youtube_id); // Reproduce directo
+                      if (onPlay) onPlay(youtubeId(movie.youtube_id)); // Reproduce directo
                     }}
                   >
                     <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 hover:scale-110 hover:bg-white hover:text-black transition-all">
@@ -154,7 +147,7 @@ export default function Biblioteca({ onSelectMovie, onPlay }) {
                   </p>
                   <div className="flex justify-between items-center">
                      <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider">
-                       {movie.es_comunidad ? getEditorialCategoryLabel(movie.categoria_editorial) : (movie.categoria || 'Original')}
+                       {isVideoContent(movie) ? videoCategoryLabel(movie.categoria) : getEditorialCategoryLabel(movie.categoria_editorial)}
                      </p>
                      <Info size={14} className="text-white/50 group-hover:text-white transition-colors" />
                   </div>

@@ -2,6 +2,9 @@ import React, { useEffect } from 'react';
 import { X, Play, Plus, Check } from 'lucide-react';
 import { useLibrary } from '../../hooks/useLibrary';
 import { isVideoContent } from '../../utils/contentTypes';
+import VideoCover from '../VideoCover';
+import { youtubeId } from '../../utils/publishing';
+import { videoCategoryLabel } from '../../utils/contentTypes';
 import CreditsPanel from '../social/CreditsPanel';
 import ConversationPanel from '../social/ConversationPanel';
 
@@ -19,7 +22,7 @@ export default function ContentDetailModal({ movie, onClose, onPlay }) {
 
   if (!movie) return null;
 
-  const canPlay = isVideoContent(movie) && Boolean(movie.youtube_id);
+  const canPlay = isVideoContent(movie) && Boolean(youtubeId(movie.youtube_id));
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 font-sans">
@@ -43,8 +46,8 @@ export default function ContentDetailModal({ movie, onClose, onPlay }) {
 
         {/* CABECERA: Banner de la película */}
         <div className="relative w-full h-64 md:h-96 flex-shrink-0 bg-black">
-          <img 
-            src={movie.banner_url || movie.poster_url} 
+          <VideoCover
+            item={movie} prefer="banner"
             alt={movie.titulo}
             className="w-full h-full object-cover opacity-70"
           />
@@ -61,7 +64,7 @@ export default function ContentDetailModal({ movie, onClose, onPlay }) {
                 <button
                   onClick={() => {
                     onClose(); // Cerramos el modal
-                    if (onPlay) onPlay(movie.youtube_id); // Y disparamos el video
+                    if (onPlay) onPlay(youtubeId(movie.youtube_id)); // Y disparamos el video
                   }}
                   className="bg-white text-black px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-transform"
                 >
@@ -93,12 +96,11 @@ export default function ContentDetailModal({ movie, onClose, onPlay }) {
             <div className="md:col-span-2 space-y-6">
               
               {/* Metadatos (Año, Duración, Clasificación) */}
-              <div className="flex items-center gap-4 text-sm font-bold text-[#86868b]">
-                <span className="text-white">{movie.año}</span>
-                <span>{movie.duracion}</span>
-                <span className="border border-[#86868b] px-2 py-0.5 rounded text-[10px] uppercase tracking-wider text-white">
-                  {movie.calificacion}
-                </span>
+              <div className="flex flex-wrap items-center gap-4 text-sm font-bold text-[#86868b]">
+                {movie.es_comunidad && <span className="text-white">{videoCategoryLabel(movie.categoria)}</span>}
+                {!movie.es_comunidad && movie.año && <span className="text-white">{movie.año}</span>}
+                {movie.duracion && <span>{movie.duracion}</span>}
+                {!movie.es_comunidad && movie.calificacion && <span className="border border-[#86868b] px-2 py-0.5 rounded text-[10px] uppercase tracking-wider text-white">{movie.calificacion}</span>}
                 {movie.generos && movie.generos.length > 0 && (
                   <span className="text-[#0066FF]">{movie.generos.join(', ')}</span>
                 )}

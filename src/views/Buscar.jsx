@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Search as SearchIcon, X, Film, Newspaper, Globe, ChevronRight } from 'lucide-react';
+import VideoCover from '../components/VideoCover';
 import { isVideoContent } from '../utils/contentTypes';
 
 export default function Buscar({ onSelectMovie }) {
@@ -127,8 +128,8 @@ export default function Buscar({ onSelectMovie }) {
                   {videosResult.map(movie => (
                     <div key={movie.id} onClick={() => onSelectMovie && onSelectMovie(movie)} className="group cursor-pointer">
                       <div className="aspect-[2/3] bg-[#f5f5f7] rounded-2xl overflow-hidden mb-3 shadow-sm group-hover:shadow-xl transition-all duration-500 relative border border-black/5">
-                        <img 
-                          src={movie.poster_url || movie.banner_url} 
+                        <VideoCover
+                          item={movie}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
                           alt={movie.titulo}
                         />

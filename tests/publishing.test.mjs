@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
-import { youtubeId, videoPayload, validateEditionRelease } from '../src/utils/publishing.js';
+import { youtubeId, youtubeLink, youtubeThumbnail, videoImageUrl, videoImageSources, videoPayload, validateEditionRelease } from '../src/utils/publishing.js';
 import { getGimgPremiereState } from '../src/utils/editionRelease.js';
-import { isVideoContent } from '../src/utils/contentTypes.js';
+import { VIDEO_CATEGORY_OPTIONS, isVideoContent } from '../src/utils/contentTypes.js';
 
 let checks = 0;
 const equal = (actual, expected) => { assert.deepEqual(actual, expected); checks++; };
@@ -20,6 +20,26 @@ rejects(() => videoPayload({...form,sello_editorial:' '}), /canal, autor/i);
 rejects(() => videoPayload({...form,youtube_id:'bad'}), /YouTube/);
 rejects(() => videoPayload({...form,trailer_id:'bad'}), /tráiler/);
 equal(isVideoContent({categoria:'Tutorial'}),true); equal(isVideoContent({categoria:'Video'}),true); equal(isVideoContent({categoria:'Periódico'}),false);
+
+// Regression: link-only editor, old ID-in-image records and changed video links.
+equal(youtubeId(null), '');
+equal(youtubeLink(id), `https://www.youtube.com/watch?v=${id}`);
+const linked = videoPayload({...form,youtube_id:'',youtube_url:`https://youtu.be/${id}?si=shared`});
+equal(linked.youtube_id,id); equal('youtube_url' in linked,false);
+rejects(() => videoPayload({...form,youtube_url:id}), /enlace completo/);
+equal(youtubeThumbnail(`https://youtube.com/shorts/${id}`), `https://img.youtube.com/vi/${id}/hqdefault.jpg`);
+equal(videoImageUrl('v=wMsS08rnWXI'),'');
+equal(videoImageUrl('wMsS08rnWXI'),youtubeThumbnail('wMsS08rnWXI'));
+equal(videoImageSources({youtube_id:'',poster_url:'wMsS08rnWXI',banner_url:'v=wMsS08rnWXI'}),[youtubeThumbnail('wMsS08rnWXI')]);
+equal(videoImageSources({youtube_id:`https://youtu.be/${id}`,poster_url:'',banner_url:''}),[youtubeThumbnail(id)]);
+equal(videoImageSources({youtube_id:id,poster_url:'javascript:alert(1)',banner_url:' '}),[youtubeThumbnail(id)]);
+equal(videoImageSources({youtube_id:id,poster_url:'https://images.invalid/custom.jpg'}),['https://images.invalid/custom.jpg',youtubeThumbnail(id)]);
+equal(videoImageUrl('https://img.youtube.com/vi/wMsS08rnWXI/hqdefault.jpg',id),youtubeThumbnail(id));
+equal(videoPayload({...form,banner_url:'https://img.youtube.com/vi/wMsS08rnWXI/hqdefault.jpg',poster_url:'https://img.youtube.com/vi/wMsS08rnWXI/hqdefault.jpg'}).poster_url,youtubeThumbnail(id));
+equal(videoPayload({...form,poster_url:'https://images.invalid/cover.jpg'}).poster_url,'https://images.invalid/cover.jpg');
+equal(videoImageSources({youtube_id:id,poster_url:'https://images.invalid/cover.jpg',banner_url:'https://images.invalid/banner.jpg'},'banner'),['https://images.invalid/banner.jpg','https://images.invalid/cover.jpg',youtubeThumbnail(id)]);
+for(const [category] of VIDEO_CATEGORY_OPTIONS) equal(isVideoContent({categoria:category}),true);
+equal(isVideoContent({categoria:'Periódico',youtube_id:id}),false);
 
 const now = Date.parse('2030-01-01T00:00:00Z');
 const future = '2030-01-02T00:00:00Z';

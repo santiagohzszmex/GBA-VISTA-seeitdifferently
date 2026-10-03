@@ -584,7 +584,7 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
           <ContentRow title="Top 10: Lo más visto en GIMG" items={top10} onSelect={onSelectMovie} />
         )}
 
-        {communityVideos.length > 0 && <ContentRow title="Videos de la comunidad · tutoriales y servidores" items={communityVideos} onSelect={onSelectMovie} />}
+        {communityVideos.length > 0 && <ContentRow title="Videos de la comunidad" items={communityVideos} onSelect={onSelectMovie} />}
 
         {Object.entries(moviesByGenre).map(([genero, peliculas]) => (
           peliculas.length > 0 && (
