@@ -264,7 +264,7 @@ export default function WelcomeOverlay({ setActiveTab, onSelectContent }) {
               <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-md bg-blue-50 text-[#0066FF]"><UserRound size={21}/></div>
               <p className="mb-2 text-[10px] font-black uppercase text-[#0066FF]">Tu perfil en VISTA</p>
               <h1 className="font-serif text-4xl font-bold leading-tight md:text-5xl">Haz que te reconozcan.</h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[#68686d]">Cuenta qué haces en Empyria. Esto aparecerá cuando publiques, colabores o alguien visite tu perfil.</p>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-[#68686d]">Cuenta qué haces en los servidores geopolíticos de Minecraft. Esto aparecerá cuando publiques, colabores o alguien visite tu perfil.</p>
 
               <div className="mt-8 space-y-4">
                 <label className="block">
@@ -279,7 +279,7 @@ export default function WelcomeOverlay({ setActiveTab, onSelectContent }) {
                   <span className="mt-1 block text-right text-[10px] text-[#86868b]">{profile.bio.length}/180</span>
                 </label>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label><span className="mb-2 block text-[10px] font-black uppercase text-[#68686d]">Servidor</span><input value={profile.servidor} onChange={event => setProfile(current => ({ ...current, servidor: event.target.value.slice(0, 60) }))} placeholder="Empyria" className="h-12 w-full rounded-md border border-[#d2d2d7] bg-white px-4 text-sm outline-none focus:border-[#0066FF]"/></label>
+                  <label><span className="mb-2 block text-[10px] font-black uppercase text-[#68686d]">Servidor</span><input value={profile.servidor} onChange={event => setProfile(current => ({ ...current, servidor: event.target.value.slice(0, 60) }))} placeholder="Nombre de tu servidor" className="h-12 w-full rounded-md border border-[#d2d2d7] bg-white px-4 text-sm outline-none focus:border-[#0066FF]"/></label>
                   <label><span className="mb-2 block text-[10px] font-black uppercase text-[#68686d]">Nación o comunidad</span><input value={profile.nacion} onChange={event => setProfile(current => ({ ...current, nacion: event.target.value.slice(0, 60) }))} placeholder="Opcional" className="h-12 w-full rounded-md border border-[#d2d2d7] bg-white px-4 text-sm outline-none focus:border-[#0066FF]"/></label>
                 </div>
               </div>

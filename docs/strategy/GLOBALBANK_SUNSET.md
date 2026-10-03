@@ -30,7 +30,7 @@ e investigación.
 
 ## Declaración histórica
 
-> GlobalBank fue el proyecto dentro de Empyria que dio origen a GBA. Sus
+> GlobalBank fue el proyecto dentro de un servidor geopolítico de Minecraft que dio origen a GBA. Sus
 > operaciones han concluido. GBA inicia una nueva etapa enfocada en medios,
 > tecnología e investigación.
 

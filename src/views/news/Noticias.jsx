@@ -41,7 +41,7 @@ function GimgInstitutionalHeader({ news }) {
           </div>
           <h2 className="font-serif italic text-4xl md:text-6xl leading-none">Global Insight Media Group</h2>
           <p className="text-white/60 max-w-2xl mt-4 leading-relaxed text-sm md:text-base">
-            Comunicados, investigaciones y ediciones oficiales producidas por GIMG para comprender Empyria desde otra perspectiva.
+            Comunicados, investigaciones y ediciones oficiales producidas por GIMG para comprender la actualidad de los servidores geopolíticos de Minecraft desde otra perspectiva.
           </p>
           <div className="flex flex-wrap gap-3 mt-7">
             <button type="button" onClick={toggleFollow} disabled={loading} className={`h-12 px-6 rounded-lg font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-colors disabled:opacity-50 ${isFollowing ? 'bg-white text-[#1d1d1f]' : 'bg-[#0066FF] hover:bg-[#0052cc] text-white'}`}>

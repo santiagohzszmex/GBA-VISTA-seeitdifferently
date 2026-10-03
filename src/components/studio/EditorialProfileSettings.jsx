@@ -129,7 +129,7 @@ export default function EditorialProfileSettings({ editorial, onUpdated, preview
       <section className="grid md:grid-cols-2 gap-5 border-b border-[#d2d2d7] pb-8">
         <label className="md:col-span-2"><span className="studio-label">Nombre público</span><input required minLength="2" maxLength="80" disabled={!canManage} value={form.nombre} onChange={event => setForm({ ...form, nombre: event.target.value })} className="studio-input"/></label>
         <label className="md:col-span-2"><span className="studio-label">Presentación editorial</span><textarea maxLength="800" rows="5" disabled={!canManage} value={form.descripcion} onChange={event => setForm({ ...form, descripcion: event.target.value })} className="studio-input resize-none" placeholder="Qué publica el equipo y qué lo distingue."/><span className="block mt-1 text-right text-[9px] text-[#86868b]">{form.descripcion.length}/800</span></label>
-        <label><span className="studio-label">Servidor o comunidad</span><input disabled={!canManage} value={form.servidor} onChange={event => setForm({ ...form, servidor: event.target.value })} className="studio-input" placeholder="Empyria"/></label>
+        <label><span className="studio-label">Servidor o comunidad</span><input disabled={!canManage} value={form.servidor} onChange={event => setForm({ ...form, servidor: event.target.value })} className="studio-input" placeholder="Nombre del servidor o comunidad"/></label>
         <label><span className="studio-label">Nación de origen</span><input disabled={!canManage} value={form.nacion} onChange={event => setForm({ ...form, nacion: event.target.value })} className="studio-input" placeholder="Opcional"/></label>
       </section>
 

@@ -37,7 +37,7 @@ const profileToForm = profile => ({
   categoria: profile?.categoria || 'Negocios',
   headline: profile?.headline || '',
   descripcion: profile?.descripcion || '',
-  ubicacion: profile?.ubicacion || 'Empyria',
+  ubicacion: profile?.ubicacion || 'Geopolíticos de Minecraft',
   contacto: profile?.contacto || '',
   logo_url: profile?.logo_url || '',
   portada_url: profile?.portada_url || '',
@@ -172,7 +172,7 @@ export default function NetworkBusinessStudio({ userId, previewMode = false }) {
     return (
       <><style>{BUSINESS_STYLES}</style><div className="max-w-4xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_280px] gap-8 items-start">
         <form onSubmit={submitRequest} className="bg-white border border-[#d2d2d7] rounded-md p-6 md:p-8 space-y-5">
-          <div className="pb-5 border-b border-[#d2d2d7]"><span className="w-11 h-11 rounded-md bg-blue-50 text-[#0066FF] flex items-center justify-center"><Store size={20}/></span><h2 className="text-2xl font-bold mt-5">Solicita una cuenta de negocio</h2><p className="text-sm text-[#86868b] leading-6 mt-2">Para negocios o empresas que operan dentro de Empyria.</p></div>
+          <div className="pb-5 border-b border-[#d2d2d7]"><span className="w-11 h-11 rounded-md bg-blue-50 text-[#0066FF] flex items-center justify-center"><Store size={20}/></span><h2 className="text-2xl font-bold mt-5">Solicita una cuenta de negocio</h2><p className="text-sm text-[#86868b] leading-6 mt-2">Para negocios o empresas que operan en servidores geopolíticos de Minecraft.</p></div>
           {notice && <div className={`border rounded-md px-4 py-3 text-xs font-bold ${notice.type === 'success' ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'}`}>{notice.message}</div>}
           <div className="grid sm:grid-cols-2 gap-5">
             <label className="sm:col-span-2"><span className="studio-label">Nombre publico</span><input required minLength="2" maxLength="80" value={request.nombre} onChange={event => setRequest({ ...request, nombre: event.target.value })} className="studio-input" placeholder="Nombre del negocio o empresa"/></label>
@@ -190,7 +190,7 @@ export default function NetworkBusinessStudio({ userId, previewMode = false }) {
           <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#0066FF]">Network Beta</p>
           <h3 className="font-bold mt-2">Una identidad separada</h3>
           <p className="text-xs leading-5 text-[#86868b] mt-2">Tu cuenta editorial y tu negocio usan el mismo GBA ID, pero mantienen perfiles y permisos diferentes.</p>
-          <div className="mt-5 space-y-3 text-[10px] text-[#62676f]"><span className="flex items-center gap-2"><Check size={13} className="text-emerald-600"/>Disponible para ciudadanos y editores</span><span className="flex items-center gap-2"><Check size={13} className="text-emerald-600"/>Limitada a Empyria durante la beta</span><span className="flex items-center gap-2"><Check size={13} className="text-emerald-600"/>Publicacion sujeta a revision</span></div>
+          <div className="mt-5 space-y-3 text-[10px] text-[#62676f]"><span className="flex items-center gap-2"><Check size={13} className="text-emerald-600"/>Disponible para ciudadanos y editores</span><span className="flex items-center gap-2"><Check size={13} className="text-emerald-600"/>Beta para comunidades geopolíticas de Minecraft</span><span className="flex items-center gap-2"><Check size={13} className="text-emerald-600"/>Publicacion sujeta a revision</span></div>
         </aside>
       </div></>
     );
@@ -204,7 +204,7 @@ export default function NetworkBusinessStudio({ userId, previewMode = false }) {
   return (
     <><style>{BUSINESS_STYLES}</style><form onSubmit={saveProfile} className="max-w-5xl mx-auto space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 border-b border-[#d2d2d7] pb-6">
-        <div><p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#0066FF]">Network Beta · Empyria</p><h2 className="text-2xl font-bold mt-1">Perfil de {form.account_type === 'company' ? 'empresa' : 'negocio'}</h2></div>
+        <div><p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#0066FF]">Network Beta · Minecraft</p><h2 className="text-2xl font-bold mt-1">Perfil de {form.account_type === 'company' ? 'empresa' : 'negocio'}</h2></div>
         <span className={`sm:ml-auto h-8 px-3 rounded-md border inline-flex self-start items-center gap-1.5 text-[9px] font-black uppercase tracking-wider ${status.className}`}><StatusIcon size={12}/>{status.label}</span>
       </div>
       {notice && <div className={`border rounded-md px-4 py-3 text-xs font-bold ${notice.type === 'success' ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'}`}>{notice.message}</div>}
@@ -234,7 +234,7 @@ export default function NetworkBusinessStudio({ userId, previewMode = false }) {
         <label><span className="studio-label">Categoria</span><select disabled={!editable} value={form.categoria} onChange={event => setForm({ ...form, categoria: event.target.value })} className="studio-input">{CATEGORIES.map(category => <option key={category}>{category}</option>)}</select></label>
         <label className="sm:col-span-2"><span className="studio-label">Presentacion breve</span><input maxLength="160" disabled={!editable} value={form.headline} onChange={event => setForm({ ...form, headline: event.target.value })} className="studio-input"/></label>
         <label className="sm:col-span-2"><span className="studio-label">Descripcion</span><textarea required minLength="20" maxLength="800" rows="5" disabled={!editable} value={form.descripcion} onChange={event => setForm({ ...form, descripcion: event.target.value })} className="studio-input resize-none"/></label>
-        <label><span className="studio-label">Ubicacion</span><input disabled={!editable} value={form.ubicacion} onChange={event => setForm({ ...form, ubicacion: event.target.value })} className="studio-input" placeholder="Distrito o ciudad de Empyria"/></label>
+        <label><span className="studio-label">Ubicacion</span><input disabled={!editable} value={form.ubicacion} onChange={event => setForm({ ...form, ubicacion: event.target.value })} className="studio-input" placeholder="Servidor, nación o ciudad"/></label>
         <label><span className="studio-label"><Link2 size={12}/>Contacto</span><input disabled={!editable} value={form.contacto} onChange={event => setForm({ ...form, contacto: event.target.value })} className="studio-input"/></label>
         <label className="sm:col-span-2"><span className="studio-label">Etiquetas</span><input disabled={!editable} value={form.tags} onChange={event => setForm({ ...form, tags: event.target.value })} className="studio-input" placeholder="Libros, Cultura, Comercio"/><span className="block mt-1 text-[9px] text-[#86868b]">Separa hasta seis etiquetas con comas.</span></label>
         <label className="sm:col-span-2"><span className="studio-label"><Newspaper size={12}/>Editorial vinculada</span><select disabled={!editable} value={form.editorial_id} onChange={event => setForm({ ...form, editorial_id: event.target.value })} className="studio-input"><option value="">Ninguna editorial</option>{eligibleEditorials.map(editorial => <option key={editorial.id} value={editorial.id}>{editorial.nombre}</option>)}</select><span className="block mt-1 text-[9px] text-[#86868b]">Vincularla presenta este negocio como la empresa de esa editorial. Se requiere rol de dueño o administrador.</span></label>

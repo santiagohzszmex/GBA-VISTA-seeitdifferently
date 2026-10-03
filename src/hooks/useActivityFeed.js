@@ -10,7 +10,7 @@ const PREVIEW_ITEMS = [
   {
     item_kind: 'update', item_id: 'preview-update-1', subject_type: 'update', subject_id: 'preview-update-1',
     actor_type: 'profile', actor_id: 'preview-user', actor_name: 'Santiago', actor_handle: 'santiago', actor_image: null,
-    title: null, body: 'Estamos preparando la Edición 1 de Global Insight. Esta semana abrimos conversaciones con nuevas naciones de Empyria.',
+    title: null, body: 'Estamos preparando la Edición 1 de Global Insight. Esta semana abrimos conversaciones con nuevas naciones de distintos servidores geopolíticos de Minecraft.',
     image_url: null, link_url: null, action_url: '/?update=preview-update-1', likes_count: 12, conversation_count: 4,
     is_liked: false, can_delete: true, created_at: new Date(Date.now() - 18 * 60 * 1000).toISOString()
   },

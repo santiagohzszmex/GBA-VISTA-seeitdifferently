@@ -15,7 +15,7 @@ create table if not exists public.network_businesses (
     check (categoria in ('Negocios', 'Talento', 'Proyectos', 'Medios')),
   headline text not null default '',
   descripcion text not null default '',
-  ubicacion text not null default 'Empyria',
+  ubicacion text not null default 'Geopolíticos de Minecraft',
   contacto text not null default '',
   logo_url text,
   portada_url text,
@@ -133,7 +133,7 @@ begin
   ) values (
     auth.uid(), public.vista_network_unique_slug(p_nombre), trim(p_nombre),
     p_account_type, p_categoria, left(trim(coalesce(p_headline, '')), 160),
-    trim(p_descripcion), trim(p_contacto), 'Empyria', 'pendiente'
+    trim(p_descripcion), trim(p_contacto), 'Geopolíticos de Minecraft', 'pendiente'
   ) returning * into v_result;
 
   return v_result;
@@ -195,7 +195,7 @@ begin
     headline = left(trim(coalesce(p_headline, '')), 160),
     descripcion = trim(p_descripcion),
     contacto = left(trim(coalesce(p_contacto, '')), 160),
-    ubicacion = left(coalesce(nullif(trim(coalesce(p_ubicacion, '')), ''), 'Empyria'), 120),
+    ubicacion = left(coalesce(nullif(trim(coalesce(p_ubicacion, '')), ''), 'Geopolíticos de Minecraft'), 120),
     logo_url = nullif(trim(coalesce(p_logo_url, '')), ''),
     portada_url = nullif(trim(coalesce(p_portada_url, '')), ''),
     tags = coalesce(p_tags, '{}'),
