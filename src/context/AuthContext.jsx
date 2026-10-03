@@ -1,122 +1,81 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { supabase } from '../supabaseClient'; 
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
+import { supabase } from '../supabaseClient';
+import { createSessionLoader } from '../auth/sessionLoader';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState('');
+  const loader = useRef(null);
 
   useEffect(() => {
     let lastActivityUserId = null;
     let lastActivityAt = 0;
-    const activityIntervalMs = 10 * 60 * 1000;
-
-    const recordActivity = async (userId) => {
-      if (!userId) return;
+    let activityPending = false;
+    const recordActivity = async userId => {
+      if (!userId || activityPending) return;
       const now = Date.now();
-      if (lastActivityUserId === userId && now - lastActivityAt < activityIntervalMs) return;
-
-      const { error } = await supabase.rpc('vista_record_user_activity');
-      if (!error) {
-        lastActivityUserId = userId;
-        lastActivityAt = now;
-      }
+      if (lastActivityUserId === userId && now - lastActivityAt < 10 * 60 * 1000) return;
+      activityPending = true;
+      try {
+        const { error } = await supabase.rpc('vista_record_user_activity');
+        if (!error) { lastActivityUserId = userId; lastActivityAt = now; }
+      } catch { /* Activity reporting must never block access. */ } finally { activityPending = false; }
     };
-
-    // 1. Buscar sesión guardada al abrir la página (Persistencia Automática)
-    const fetchSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        const { data: userData, error } = await supabase
-          .from('usuarios')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        // 🚨 EL DETECTOR DE FANTASMAS
-        // Si hay error o no existe userData, significa que el GBA ID fue eliminado.
-        if (error || !userData) {
-          console.warn("Sesión fantasma detectada. Destruyendo token...");
-          await supabase.auth.signOut();
-          setUser(null);
-        } else {
-          // Si todo está bien, seteamos al usuario correctamente
-          setUser(userData);
-          void recordActivity(session.user.id);
-        }
-      }
-      setLoading(false);
-    };
-
-    fetchSession();
-
-    // 2. Escuchar en tiempo real cuando alguien se loguea o se sale
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        const { data: userData, error } = await supabase
-          .from('usuarios')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (error || !userData) {
-          await supabase.auth.signOut();
-          setUser(null);
-        } else {
-          setUser(userData);
-          void recordActivity(session.user.id);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        lastActivityUserId = null;
-        lastActivityAt = 0;
-      }
+    const sessionLoader = createSessionLoader({
+      auth: supabase.auth,
+      readProfile: async (userId, signal) => {
+        const { data, error } = await supabase.from('usuarios').select('*').eq('id', userId).abortSignal(signal).maybeSingle();
+        if (error) throw error;
+        return data;
+      },
+      recordActivity,
+      onUser: nextUser => {
+        if (!nextUser) { lastActivityUserId = null; lastActivityAt = 0; }
+        setUser(nextUser);
+      },
+      onLoading: setLoading,
+      onError: setSessionError
     });
+    loader.current = sessionLoader;
+    void sessionLoader.start();
 
     const recordVisibleSession = async () => {
       if (document.visibilityState !== 'visible') return;
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) void recordActivity(session.user.id);
+      const { data, error } = await supabase.auth.getSession();
+      if (!error && data.session?.user?.id) void recordActivity(data.session.user.id);
     };
-
     document.addEventListener('visibilitychange', recordVisibleSession);
-
     return () => {
       document.removeEventListener('visibilitychange', recordVisibleSession);
-      authListener.subscription.unsubscribe();
+      sessionLoader.dispose();
+      if (loader.current === sessionLoader) loader.current = null;
     };
   }, []);
 
-  const logout = async () => {
-    await supabase.auth.signOut();
-  };
-
+  const logout = async () => { await supabase.auth.signOut(); };
   const refreshUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user?.id) return null;
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session?.user?.id) return null;
+    const { data, error } = await supabase.from('usuarios').select('*').eq('id', sessionData.session.user.id).abortSignal(AbortSignal.timeout(12000)).maybeSingle();
     if (!error && data) setUser(data);
     return data || null;
   };
+  const value = { user, isDueño: user?.rol === 'Dueño' || user?.rol === 'Admin', logout, refreshUser };
 
-  const value = {
-    user,
-    isDueño: user?.rol === 'Dueño' || user?.rol === 'Admin',
-    logout,
-    refreshUser
-  };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>
+    {loading || sessionError ? <main className="min-h-screen bg-[#fbfbfd] text-[#1d1d1f] flex items-center justify-center px-6 font-sans" aria-busy={loading}>
+      <div className="max-w-md text-center">
+        <p className="font-serif italic text-5xl mb-7">VISTA.</p>
+        {sessionError ? <>
+          <p className="text-sm leading-7 text-[#6e6e73]" role="alert">{sessionError}</p>
+          <button type="button" onClick={() => void loader.current?.restore()} className="mt-7 px-7 py-3 rounded-full bg-[#0066ff] text-white font-bold text-sm">Reintentar</button>
+        </> : <p className="text-xs tracking-widest uppercase text-[#6e6e73]" role="status">Abriendo VISTA…</p>}
+      </div>
+    </main> : children}
+  </AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);
