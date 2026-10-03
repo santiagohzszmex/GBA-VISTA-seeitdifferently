@@ -4,6 +4,7 @@ import { useNetworkDirectory, useNetworkImpression } from '../hooks/useNetworkSe
 import { activePartners, EDITIONS, GAME_STATUS, safeUrl, STYLES } from '../network/serverData';
 import ServerDetail from '../components/network/ServerDetail';
 import PartnerPlans from '../components/network/PartnerPlans';
+import SurveyInvitation from '../components/survey/SurveyInvitation';
 import Mothership from './Mothership';
 import NetworkServerStudio from '../components/studio/NetworkServerStudio';
 import NetworkAdminTab from '../mothership/NetworkAdminTab';
@@ -65,6 +66,7 @@ export default function NetworkPreview({previewMode=false,onOpenStudio}){
       {loading?<div className="vn-empty" role="status">Abriendo Network…</div>:error?<div className="vn-error" role="alert">{error}<button className="vn-button vn-button-quiet ml-4" onClick={refresh}>Reintentar</button></div>:visible.length?<div className="vn-grid">{visible.map(server=><ServerCard server={server} key={server.id} partner={directoryPartners.get(server.id)} onOpen={open} track={track} blocked={Boolean(selected)}/>)}</div>:<div className="vn-empty"><Globe2 size={30} className="mx-auto text-[#0066ff]"/><h3>{servers.length?'Todavía hay mundos por descubrir.':'El siguiente mundo puede ser el tuyo.'}</h3><p>{servers.length?'Prueba con otro idioma, enfoque o nombre.':'Registra la ficha gratuita de tu servidor. Las primeras comunidades de Network aparecerán aquí después de su revisión.'}</p><div className="vn-actions"><button className="vn-button" onClick={servers.length?()=>{setSearch('');setEdition('');setStyle('');setLanguage('');}:studio}>{servers.length?'Limpiar filtros':'Registrar mi servidor'}<ArrowRight size={15}/></button></div></div>}
       <p className="vn-note">Los espacios pagados se identifican como patrocinados. El estado de cada servidor es declarado por su administración.</p>
     </section>
+    {!previewMode&&<SurveyInvitation dark/>}
     <PartnerPlans onChoose={studio}/>
     {selected&&<ServerDetail server={selected.server} partnerId={selected.partnerId} track={track} onClose={close} previewMode={previewMode}/>}
   </div>;

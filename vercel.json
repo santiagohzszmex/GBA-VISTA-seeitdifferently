@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/encuesta/:path*", "destination": "/index.html" }]
+}

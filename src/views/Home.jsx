@@ -5,6 +5,7 @@ import { useCampaignShare } from '../hooks/useCampaignShare';
 import { useKeynotes } from '../hooks/useKeynotes';
 import { useLibrary } from '../hooks/useLibrary';
 import ContentRow from '../components/ContentRow';
+import SurveyInvitation from '../components/survey/SurveyInvitation';
 import KeynoteSpotlight from '../components/keynotes/KeynoteSpotlight';
 import ActivityFeed from '../components/social/ActivityFeed';
 import HomeRadioStrip from '../components/radio/HomeRadioStrip';
@@ -476,6 +477,8 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
 
   return (
     <div className="animate-in fade-in duration-1000 pb-20 relative font-sans">
+
+      <SurveyInvitation />
 
       {/* 1. HERO DE CAMPAÑA — separado del hero editorial */}
       {featuredCampaign && (

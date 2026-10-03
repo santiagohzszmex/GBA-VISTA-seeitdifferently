@@ -11,10 +11,11 @@ import InfrastructureTab from '../mothership/InfrastructureTab';
 import AnimaTab from '../mothership/AnimaTab';
 import CommunicationsTab from '../mothership/CommunicationsTab';
 import AudienceTab from '../mothership/AudienceTab';
+import SurveysTab from '../mothership/SurveysTab';
 import NetworkAdminTab from '../mothership/NetworkAdminTab';
 
 export default function Mothership({ previewMode = false }) {
-  const [activeSection, setActiveSection] = useState('videos');
+  const [activeSection, setActiveSection] = useState(previewMode && new URLSearchParams(window.location.search).get('survey-preview') === '1' ? 'surveys' : 'videos');
   const [forgeArea, setForgeArea] = useState('development');
 
   // El enrutador interno del panel
@@ -44,6 +45,8 @@ export default function Mothership({ previewMode = false }) {
         return <CommunicationsTab />;
       case 'network':
         return <NetworkAdminTab previewMode={previewMode} />;
+      case 'surveys':
+        return <SurveysTab previewMode={previewMode} />;
       case 'audience':
         return <AudienceTab />;
       default:
@@ -135,6 +138,8 @@ export default function Mothership({ previewMode = false }) {
           >
             <Users size={16} /> Audiencia
           </button>
+
+          <button onClick={() => setActiveSection('surveys')} className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 whitespace-nowrap ${activeSection === 'surveys' ? 'bg-emerald-400 text-black' : 'text-neutral-500 hover:text-white'}`}><Users size={16} /> Encuestas</button>
 
           <button
             onClick={() => setActiveSection('network')}
