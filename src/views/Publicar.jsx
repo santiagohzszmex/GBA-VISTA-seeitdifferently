@@ -8,6 +8,7 @@ import EditorialProfileSettings from '../components/studio/EditorialProfileSetti
 import EditorialStudioHeader from '../components/studio/EditorialStudioHeader';
 import EditorialTeamManager from '../components/studio/EditorialTeamManager';
 import NetworkBusinessStudio from '../components/studio/NetworkBusinessStudio';
+import NetworkServerStudio from '../components/studio/NetworkServerStudio';
 import CreditsPanel from '../components/social/CreditsPanel';
 import { 
   PenTool, 
@@ -324,12 +325,13 @@ export default function Publicar({ initialSection = 'publish' }) {
         <div className="max-w-6xl mx-auto pt-10 px-6 md:px-10">
           <header className="mb-8 border-b border-[#d2d2d7] pb-6">
             <div className="flex flex-col sm:flex-row sm:items-end gap-5">
-              <div><div className="flex items-center gap-2 text-[#0066FF] mb-3"><ShieldCheck size={18}/><span className="text-[10px] font-bold tracking-widest uppercase">GBA ID · Network Beta</span></div><h1 className="text-4xl md:text-5xl font-serif italic tracking-tight text-[#1d1d1f]">VISTA Studio</h1><p className="text-sm text-[#86868b] mt-2">Administra una cuenta de negocio o empresa en servidores geopolíticos de Minecraft.</p></div>
+              <div><div className="flex items-center gap-2 text-[#0066FF] mb-3"><ShieldCheck size={18}/><span className="text-[10px] font-bold tracking-widest uppercase">GBA ID · Network Beta</span></div><h1 className="text-4xl md:text-5xl font-serif italic tracking-tight text-[#1d1d1f]">VISTA Studio</h1><p className="text-sm text-[#86868b] mt-2">Registra y administra los servidores geopolíticos de tu comunidad.</p></div>
               <button type="button" onClick={() => setStudioSection('publish')} className="sm:ml-auto h-10 px-4 rounded-md border border-[#d2d2d7] bg-white text-xs font-bold text-[#5f6368] hover:text-[#1d1d1f]">Volver a Editorial</button>
             </div>
             <nav className="flex items-center gap-1 mt-7 -mb-6 overflow-x-auto" aria-label="Areas de VISTA Studio"><button type="button" onClick={() => setStudioSection('publish')} className="h-11 px-4 flex items-center gap-2 text-xs font-bold border-b-2 border-transparent text-[#86868b]"><FileText size={15}/>Editorial</button><button type="button" className="h-11 px-4 flex items-center gap-2 text-xs font-bold border-b-2 border-[#0066FF] text-[#0066FF]"><Building size={15}/>Network Beta</button></nav>
           </header>
-          <NetworkBusinessStudio userId={user?.id} previewMode={previewMode}/>
+          <NetworkServerStudio userId={user?.id} previewMode={previewMode}/>
+          <details className="mt-12 border-t border-[#dce3dc] pt-6"><summary className="cursor-pointer text-xs font-bold text-[#708078]">Perfiles anteriores de negocios y empresas</summary><div className="mt-6"><NetworkBusinessStudio userId={user?.id} previewMode={previewMode}/></div></details>
         </div>
       </div>
     );
@@ -356,7 +358,7 @@ export default function Publicar({ initialSection = 'publish' }) {
           >
             Ir a Mothership Command
           </button>
-          <button type="button" onClick={() => setStudioSection('network')} className="w-full mt-3 border border-[#d2d2d7] bg-white text-[#1d1d1f] font-bold py-4 rounded-xl flex items-center justify-center gap-2 text-sm"><Building size={16}/>Cuenta de negocio o empresa</button>
+          <button type="button" onClick={() => setStudioSection('network')} className="w-full mt-3 border border-[#d2d2d7] bg-white text-[#1d1d1f] font-bold py-4 rounded-xl flex items-center justify-center gap-2 text-sm"><Building size={16}/>Registrar un servidor en Network</button>
         </div>
       </div>
     );
@@ -381,7 +383,7 @@ export default function Publicar({ initialSection = 'publish' }) {
             VISTA Studio es el espacio de publicación para equipos editoriales. Registra una organización o acepta una invitación con tu GBA ID.
           </p>
 
-          <button type="button" onClick={() => setStudioSection('network')} className="h-11 px-4 mb-8 mx-auto rounded-md border border-[#d2d2d7] bg-white text-sm font-bold flex items-center justify-center gap-2"><Building size={16} className="text-[#0066FF]"/>Solicitar cuenta de negocio o empresa</button>
+          <button type="button" onClick={() => setStudioSection('network')} className="h-11 px-4 mb-8 mx-auto rounded-md border border-[#d2d2d7] bg-white text-sm font-bold flex items-center justify-center gap-2"><Building size={16} className="text-[#0066FF]"/>Registrar un servidor en Network</button>
 
           {solicitudExistente ? (
             <div className="bg-white border border-[#d2d2d7] rounded-3xl p-8 max-w-lg mx-auto flex flex-col items-center shadow-[0_10px_30px_rgba(0,0,0,0.02)] animate-in fade-in">

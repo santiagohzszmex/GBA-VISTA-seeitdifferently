@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Monitor, Film, Newspaper, ShieldCheck, Cpu, Megaphone, Terminal, Server, BrainCircuit, Mail, Users } from 'lucide-react';
+import { Monitor, Film, Newspaper, ShieldCheck, Cpu, Megaphone, Terminal, Server, BrainCircuit, Mail, Users, Globe2 } from 'lucide-react';
 
 // Importamos los submódulos subiendo un nivel en la estructura de carpetas (../)
 import VideosTab from '../mothership/VideosTab';
@@ -11,6 +11,7 @@ import InfrastructureTab from '../mothership/InfrastructureTab';
 import AnimaTab from '../mothership/AnimaTab';
 import CommunicationsTab from '../mothership/CommunicationsTab';
 import AudienceTab from '../mothership/AudienceTab';
+import NetworkAdminTab from '../mothership/NetworkAdminTab';
 
 export default function Mothership() {
   const [activeSection, setActiveSection] = useState('videos');
@@ -41,6 +42,8 @@ export default function Mothership() {
         return <AnimaTab />;
       case 'communications':
         return <CommunicationsTab />;
+      case 'network':
+        return <NetworkAdminTab />;
       case 'audience':
         return <AudienceTab />;
       default:
@@ -131,6 +134,13 @@ export default function Mothership() {
             }`}
           >
             <Users size={16} /> Audiencia
+          </button>
+
+          <button
+            onClick={() => setActiveSection('network')}
+            className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all whitespace-nowrap ${activeSection === 'network' ? 'bg-emerald-400 text-black shadow-lg' : 'text-neutral-500 hover:text-white'}`}
+          >
+            <Globe2 size={16} /> Network / Partners
           </button>
 
           <button 

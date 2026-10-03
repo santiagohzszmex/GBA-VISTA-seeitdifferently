@@ -9,6 +9,7 @@ propiedad y relación con el resto de la organización.
 - [Modelo operativo de GBA](./GBA_OPERATING_MODEL.md)
 - [Cierre de GlobalBank](./GLOBALBANK_SUNSET.md)
 - [Carta fundacional de ANIMA](./ANIMA_CHARTER.md)
+- [Piloto de Network y GBA Partners](./NETWORK_PILOT.md)
 
 ## Decisión principal
 

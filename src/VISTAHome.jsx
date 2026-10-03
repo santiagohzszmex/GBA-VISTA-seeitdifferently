@@ -38,7 +38,8 @@ export default function VISTAHome() {
   const sharedCampaignId = new URLSearchParams(window.location.search).get('campaign');
   const sharedKeynoteSlug = new URLSearchParams(window.location.search).get('keynote');
   const sharedUpdateId = new URLSearchParams(window.location.search).get('update');
-  const sharedNetwork = new URLSearchParams(window.location.search).get('network') === '1';
+  const sharedNetwork = new URLSearchParams(window.location.search).get('network') === '1'
+    || new URLSearchParams(window.location.search).has('server');
   const sharedRadioShortcode = new URLSearchParams(window.location.search).get('radio');
   const studioPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get('studio-preview') === '1';
   const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : sharedKeynoteSlug ? 'keynotes' : sharedRadioShortcode ? 'radio' : sharedNetwork ? 'network' : studioPreview ? 'publicar' : 'home');
