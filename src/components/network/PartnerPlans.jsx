@@ -1,5 +1,6 @@
 import React from 'react';
-import { Cloud, Check, Monitor, List, Globe2 } from 'lucide-react';
+import PartnerEmblem from './PartnerEmblem';
+import { Check, Monitor, List, Globe2 } from 'lucide-react';
 
 const plans = [
   { id: 'free', name: 'Ficha de servidor', price: 'Gratis', caption: 'Durante el piloto', Icon: Globe2, features: ['Perfil de tu comunidad', 'IP, Discord y mapa', 'Administración con GBA ID'], action: 'Registrar servidor' },
@@ -10,10 +11,10 @@ const plans = [
 export default function PartnerPlans({ onChoose }) {
   return <section className="vn-partner-plans" aria-labelledby="partner-plans-title">
     <div className="vn-plans-window">
-      <header className="vn-plans-toolbar"><Cloud size={18}/><span>GBA Partners</span></header>
+      <header className="vn-plans-toolbar"><PartnerEmblem size={20} monochrome/><span>GBA Partners</span></header>
       <div className="vn-plans-content">
         <div className="vn-plans-intro">
-          <div className="vn-cloud-emblem" aria-hidden="true"><Cloud size={49} strokeWidth={1.5}/></div>
+          <div className="vn-partner-emblem" aria-hidden="true"><PartnerEmblem size={64}/></div>
           <div><h2 id="partner-plans-title">Un lugar para tu comunidad.</h2><p>Empieza con una ficha gratuita. Dale más presencia a tu servidor cuando lo necesites.</p></div>
         </div>
         <div className="vn-plans-grid">{plans.map(({ id, name, price, caption, Icon, features, action }) => <article key={id} className={`vn-plan${id === 'hero' ? ' vn-plan-featured' : ''}`}>
