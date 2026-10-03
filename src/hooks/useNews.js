@@ -73,7 +73,8 @@ export function useNews() {
       let query = supabase
         .from('contenido')
         .select('*')
-        .eq('estado_publicacion', 'aprobado');
+        .eq('estado_publicacion', 'aprobado')
+        .in('categoria', ['Noticia', 'Periódico']);
 
       query = profile?.id
         ? query.eq('editorial_id', profile.id)

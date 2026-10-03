@@ -113,8 +113,8 @@ export default function ContentDetailModal({ movie, onClose, onPlay }) {
             {/* Columna Derecha: Créditos Rápidos */}
             <div className="space-y-4 text-sm">
               <div>
-                <span className="text-[#86868b] block mb-1 font-bold">Productora:</span>
-                <span className="text-white">{movie.sello_editorial || 'GIMG Studios'}</span>
+                <span className="text-[#86868b] block mb-1 font-bold">{movie.es_comunidad ? 'Canal o autor:' : 'Productora:'}</span>
+                <span className="text-white">{movie.sello_editorial || (movie.es_comunidad ? 'Creador de la comunidad' : 'GIMG Studios')}</span>
               </div>
               <div>
                 <span className="text-[#86868b] block mb-1 font-bold">Estado:</span>

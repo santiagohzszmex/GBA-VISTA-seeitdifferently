@@ -32,7 +32,7 @@ export default function Buscar({ onSelectMovie }) {
           if (data) {
             // Filtro de Inteligencia: Clasificamos los resultados por su origen y tipo
             setVideosResult(data.filter(item => 
-              isVideoContent(item)
+              isVideoContent(item) && item.estado_publicacion === 'aprobado'
             ));
             
             setNoticiasResult(data.filter(item => 
@@ -40,7 +40,7 @@ export default function Buscar({ onSelectMovie }) {
             ));
             
             setKioscoResult(data.filter(item => 
-              item.es_comunidad && item.estado_publicacion === 'aprobado'
+              item.es_comunidad && !isVideoContent(item) && item.estado_publicacion === 'aprobado'
             ));
           }
         } catch (err) {

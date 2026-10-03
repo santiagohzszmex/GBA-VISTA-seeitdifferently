@@ -59,8 +59,9 @@ export default async function handler(request, response) {
   const now = Date.now();
   const editionReleaseAt = edition.publicar_at ? new Date(edition.publicar_at).getTime() : null;
   const videoReleaseAt = edition.gimg_video_estreno_at ? new Date(edition.gimg_video_estreno_at).getTime() : null;
-  const isPremierePhase = Boolean(edition.has_gimg_premiere && editionReleaseAt && now < editionReleaseAt);
-  const videoReleased = isPremierePhase && (!videoReleaseAt || now >= videoReleaseAt);
+  const isPremierePhase = Boolean(editionReleaseAt && now < editionReleaseAt);
+  const coverAnnouncement = isPremierePhase && !edition.has_gimg_premiere;
+  const videoReleased = isPremierePhase && edition.has_gimg_premiere && (!videoReleaseAt || now >= videoReleaseAt);
   const title = compactText(
     (isPremierePhase && edition.gimg_video_titulo) || edition.titulo || 'Edicion de VISTA',
     100
@@ -76,7 +77,7 @@ export default async function handler(request, response) {
   const releaseLabel = isPremierePhase && editionReleaseAt
     ? new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'America/Mexico_City' }).format(new Date(editionReleaseAt))
     : '';
-  const actionLabel = videoReleased ? 'Ver presentacion con GBA ID' : 'Leer con GBA ID';
+  const actionLabel = coverAnnouncement ? 'Ver portada con GBA ID' : videoReleased ? 'Ver presentacion con GBA ID' : 'Leer con GBA ID';
 
   const html = `<!doctype html>
 <html lang="es">

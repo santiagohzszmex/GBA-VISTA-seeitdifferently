@@ -13,7 +13,7 @@ import CommunicationsTab from '../mothership/CommunicationsTab';
 import AudienceTab from '../mothership/AudienceTab';
 import NetworkAdminTab from '../mothership/NetworkAdminTab';
 
-export default function Mothership() {
+export default function Mothership({ previewMode = false }) {
   const [activeSection, setActiveSection] = useState('videos');
   const [forgeArea, setForgeArea] = useState('development');
 
@@ -21,9 +21,9 @@ export default function Mothership() {
   const renderSection = () => {
     switch (activeSection) {
       case 'videos':
-        return <VideosTab />;
+        return <VideosTab previewMode={previewMode} />;
       case 'news':
-        return <NoticiasTab />;
+        return <NoticiasTab previewMode={previewMode} />;
       case 'aduana':
         return <AduanaTab />;
       case 'forge': // <-- Ruta para GBA Forge
@@ -43,11 +43,11 @@ export default function Mothership() {
       case 'communications':
         return <CommunicationsTab />;
       case 'network':
-        return <NetworkAdminTab />;
+        return <NetworkAdminTab previewMode={previewMode} />;
       case 'audience':
         return <AudienceTab />;
       default:
-        return <VideosTab />;
+        return <VideosTab previewMode={previewMode} />;
     }
   };
 
@@ -57,12 +57,12 @@ export default function Mothership() {
       {/* HEADER & CONTROLES */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 mb-12 border-b border-white/10 pb-8">
         
-        <div className="flex items-center gap-5">
-          <div className="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.3)] border border-red-500">
+        <div className="flex items-center gap-4 md:gap-5 min-w-0">
+          <div className="w-12 h-12 md:w-16 md:h-16 shrink-0 bg-red-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.3)] border border-red-500">
             <Monitor className="text-white" size={32} />
           </div>
           <div>
-            <h1 className="text-4xl md:text-5xl font-serif italic tracking-tighter text-white">
+            <h1 className="text-3xl md:text-5xl font-serif italic tracking-tighter text-white">
               Mothership Command.
             </h1>
             <p className="text-red-500 font-bold tracking-[0.2em] text-[10px] uppercase mt-2">
@@ -72,14 +72,14 @@ export default function Mothership() {
         </div>
 
         {/* NAVEGACIÓN INTERNA */}
-        <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/10 backdrop-blur-md w-full xl:w-auto overflow-x-auto scrollbar-none">
+        <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/10 backdrop-blur-md w-full xl:w-auto min-w-0 overflow-x-auto scrollbar-none">
           <button 
             onClick={() => setActiveSection('videos')}
             className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all whitespace-nowrap ${
               activeSection === 'videos' ? 'bg-white text-black shadow-lg' : 'text-neutral-500 hover:text-white'
             }`}
           >
-            <Film size={16} /> GIMG Videos
+            <Film size={16} /> Videos
           </button>
           
           <button 
@@ -88,7 +88,7 @@ export default function Mothership() {
               activeSection === 'news' ? 'bg-white text-black shadow-lg' : 'text-neutral-500 hover:text-white'
             }`}
           >
-            <Newspaper size={16} /> GIMG Noticias
+            <Newspaper size={16} /> Periódicos
           </button>
 
           <button

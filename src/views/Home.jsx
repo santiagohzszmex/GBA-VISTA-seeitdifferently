@@ -321,6 +321,7 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
   const [currentIndex, setCurrentIndex] = useState(0);
   const [top10, setTop10] = useState([]);
   const [moviesByGenre, setMoviesByGenre] = useState({});
+  const [communityVideos, setCommunityVideos] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
   const [latestKeynote, setLatestKeynote] = useState(null);
   const [expandedCampaign, setExpandedCampaign] = useState(null);
@@ -362,10 +363,10 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
 
         if (heroContent.length > 0) {
           setFeaturedMovies(heroContent);
-        } else if (topContent.length > 0) {
-          setFeaturedMovies(topContent.slice(0, 5));
+        } else if (topContent.some(item => item && !item.es_comunidad)) {
+          setFeaturedMovies(topContent.filter(item => item && !item.es_comunidad).slice(0, 5));
         } else {
-          setFeaturedMovies(allContent.slice(0, 5));
+          setFeaturedMovies(allContent.filter(item => item && !item.es_comunidad).slice(0, 5));
         }
 
         const groups = {};
@@ -381,6 +382,7 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
           }
         });
         setMoviesByGenre(groups);
+        setCommunityVideos(allContent.filter(item => item?.es_comunidad === true));
       } catch (error) {
         console.error("Error al cargar datos del Home:", error);
       }
@@ -578,6 +580,8 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
         {top10.length > 0 && (
           <ContentRow title="Top 10: Lo más visto en GIMG" items={top10} onSelect={onSelectMovie} />
         )}
+
+        {communityVideos.length > 0 && <ContentRow title="Videos de la comunidad · tutoriales y servidores" items={communityVideos} onSelect={onSelectMovie} />}
 
         {Object.entries(moviesByGenre).map(([genero, peliculas]) => (
           peliculas.length > 0 && (

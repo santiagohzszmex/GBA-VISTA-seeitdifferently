@@ -9,6 +9,8 @@ import { useContentLanguage } from '../../hooks/useContentLanguage';
 import LanguageSwitcher from '../common/LanguageSwitcher';
 import CreditsPanel from '../social/CreditsPanel';
 import ConversationPanel from '../social/ConversationPanel';
+import { getGimgPremiereState } from '../../utils/editionRelease';
+export { getGimgPremiereState } from '../../utils/editionRelease';
 
 const FLIP_DURATION = 700; // ms — misma referencia usada en NewsCard, para consistencia visual
 const AUTO_ADVANCE_DELAY = 8000;
@@ -40,23 +42,6 @@ const formatCountdown = milliseconds => {
   const seconds = totalSeconds % 60;
   if (days > 0) return `${days}d ${hours}h ${minutes}m`;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-};
-
-export const getGimgPremiereState = (item, now = Date.now()) => {
-  const hasPremiere = Boolean(item?.gimg_video_url);
-  const videoReleaseAt = parseReleaseTime(item?.gimg_video_estreno_at);
-  const editionReleaseAt = parseReleaseTime(item?.publicar_at);
-  const videoReleased = hasPremiere && (!videoReleaseAt || now >= videoReleaseAt);
-  const editionReleased = !editionReleaseAt || now >= editionReleaseAt;
-
-  return {
-    hasPremiere,
-    videoReleased,
-    editionReleased,
-    videoReleaseAt,
-    editionReleaseAt,
-    isPremierePhase: hasPremiere && !editionReleased
-  };
 };
 
 function PreviewArtwork({ title, compact = false }) {
@@ -166,13 +151,13 @@ function ExpandedPanel({ item, content, onClose, now }) {
                 className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2.5 rounded-full text-white/90 transition-all active:scale-95"
               >
                 {shareStatus === 'idle' ? <Share2 size={16}/> : <Check size={16}/>}
-                <span className="text-xs font-bold">{shareStatus === 'copied' ? 'Enlace copiado' : shareStatus === 'shared' ? 'Compartida' : 'Compartir presentación'}</span>
+                <span className="text-xs font-bold">{shareStatus === 'copied' ? 'Enlace copiado' : shareStatus === 'shared' ? 'Compartida' : premiere.coverAnnouncement ? 'Compartir portada' : 'Compartir presentación'}</span>
               </button>
             </div>
           )}
 
           {/* Portada Traducida + Like */}
-          {premiere.editionReleased && poster && (
+          {(premiere.editionReleased || premiere.coverAnnouncement) && poster && (
             <div className="max-w-3xl mx-auto w-full flex flex-col items-center gap-4">
               <div className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#1d1d1f]">
                 <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest text-white/80 border border-white/10 z-10">
@@ -186,7 +171,7 @@ function ExpandedPanel({ item, content, onClose, now }) {
                 />
               </div>
 
-              <div className="flex items-center justify-center gap-3 flex-wrap">
+              {premiere.editionReleased && <div className="flex items-center justify-center gap-3 flex-wrap">
                 <button
                   onClick={(e) => { e.stopPropagation(); toggleLike(); }}
                   className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-2.5 rounded-full transition-all active:scale-95"
@@ -218,7 +203,7 @@ function ExpandedPanel({ item, content, onClose, now }) {
                 <span className="flex items-center gap-1.5 text-xs text-neutral-400 font-bold">
                   <Eye size={14} /> {item.vistas || 0} {lang === 'en' ? 'Reads' : 'Lecturas'}
                 </span>
-              </div>
+              </div>}
             </div>
           )}
 
@@ -241,6 +226,8 @@ function ExpandedPanel({ item, content, onClose, now }) {
                 </div>
               ))}
             </div>
+          ) : /^https:\/\//.test(item.enlace_pdf || '') ? (
+            <a href={item.enlace_pdf} target="_blank" rel="noopener noreferrer" className="mx-auto flex gap-2 items-center text-blue-400 font-semibold py-8"><FileText size={20}/>{lang === 'en' ? 'Open edition PDF' : 'Abrir PDF de la edición'}</a>
           ) : (
             <div className="flex flex-col items-center justify-center py-24 text-neutral-500 gap-4">
               <FileText size={48} className="opacity-50" />
@@ -316,7 +303,7 @@ function CoverflowSlide({ item, isActive, isPrev, isNext, onOpen, now }) {
         {isActive && (
           <div className="absolute inset-0 bg-black/0 group-hover/cover:bg-black/20 transition-colors flex items-end justify-center pb-5">
             <span className="bg-white text-[#1d1d1f] text-xs font-bold uppercase tracking-widest px-5 py-2.5 rounded-full flex items-center gap-1.5 shadow-lg opacity-0 group-hover/cover:opacity-100 translate-y-2 group-hover/cover:translate-y-0 transition-all">
-              {premiere.isPremierePhase ? (premiere.videoReleased ? 'Abrir' : 'Programado') : 'Leer'} {premiere.isPremierePhase && premiere.videoReleased ? <Play size={14} fill="currentColor"/> : <ArrowUpRight size={14} />}
+              {premiere.isPremierePhase ? (premiere.coverAnnouncement ? 'Ver portada' : premiere.videoReleased ? 'Abrir' : 'Programado') : 'Leer'} {premiere.isPremierePhase && premiere.videoReleased ? <Play size={14} fill="currentColor"/> : <ArrowUpRight size={14} />}
             </span>
           </div>
         )}
@@ -522,7 +509,7 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
 
   const handleOpen = useCallback((item) => {
     const premiere = getGimgPremiereState(item, now);
-    if (premiere.isPremierePhase && !premiere.videoReleased) return;
+    if (!premiere.canOpen) return;
     setExpanded(true);
     if (premiere.editionReleased) onRead && onRead(item);
     window.setTimeout(() => {
@@ -534,7 +521,7 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
     if (!focusedNewsId || activeItem?.id !== focusedNewsId || openedFocusedRef.current === focusedNewsId) return undefined;
     openedFocusedRef.current = focusedNewsId;
     const premiere = getGimgPremiereState(activeItem, now);
-    if (premiere.isPremierePhase && !premiere.videoReleased) return undefined;
+    if (!premiere.canOpen) return undefined;
 
     const frame = window.requestAnimationFrame(() => handleOpen(activeItem));
     return () => window.cancelAnimationFrame(frame);
@@ -643,7 +630,7 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
               setLang={activeContent.setLang}
               langLabel={activeContent.langLabel}
               variant="light"
-            /> : <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#0066FF]"><Clock3 size={14}/>{activePremiere.videoReleased ? `Edición disponible ${formatReleaseDate(activeItem.publicar_at)}` : `Video disponible en ${formatCountdown(activePremiere.videoReleaseAt - now)}`}</span>}
+            /> : <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#0066FF]"><Clock3 size={14}/>{(activePremiere.coverAnnouncement || activePremiere.videoReleased) ? `Edición disponible ${formatReleaseDate(activeItem.publicar_at)}` : `Video disponible en ${formatCountdown(activePremiere.videoReleaseAt - now)}`}</span>}
           </div>
 
           <div className="h-[104px] sm:h-16 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-xl w-full">
@@ -670,10 +657,10 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
             </span>}
             <button
               onClick={() => handleOpen(activeItem)}
-              disabled={activePremiere.isPremierePhase && !activePremiere.videoReleased}
+              disabled={!activePremiere.canOpen}
               className="text-xs font-bold text-white uppercase tracking-widest flex items-center gap-1 bg-[#0066FF] hover:bg-[#0052cc] px-5 py-2.5 rounded-full transition-colors"
             >
-              {activePremiere.isPremierePhase ? (activePremiere.videoReleased ? 'Abrir' : 'Programado') : (activeContent.lang === 'en' ? 'Read' : 'Leer')} {activePremiere.isPremierePhase && activePremiere.videoReleased ? <Play size={14} fill="currentColor"/> : <ArrowUpRight size={14} />}
+              {activePremiere.isPremierePhase ? (activePremiere.coverAnnouncement ? 'Ver portada' : activePremiere.videoReleased ? 'Abrir' : 'Programado') : (activeContent.lang === 'en' ? 'Read' : 'Leer')} {activePremiere.isPremierePhase && activePremiere.videoReleased ? <Play size={14} fill="currentColor"/> : <ArrowUpRight size={14} />}
             </button>
           </div>
         </div>

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:network": "node tests/network-pilot.mjs"
+    "test:network": "node tests/network-pilot.mjs",
+    "test:publishing": "node tests/publishing.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

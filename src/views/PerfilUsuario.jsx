@@ -61,6 +61,7 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
         .eq('autor_id', resolved.id)
         .eq('estado_publicacion', 'aprobado')
         .eq('es_comunidad', true)
+        .in('categoria', ['Noticia', 'Periódico'])
         .order('created_at', { ascending: false });
       setPublications(content || []);
       setLoadingProfile(false);

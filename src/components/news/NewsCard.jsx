@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { Heart, Eye, ShieldCheck, FileText, ChevronUp, Layers, Bookmark, Check, Share2 } from 'lucide-react';
 import { useLikes } from '../../hooks/useLikes';
 import { useLibrary } from '../../hooks/useLibrary';
@@ -8,6 +8,7 @@ import LanguageSwitcher from '../common/LanguageSwitcher';
 import { getEditorialCategoryLabel } from '../../utils/editorialCategories';
 import CreditsPanel from '../social/CreditsPanel';
 import ConversationPanel from '../social/ConversationPanel';
+import { getGimgPremiereState } from '../../utils/editionRelease';
 
 const FLIP_DURATION = 700; // ms — una sola fuente de verdad para JS y CSS
 
@@ -18,6 +19,10 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
   const { shareEdition, shareStatus } = useEditionShare(item, { titulo, descripcion });
   const [isFlipped, setIsFlipped] = useState(false);
   const [contentHeight, setContentHeight] = useState(480);
+
+  const [now, setNow] = useState(Date.now());
+  const release = getGimgPremiereState(item, now);
+  useEffect(() => { if (!item.publicar_at) return; const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, [item.publicar_at]);
 
   const cardRef = useRef(null);   // wrapper completo (para scroll)
   const backRef = useRef(null);   // contenido trasero (para medir su altura real)
@@ -57,7 +62,7 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
   const openCard = () => {
     if (!isFlipped) {
       setIsFlipped(true);
-      onRead(item);
+      if (release.editionReleased) onRead?.(item);
     }
   };
 
@@ -152,7 +157,7 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
             </h3>
 
             <div className="mt-auto pt-4 border-t border-[#d2d2d7]/50 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-               <span className="text-xs font-bold text-[#0066FF] uppercase tracking-widest">Abrir y Leer</span>
+               <span className="text-xs font-bold text-[#0066FF] uppercase tracking-widest">{release.editionReleased ? 'Abrir y leer' : 'Ver portada'}</span>
                <Layers size={18} className="text-[#0066FF]" />
             </div>
           </div>
@@ -222,7 +227,7 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
             </div>
 
             {/* Cascada de Páginas a lo ancho */}
-            {paginas.length > 0 ? (
+            {!release.editionReleased ? <p className="text-sm text-neutral-400 text-center py-8">Las páginas estarán disponibles el {new Date(item.publicar_at).toLocaleString('es-MX')}.</p> : paginas.length > 0 ? (
               <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full items-center">
                 {paginas.map((url, idx) => (
                   <div
@@ -242,6 +247,8 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
                   </div>
                 ))}
               </div>
+            ) : /^https:\/\//.test(item.enlace_pdf || '') ? (
+              <a href={item.enlace_pdf} target="_blank" rel="noopener noreferrer" className="mx-auto flex gap-2 items-center text-blue-400 font-semibold py-8"><FileText size={20}/>Abrir PDF de la edición</a>
             ) : (
               <div className="flex flex-col items-center justify-center py-24 text-neutral-500 gap-4">
                 <FileText size={48} className="opacity-50" />
@@ -249,7 +256,7 @@ export default function NewsCard({ item, onRead, onNavigateProfile }) {
               </div>
             )}
 
-            {isFlipped && <div className="max-w-5xl mx-auto w-full">
+            {isFlipped && release.editionReleased && <div className="max-w-5xl mx-auto w-full">
               <CreditsPanel subjectType="content" subjectId={item.id} dark/>
               <ConversationPanel subjectType="content" subjectId={item.id} dark/>
             </div>}

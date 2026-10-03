@@ -1,413 +1,135 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Save, Edit3, PlusCircle, X, Trash2, Eye, Image as ImageIcon, Star, MonitorPlay } from 'lucide-react';
+import { Save, Edit3, Plus, X, Trash2, Eye } from 'lucide-react';
 import { VIDEO_CATEGORIES } from '../utils/contentTypes';
+import { youtubeId, videoPayload } from '../utils/publishing';
 import CreditsPanel from '../components/social/CreditsPanel';
+import './publishing.css';
 
-export default function VideosTab() {
+const blankVideo = () => ({ titulo: '', descripcion: '', youtube_id: '', trailer_id: '', categoria: 'Video', año: new Date().getFullYear().toString(), duracion: '', calificacion: '', generos: '', banner_url: '', poster_url: '', es_top_10: false, en_hero: false, es_comunidad: false, estado_publicacion: 'aprobado', sello_editorial: 'GIMG Studios' });
+
+export default function VideosTab({ previewMode = false }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
-  const [contentList, setContentList] = useState([]);
+  const [list, setList] = useState([]);
+  const [listLoading, setListLoading] = useState(!previewMode);
   const [editingId, setEditingId] = useState(null);
-  const [castList, setCastList] = useState([]); 
-  const [previewItem, setPreviewItem] = useState(null);
+  const [cast, setCast] = useState([]);
+  const [preview, setPreview] = useState(null);
+  const [search, setSearch] = useState('');
+  const [form, setForm] = useState(blankVideo);
+  const id = youtubeId(form.youtube_id);
+  const thumbnail = form.banner_url || (id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : '');
+  const field = (name, value) => setForm(current => ({ ...current, [name]: value }));
 
-  const initialFormContent = {
-    titulo: '',
-    descripcion: '',
-    youtube_id: '',
-    trailer_id: '',
-    categoria: 'Película', // Gramática correcta para que lo lea el sistema
-    año: new Date().getFullYear().toString(),
-    duracion: '1h 30m',
-    calificacion: 'B15',
-    generos: '',
-    banner_url: '',
-    poster_url: '',
-    es_top_10: false,
-    en_hero: false,
-    es_comunidad: false, // Nuevo control de comunidad
-    estado_publicacion: 'aprobado', // Nuevo control de visibilidad
-    sello_editorial: 'GIMG Studios' // Nuevo control de marca
+  const refresh = async () => {
+    if (previewMode) return;
+    setListLoading(true);
+    const { data, error } = await supabase.from('contenido').select('*, reparto(*)').in('categoria', VIDEO_CATEGORIES).order('created_at', { ascending: false });
+    if (error) setStatus({ type: 'error', msg: 'No se pudo cargar el catálogo. Puedes reintentar desde el botón Actualizar.' });
+    else setList(data || []);
+    setListLoading(false);
   };
-
-  const [formData, setFormData] = useState(initialFormContent);
-
-  useEffect(() => {
-    fetchContent();
-  }, []);
-
-  const fetchContent = async () => {
-    // Traemos todos los videos (oficiales y de comunidad)
-    const { data } = await supabase
-      .from('contenido')
-      .select('*, reparto(*)')
-      .in('categoria', VIDEO_CATEGORIES)
-      .order('created_at', { ascending: false });
-      
-    if (data) setContentList(data);
-  };
-
-  const handleChange = (e) => {
-    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
-  };
-
-  // Manejador especial para el toggle de comunidad
-  const handleComunidadToggle = (e) => {
-    const isComunidad = e.target.checked;
-    setFormData({
-      ...formData,
-      es_comunidad: isComunidad,
-      sello_editorial: isComunidad ? '' : 'GIMG Studios' // Si es oficial, auto-rellena GIMG
-    });
-  };
-
-  // Gestión de Reparto
-  const addActor = () => setCastList([...castList, { id: Date.now(), nombre_real: '', nombre_personaje: '', foto_url: '' }]);
-  const updateActor = (id, field, value) => setCastList(castList.map(actor => actor.id === id ? { ...actor, [field]: value } : actor));
-  const removeActor = (id) => setCastList(castList.filter(actor => actor.id !== id));
-
-  // Editar Contenido
-  const handleEdit = (item) => {
+  useEffect(() => { void refresh(); }, [previewMode]);
+  const reset = () => { setEditingId(null); setForm(blankVideo()); setCast([]); setStatus(null); };
+  const edit = item => {
     setEditingId(item.id);
-    setFormData({
-      titulo: item.titulo,
-      descripcion: item.descripcion,
-      youtube_id: item.youtube_id || '',
-      trailer_id: item.trailer_id || '',
-      categoria: item.categoria || 'Película',
-      año: item.año || '',
-      duracion: item.duracion || '',
-      calificacion: item.calificacion || '',
-      generos: item.generos ? item.generos.join(', ') : '',
-      banner_url: item.banner_url || '',
-      poster_url: item.poster_url || '',
-      es_top_10: item.es_top_10 || false,
-      en_hero: item.en_hero || false,
-      es_comunidad: item.es_comunidad || false,
-      estado_publicacion: item.estado_publicacion || 'aprobado',
-      sello_editorial: item.sello_editorial || 'GIMG Studios'
-    });
-    setCastList(item.reparto || []);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setStatus({ type: 'info', msg: `Editando: ${item.titulo}` });
+    setForm({ ...blankVideo(), ...Object.fromEntries(Object.keys(blankVideo()).map(key => [key, item[key] ?? blankVideo()[key]])), generos: (item.generos || []).join(', '), sello_editorial: item.sello_editorial || (item.es_comunidad ? '' : 'GIMG Studios') });
+    setCast(item.reparto || []); setStatus(null); window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  // Guardar Contenido
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
+  const source = external => setForm(current => ({ ...current, es_comunidad: external, sello_editorial: external ? (current.es_comunidad ? current.sello_editorial : '') : 'GIMG Studios', en_hero: external ? false : current.en_hero, es_top_10: external ? false : current.es_top_10 }));
+  const save = async event => {
+    event.preventDefault(); setLoading(true); setStatus(null);
     try {
-      const idForImage = formData.youtube_id || formData.trailer_id;
-      const defaultBanner = idForImage ? `https://img.youtube.com/vi/${idForImage}/maxresdefault.jpg` : '';
-      const finalBanner = formData.banner_url || defaultBanner;
-      const generosArray = formData.generos.split(',').map(g => g.trim()).filter(g => g !== '');
-
-      const contentData = {
-        ...formData,
-        banner_url: finalBanner,
-        poster_url: formData.poster_url || finalBanner,
-        generos: generosArray
-      };
-
+      const payload = videoPayload(form);
       let contentId = editingId;
-
-      if (editingId) {
-        const { error } = await supabase.from('contenido').update(contentData).eq('id', editingId);
-        if (error) throw error;
+      if (previewMode) {
+        contentId ||= `preview-${Date.now()}`;
+        setList(current => [{ ...payload, id: contentId, reparto: cast }, ...current.filter(item => item.id !== contentId)]);
       } else {
-        const { data, error } = await supabase.from('contenido').insert([contentData]).select().single();
+        const query = editingId ? supabase.from('contenido').update(payload).eq('id', editingId) : supabase.from('contenido').insert([payload]);
+        const { data, error } = await query.select('id').single();
         if (error) throw error;
         contentId = data.id;
+        // The editor remains on the saved record if a secondary cast write fails.
+        setEditingId(contentId);
+        const { error: castDeleteError } = await supabase.from('reparto').delete().eq('contenido_id', contentId);
+        if (castDeleteError) throw new Error('El video se guardó, pero no se pudieron actualizar los colaboradores. Reintenta Guardar cambios.');
+        if (cast.length) {
+          const { error: castError } = await supabase.from('reparto').insert(cast.map(actor => ({ contenido_id: contentId, nombre_real: actor.nombre_real, nombre_personaje: actor.nombre_personaje, foto_url: actor.foto_url })));
+          if (castError) throw new Error('El video se guardó, pero falta actualizar los colaboradores. Reintenta Guardar cambios.');
+        }
+        await refresh();
       }
-
-      // Guardar Reparto
-      if (contentId) {
-         const { error: deleteCastError } = await supabase.from('reparto').delete().eq('contenido_id', contentId);
-         if (deleteCastError) throw deleteCastError;
-         if (castList.length > 0) {
-            const castToInsert = castList.map(actor => ({
-               contenido_id: contentId,
-               nombre_real: actor.nombre_real,
-               nombre_personaje: actor.nombre_personaje,
-               foto_url: actor.foto_url
-            }));
-            const { error: insertCastError } = await supabase.from('reparto').insert(castToInsert);
-            if (insertCastError) throw insertCastError;
-         }
-      }
-
-      setStatus({ type: 'success', msg: '¡Guardado correctamente!' });
-      await fetchContent();
-      if (!editingId) {
-        setEditingId(null);
-        setFormData(initialFormContent);
-        setCastList([]);
-      }
-      
-    } catch (error) {
-      console.error("Error al guardar en Supabase:", error);
-      setStatus({ type: 'error', msg: 'Error al guardar. Revisa la consola.' });
-    } finally {
-      setLoading(false);
+      setEditingId(contentId);
+      setForm(current => ({ ...current, youtube_id: payload.youtube_id, trailer_id: payload.trailer_id }));
+      setStatus({ type: 'success', msg: previewMode ? 'Vista de desarrollo: video guardado solo en esta página.' : payload.estado_publicacion === 'aprobado' ? 'Video publicado. Ya puedes encontrarlo en VISTA.' : 'Video guardado como pendiente.' });
+    } catch (error) { setStatus({ type: 'error', msg: error.message || 'No se pudo guardar el video.' }); }
+    finally { setLoading(false); }
+  };
+  const changeVisibility = async item => {
+    const next = item.estado_publicacion === 'aprobado' ? 'pendiente' : 'aprobado';
+    if (previewMode) setList(current => current.map(video => video.id === item.id ? { ...video, estado_publicacion: next } : video));
+    else {
+      const { error } = await supabase.from('contenido').update({ estado_publicacion: next }).eq('id', item.id);
+      if (error) { setStatus({ type: 'error', msg: error.message }); return; }
+      await refresh();
     }
+    if (item.id === editingId) field('estado_publicacion', next);
   };
-
-  const handleQuickUpdate = async (item, patch, successMessage) => {
-    const { error } = await supabase.from('contenido').update(patch).eq('id', item.id);
-    if (error) {
-      setStatus({ type: 'error', msg: 'No se pudo aplicar el cambio rápido.' });
-      return;
+  const remove = async item => {
+    if (!window.confirm(`¿Eliminar definitivamente “${item.titulo}”?`)) return;
+    if (previewMode) setList(current => current.filter(video => video.id !== item.id));
+    else {
+      const { error: castError } = await supabase.from('reparto').delete().eq('contenido_id', item.id);
+      const { error } = castError ? { error: castError } : await supabase.from('contenido').delete().eq('id', item.id);
+      if (error) { setStatus({ type: 'error', msg: error.message }); return; }
+      await refresh();
     }
-    setStatus({ type: 'success', msg: successMessage });
-    if (editingId === item.id) setFormData(prev => ({ ...prev, ...patch }));
-    await fetchContent();
+    if (editingId === item.id) reset();
   };
-
-  const previewCurrentForm = () => {
-    const mediaId = formData.youtube_id || formData.trailer_id;
-    const fallback = mediaId ? `https://img.youtube.com/vi/${mediaId}/maxresdefault.jpg` : '';
-    setPreviewItem({
-      ...formData,
-      banner_url: formData.banner_url || fallback,
-      poster_url: formData.poster_url || formData.banner_url || fallback
-    });
+  const openPreview = () => {
+    try { setPreview({ ...videoPayload(form), reparto: cast }); }
+    catch (error) { setStatus({ type: 'error', msg: error.message }); }
   };
+  const visible = list.filter(item => `${item.titulo} ${item.sello_editorial} ${item.categoria}`.toLowerCase().includes(search.toLowerCase()));
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Borrar definitivamente?")) return;
-    await supabase.from('reparto').delete().eq('contenido_id', id);
-    const { error } = await supabase.from('contenido').delete().eq('id', id);
-    if (!error) {
-      fetchContent();
-      if (editingId === id) {
-          setEditingId(null);
-          setFormData(initialFormContent);
-          setCastList([]);
-      }
-    }
-  };
-
-  const resetForm = () => {
-    setEditingId(null);
-    setFormData(initialFormContent);
-    setCastList([]);
-    setStatus(null);
-  };
-
-  return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-12 text-white">
-      
-      {/* EDITOR */}
-      <div className="xl:col-span-1">
-        <div className="bg-white/5 border border-white/10 p-8 rounded-[2.5rem] backdrop-blur-xl sticky top-8 shadow-2xl">
-          
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold flex items-center gap-3">
-              {editingId ? <><Edit3 className="text-yellow-500"/> Editando</> : <><PlusCircle className="text-green-500"/> Nuevo Video</>}
-            </h2>
-            {editingId && <button onClick={resetForm} className="text-xs bg-white/10 px-3 py-1 rounded-full"><X size={12}/> Cancelar</button>}
+  return <div className="ms-publishing">
+    <section className="ms-editor">
+      <header className="ms-editor-head"><div><h2>{editingId ? 'Editar video.' : 'Publicar un video.'}</h2><p>Un enlace de YouTube, un título y quién lo creó.</p></div>{editingId && <button className="ms-button" onClick={reset}><Plus size={14}/>Nuevo</button>}</header>
+      {previewMode && <p className="ms-preview-note mb-6">Vista de desarrollo. Los cambios no se publican en VISTA.</p>}
+      <form onSubmit={save}>
+        <section className="ms-step"><h3><span className="ms-step-number">1</span>Origen del video</h3>
+          <div className="ms-source-options">
+            <label className="ms-option"><input type="radio" name="video-source" checked={!form.es_comunidad} onChange={() => source(false)}/><span><strong>Producción de GIMG</strong><small>Creado por nuestro equipo.</small></span></label>
+            <label className="ms-option"><input type="radio" name="video-source" checked={form.es_comunidad} onChange={() => source(true)}/><span><strong>Aportado por la comunidad</strong><small>Tutoriales y videos de administradores o creadores.</small></span></label>
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            
-            {/* 1. CONFIGURACIÓN EDITORIAL (NUEVO BLOQUE DE CONTROL) */}
-            <div className="space-y-4 p-4 bg-black/40 rounded-2xl border border-white/5">
-              <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">Configuración Editorial</p>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <select name="estado_publicacion" value={formData.estado_publicacion} onChange={handleChange} className="bg-transparent border-b border-white/10 p-2 text-xs [&>option]:bg-[#1d1d1f] outline-none focus:border-red-500 font-bold">
-                  <option value="aprobado">✅ Aprobado (Público)</option>
-                  <option value="pendiente">🕒 Pendiente (Oculto)</option>
-                </select>
-                
-                <label className={`flex items-center justify-center gap-2 p-2 rounded-xl border cursor-pointer transition-colors ${formData.es_comunidad ? 'bg-purple-600/20 border-purple-400 text-purple-300' : 'bg-blue-600/20 border-blue-400 text-blue-300'}`}>
-                   <input type="checkbox" name="es_comunidad" checked={formData.es_comunidad} onChange={handleComunidadToggle} className="hidden" />
-                   <span className="text-[10px] font-black uppercase tracking-widest">
-                      {formData.es_comunidad ? '👥 Comunidad' : '🎬 Oficial GIMG'}
-                   </span>
-                </label>
-              </div>
-
-              <input 
-                name="sello_editorial" 
-                value={formData.sello_editorial} 
-                onChange={handleChange} 
-                placeholder="Sello Editorial (Ej. GIMG Studios)" 
-                className="w-full bg-transparent border-b border-white/10 p-2 text-sm outline-none focus:border-red-500 font-bold text-neutral-300" 
-                required
-              />
-            </div>
-
-            {/* Info Básica */}
-            <div className="space-y-4 p-4 bg-black/40 rounded-2xl border border-white/5">
-              <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">General</p>
-              <input name="titulo" value={formData.titulo} onChange={handleChange} placeholder="Título" className="w-full bg-transparent border-b border-white/10 p-2 font-bold outline-none focus:border-red-500" required />
-              <textarea name="descripcion" value={formData.descripcion} onChange={handleChange} placeholder="Sinopsis..." rows="2" className="w-full bg-transparent border-b border-white/10 p-2 text-sm resize-none outline-none focus:border-red-500" />
-              <div className="grid grid-cols-2 gap-3">
-                 <select name="categoria" value={formData.categoria} onChange={handleChange} className="bg-transparent border-b border-white/10 p-2 text-sm [&>option]:bg-[#1d1d1f] outline-none focus:border-red-500">
-                  <option value="Película">Película</option>
-                  <option value="Serie">Serie</option>
-                </select>
-                <input name="generos" value={formData.generos} onChange={handleChange} placeholder="Acción, Drama..." className="bg-transparent border-b border-white/10 p-2 text-sm outline-none focus:border-red-500" />
-              </div>
-            </div>
-
-            {/* Multimedia */}
-            <div className="space-y-4 p-4 bg-black/40 rounded-2xl border border-white/5">
-              <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">IDs y Media</p>
-              <div className="grid grid-cols-2 gap-3">
-                  <input name="youtube_id" value={formData.youtube_id} onChange={handleChange} placeholder="YT Película" className="w-full bg-transparent border-b border-white/10 p-2 font-mono text-sm outline-none focus:border-red-500" />
-                  <input name="trailer_id" value={formData.trailer_id} onChange={handleChange} placeholder="YT Trailer" className="w-full bg-transparent border-b border-white/10 p-2 font-mono text-sm outline-none focus:border-red-500" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input name="banner_url" value={formData.banner_url} onChange={handleChange} placeholder="Banner URL" className="bg-transparent border-b border-white/10 p-2 text-xs outline-none focus:border-red-500" />
-                <input name="poster_url" value={formData.poster_url} onChange={handleChange} placeholder="Poster URL" className="bg-transparent border-b border-white/10 p-2 text-xs outline-none focus:border-red-500" />
-              </div>
-            </div>
-
-            {/* Datos Técnicos */}
-            <div className="grid grid-cols-3 gap-3 p-4 bg-black/40 rounded-2xl border border-white/5">
-                <input name="año" value={formData.año} onChange={handleChange} placeholder="Año" className="bg-transparent border-b border-white/10 p-2 text-center text-sm outline-none focus:border-red-500" />
-                <input name="duracion" value={formData.duracion} onChange={handleChange} placeholder="1h 30m" className="bg-transparent border-b border-white/10 p-2 text-center text-sm outline-none focus:border-red-500" />
-                <input name="calificacion" value={formData.calificacion} onChange={handleChange} placeholder="B15" className="bg-transparent border-b border-white/10 p-2 text-center text-sm outline-none focus:border-red-500" />
-            </div>
-
-            {/* Reparto */}
-            <div className="p-4 bg-black/40 rounded-2xl border border-white/5">
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">Reparto ({castList.length})</p>
-                <button type="button" onClick={addActor} className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded flex items-center gap-1"><PlusCircle size={10}/> Añadir</button>
-              </div>
-              
-              <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                {castList.map((actor) => (
-                  <div key={actor.id} className="flex gap-2 items-start bg-white/5 p-2 rounded-lg border border-white/5">
-                    <div className="w-8 h-8 bg-neutral-700 rounded-full overflow-hidden flex-shrink-0">
-                       {actor.foto_url && <img src={actor.foto_url} className="w-full h-full object-cover" alt="actor"/>}
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <input placeholder="Nombre Real" value={actor.nombre_real} onChange={(e) => updateActor(actor.id, 'nombre_real', e.target.value)} className="w-full bg-transparent border-b border-white/5 text-xs font-bold outline-none placeholder-neutral-600"/>
-                      <input placeholder="Personaje" value={actor.nombre_personaje} onChange={(e) => updateActor(actor.id, 'nombre_personaje', e.target.value)} className="w-full bg-transparent border-b border-white/5 text-[10px] text-neutral-400 outline-none placeholder-neutral-600"/>
-                      <input placeholder="URL Foto" value={actor.foto_url} onChange={(e) => updateActor(actor.id, 'foto_url', e.target.value)} className="w-full bg-transparent border-b border-white/5 text-[10px] text-blue-400 outline-none placeholder-neutral-600"/>
-                    </div>
-                    <button type="button" onClick={() => removeActor(actor.id)} className="text-red-500 hover:bg-red-500/10 p-1 rounded"><X size={12}/></button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Toggles Extra */}
-            <div className="grid grid-cols-2 gap-4">
-              <label className={`flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer ${formData.en_hero ? 'bg-blue-600 border-blue-400' : 'bg-white/5 border-white/10'}`}>
-                 <input type="checkbox" name="en_hero" checked={formData.en_hero} onChange={handleChange} className="hidden" />
-                 <span className="text-[10px] font-black uppercase">En Hero</span>
-              </label>
-              <label className={`flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer ${formData.es_top_10 ? 'bg-yellow-600 border-yellow-400' : 'bg-white/5 border-white/10'}`}>
-                 <input type="checkbox" name="es_top_10" checked={formData.es_top_10} onChange={handleChange} className="hidden" />
-                 <span className="text-[10px] font-black uppercase">Top 10</span>
-              </label>
-            </div>
-
-            {status && <div className={`p-3 rounded-xl text-xs text-center font-bold border ${status.type === 'error' ? 'text-red-300 bg-red-900/20 border-red-500/30' : 'text-green-300 bg-green-900/20 border-green-500/30'}`}>{status.msg}</div>}
-
-            <div className="grid grid-cols-[auto_1fr] gap-2">
-              <button type="button" onClick={previewCurrentForm} className="w-14 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center" title="Vista previa"><Eye size={18}/></button>
-              <button type="submit" disabled={loading} className={`w-full py-4 font-black uppercase tracking-widest text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${editingId ? 'bg-yellow-500 text-black hover:bg-yellow-400' : 'bg-white text-black hover:bg-neutral-200'}`}>
-                <Save size={18}/> {editingId ? 'Guardar Cambios' : 'Publicar'}
-              </button>
-            </div>
-
-          </form>
-          {editingId && <CreditsPanel subjectType="content" subjectId={editingId} editable dark className="mt-7"/>}
-        </div>
-      </div>
-
-      {/* LISTA DE CONTENIDO */}
-      <div className="xl:col-span-2">
-         <h2 className="text-2xl font-bold mb-6 text-neutral-400 font-serif italic">Catálogo de Videos</h2>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {contentList.map((item) => (
-            <div key={item.id} className="flex gap-4 bg-[#121212] border border-white/10 p-4 rounded-2xl hover:border-white/30 transition-all shadow-lg group">
-              <div className="w-24 h-32 bg-neutral-800 rounded-xl overflow-hidden flex-shrink-0 relative">
-                <img src={item.poster_url || item.banner_url || "https://images.unsplash.com/photo-1495020689067-958852a7765e"} className="w-full h-full object-cover filter group-hover:brightness-110 transition-all" alt={item.titulo} />
-              </div>
-              
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className="font-bold text-lg text-white line-clamp-1">{item.titulo}</h3>
-                    {item.es_comunidad ? (
-                      <span className="text-[9px] bg-purple-600 px-1.5 py-0.5 rounded uppercase font-bold tracking-widest shadow-md">Comunidad</span>
-                    ) : (
-                      <span className="text-[9px] bg-blue-600 px-1.5 py-0.5 rounded uppercase font-bold tracking-widest shadow-md">GIMG</span>
-                    )}
-                  </div>
-                  <p className="text-neutral-400 text-xs line-clamp-1 font-medium">{item.sello_editorial}</p>
-                  
-                  {/* ESTADÍSTICAS */}
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="flex items-center gap-1.5 text-[10px] font-bold text-neutral-400 bg-white/5 px-2 py-1 rounded-md border border-white/10">
-                      <Eye size={12} /> {item.vistas || 0} clics
-                    </span>
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${item.estado_publicacion === 'aprobado' ? 'text-green-400 bg-green-400/10' : 'text-yellow-400 bg-yellow-400/10'}`}>
-                       {item.estado_publicacion === 'aprobado' ? '✅ Aprobado' : '🕒 Pendiente'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2 mt-4">
-                  <button onClick={() => setPreviewItem(item)} className="bg-blue-500/10 border border-blue-500/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-2 rounded-lg transition-all" title="Vista previa"><Eye size={14}/></button>
-                  <button onClick={() => handleEdit(item)} className="bg-white/10 border border-white/10 hover:bg-white text-white hover:text-black px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 flex-1 justify-center"><Edit3 size={14}/> Editar</button>
-                  <button onClick={() => handleDelete(item.id)} className="bg-red-500/10 border border-red-500/20 hover:bg-red-600 text-red-500 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center"><Trash2 size={14}/></button>
-                </div>
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  <button type="button" onClick={() => handleQuickUpdate(item, { estado_publicacion: item.estado_publicacion === 'aprobado' ? 'pendiente' : 'aprobado' }, item.estado_publicacion === 'aprobado' ? 'Video ocultado.' : 'Video publicado.')} className={`h-8 rounded-lg border flex items-center justify-center ${item.estado_publicacion === 'aprobado' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-white/5 border-white/10 text-neutral-500'}`} title="Alternar publicación"><MonitorPlay size={13}/></button>
-                  <button type="button" onClick={() => handleQuickUpdate(item, { en_hero: !item.en_hero }, item.en_hero ? 'Video retirado del Hero.' : 'Video añadido al Hero.')} className={`h-8 rounded-lg border flex items-center justify-center ${item.en_hero ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-white/5 border-white/10 text-neutral-500'}`} title="Alternar Hero"><ImageIcon size={13}/></button>
-                  <button type="button" onClick={() => handleQuickUpdate(item, { es_top_10: !item.es_top_10 }, item.es_top_10 ? 'Video retirado del Top 10.' : 'Video añadido al Top 10.')} className={`h-8 rounded-lg border flex items-center justify-center ${item.es_top_10 ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' : 'bg-white/5 border-white/10 text-neutral-500'}`} title="Alternar Top 10"><Star size={13}/></button>
-                </div>
-              </div>
-            </div>
-          ))}
-         </div>
-         
-         {contentList.length === 0 && (
-           <div className="w-full py-20 text-center text-neutral-500 font-medium">
-             No hay videos en el catálogo aún.
-           </div>
-         )}
-      </div>
-      {previewItem && (
-        <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md p-4 md:p-10 flex items-center justify-center" onClick={() => setPreviewItem(null)} role="dialog" aria-modal="true">
-          <div className="relative w-full max-w-5xl max-h-full overflow-y-auto bg-[#121212] border border-white/10 rounded-2xl shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <button type="button" onClick={() => setPreviewItem(null)} className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/70 hover:bg-white hover:text-black flex items-center justify-center" title="Cerrar"><X size={18}/></button>
-            <div className="relative aspect-video bg-black overflow-hidden">
-              {previewItem.banner_url ? <img src={previewItem.banner_url} alt={previewItem.titulo} className="w-full h-full object-cover opacity-70"/> : <div className="w-full h-full flex items-center justify-center text-neutral-700"><MonitorPlay size={52}/></div>}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent"/>
-              <div className="absolute bottom-6 left-6 right-16">
-                <p className="text-[10px] uppercase tracking-widest font-black text-blue-400">{previewItem.sello_editorial}</p>
-                <h3 className="text-3xl md:text-5xl font-serif italic font-bold mt-2">{previewItem.titulo || 'Sin título'}</h3>
-              </div>
-            </div>
-            <div className="p-6 md:p-8 grid md:grid-cols-[180px_1fr] gap-6">
-              {previewItem.poster_url && <img src={previewItem.poster_url} alt="Poster" className="w-full aspect-[2/3] object-cover rounded-xl border border-white/10"/>}
-              <div>
-                <div className="flex flex-wrap gap-2 text-[10px] uppercase font-bold text-neutral-400 mb-4">
-                  <span>{previewItem.categoria}</span><span>•</span><span>{previewItem.año}</span><span>•</span><span>{previewItem.duracion}</span><span>•</span><span>{previewItem.calificacion}</span>
-                </div>
-                <p className="text-neutral-300 leading-relaxed whitespace-pre-wrap">{previewItem.descripcion || 'Sin descripción.'}</p>
-                {(previewItem.trailer_id || previewItem.youtube_id) && (
-                  <div className="mt-6 aspect-video rounded-xl overflow-hidden border border-white/10 bg-black">
-                    <iframe title="Vista previa de video" src={`https://www.youtube.com/embed/${previewItem.trailer_id || previewItem.youtube_id}`} className="w-full h-full" allowFullScreen />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+          <label className="ms-field"><span>{form.es_comunidad ? 'Canal, autor o equipo creador' : 'Equipo o sello de producción'}</span><input value={form.sello_editorial} onChange={e => field('sello_editorial', e.target.value)} placeholder={form.es_comunidad ? 'Ej. Canal del servidor o nombre del creador' : 'GIMG Studios'} required/></label>
+          <label className="ms-field"><span>Enlace de YouTube</span><input value={form.youtube_id} onChange={e => field('youtube_id', e.target.value)} placeholder="https://www.youtube.com/watch?v=…" required/><small>Puedes pegar el enlace completo, un Short o el ID del video.</small></label>
+          {thumbnail && <div className="ms-thumbnail"><img src={thumbnail} alt="Miniatura del video"/><div><strong>Miniatura de YouTube</strong>Se usa automáticamente. Puedes cambiarla en las opciones adicionales.</div></div>}
+        </section>
+        <section className="ms-step"><h3><span className="ms-step-number">2</span>Presentación en VISTA</h3>
+          <label className="ms-field"><span>Título</span><input value={form.titulo} onChange={e => field('titulo', e.target.value)} required placeholder="Qué aprenderá o verá la comunidad"/></label>
+          <label className="ms-field"><span>Descripción</span><textarea value={form.descripcion} onChange={e => field('descripcion', e.target.value)} rows={3} placeholder="Presenta el video y el servidor al que pertenece."/></label>
+          <div className="ms-fields"><label className="ms-field"><span>Tipo de contenido</span><select value={form.categoria} onChange={e => field('categoria', e.target.value)}>{[...new Set(['Video','Tutorial','Película','Serie','Original',form.categoria])].map(category => <option key={category}>{category}</option>)}</select></label><label className="ms-field"><span>Temas</span><input value={form.generos} onChange={e => field('generos', e.target.value)} placeholder="Tutoriales, Naciones, Towny…"/></label></div>
+        </section>
+        <section className="ms-step"><h3><span className="ms-step-number">3</span>Publicación</h3>
+          <label className="ms-field"><span>Visibilidad</span><select value={form.estado_publicacion} onChange={e => field('estado_publicacion', e.target.value)}><option value="aprobado">Publicado en VISTA</option><option value="pendiente">Pendiente · todavía oculto</option>{form.estado_publicacion === 'rechazado' && <option value="rechazado">Rechazado · oculto</option>}</select></label>
+          {form.es_comunidad ? <p className="ms-help">Aparecerá en Videos de la comunidad, con el autor indicado. Las producciones de GIMG conservan su propia colección.</p> : <div className="ms-checks"><label><input type="checkbox" checked={form.en_hero} onChange={e => field('en_hero', e.target.checked)}/>Mostrar en el hero de Inicio</label><label><input type="checkbox" checked={form.es_top_10} onChange={e => field('es_top_10', e.target.checked)}/>Marcar como Top 10</label></div>}
+        </section>
+        <details className="ms-more"><summary>Opciones adicionales · imágenes, tráiler y colaboradores</summary><div>
+          <div className="ms-fields">{[['banner_url','Imagen horizontal'],['poster_url','Imagen de catálogo'],['trailer_id','Enlace del tráiler'],['año','Año'],['duracion','Duración'],['calificacion','Clasificación']].map(([key,label]) => <label key={key} className="ms-field"><span>{label}</span><input value={form[key]} onChange={e => field(key,e.target.value)} type={key.endsWith('_url') ? 'url' : 'text'} placeholder={key.endsWith('_url') ? 'https://…' : ''}/></label>)}</div>
+          <div><div className="flex justify-between items-center"><h3 className="text-xs font-semibold">Colaboradores ({cast.length})</h3><button type="button" className="ms-button" onClick={() => setCast(current => [...current,{id:`new-${Date.now()}`,nombre_real:'',nombre_personaje:'',foto_url:''}])}><Plus size={12}/>Agregar</button></div>{cast.map(actor => <div key={actor.id} className="ms-fields mt-4">{[['nombre_real','Nombre'],['nombre_personaje','Participación'],['foto_url','Foto']].map(([key,label]) => <label className="ms-field" key={key}><span>{label}</span><input value={actor[key] || ''} onChange={e => setCast(current => current.map(person => person.id === actor.id ? {...person,[key]:e.target.value} : person))}/></label>)}<button type="button" className="ms-button self-end" aria-label={`Retirar colaborador ${actor.nombre_real || 'sin nombre'}`} onClick={() => setCast(current => current.filter(person => person.id !== actor.id))}><X size={13}/>Retirar</button></div>)}</div>
+        </div></details>
+        {status && <p role={status.type === 'error' ? 'alert' : 'status'} className={`ms-notice ms-notice-${status.type}`}>{status.msg}</p>}
+        <div className="ms-actions"><button type="button" className="ms-button" onClick={openPreview}><Eye size={15}/>Vista previa</button><button className="ms-button ms-button-primary" disabled={loading}><Save size={15}/>{loading ? 'Guardando…' : editingId ? 'Guardar cambios' : form.estado_publicacion === 'aprobado' ? 'Publicar video' : 'Guardar pendiente'}</button></div>
+      </form>
+      {editingId && !previewMode && <CreditsPanel subjectType="content" subjectId={editingId} editable dark className="mt-7"/>}
+    </section>
+    <section className="ms-catalogue"><div className="flex justify-between items-center mb-5"><h2 className="!mb-0">Catálogo de videos.</h2><button className="ms-button" disabled={listLoading} onClick={refresh}>Actualizar</button></div><label className="ms-field"><span>Buscar en el catálogo</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Título, autor o tipo de video"/></label>
+      {listLoading ? <p className="ms-help" role="status">Cargando videos…</p> : <div className="ms-video-list">{visible.map(item => <article className="ms-video-item" key={item.id}><img src={item.poster_url || item.banner_url || `https://img.youtube.com/vi/${item.youtube_id}/hqdefault.jpg`} alt=""/><div><span className="ms-badge">{item.es_comunidad ? 'Comunidad' : 'GIMG'} · {item.categoria}</span><h3>{item.titulo}</h3><p>{item.sello_editorial} · {item.estado_publicacion === 'aprobado' ? 'Publicado' : item.estado_publicacion === 'rechazado' ? 'Rechazado' : 'Pendiente'}</p><div className="ms-actions"><button className="ms-button" onClick={() => edit(item)}><Edit3 size={12}/>Editar</button><button className="ms-button" onClick={() => changeVisibility(item)}>{item.estado_publicacion === 'aprobado' ? 'Ocultar' : 'Publicar'}</button><button className="ms-button" aria-label={`Vista previa de ${item.titulo}`} onClick={() => setPreview(item)}><Eye size={13}/></button><button className="ms-button" aria-label={`Eliminar ${item.titulo}`} onClick={() => remove(item)}><Trash2 size={13}/></button></div></div></article>)}</div>}
+      {!listLoading && !visible.length && <p className="ms-help py-8">{list.length ? 'No hay coincidencias con esta búsqueda.' : 'Los videos publicados aparecerán aquí.'}</p>}
+    </section>
+    {preview && <div className="fixed inset-0 z-[200] bg-black/85 p-4 md:p-10 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Vista previa del video" onClick={() => setPreview(null)}><div className="relative w-full max-w-3xl bg-[#121212] border border-white/15 rounded-xl max-h-[90vh] overflow-auto p-6" onClick={e => e.stopPropagation()}><button className="ms-button absolute right-4 top-4" aria-label="Cerrar vista previa" onClick={() => setPreview(null)}><X size={16}/></button><p className="text-xs text-neutral-400 mt-2 pr-16">{preview.es_comunidad ? 'Video de la comunidad' : 'Producción de GIMG'} · {preview.sello_editorial}</p><h3 className="font-serif italic text-3xl mt-4">{preview.titulo}</h3><p className="text-sm text-neutral-400 mt-3 mb-5">{preview.descripcion}</p><div className="aspect-video"><iframe title="Vista previa de YouTube" className="w-full h-full rounded-lg" src={`https://www.youtube.com/embed/${youtubeId(preview.youtube_id)}`} allowFullScreen/></div></div></div>}
+  </div>;
 }

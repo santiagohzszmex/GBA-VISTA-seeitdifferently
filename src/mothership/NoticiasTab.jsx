@@ -3,6 +3,9 @@ import { supabase } from '../supabaseClient';
 import { uploadToCloudinary } from '../cloudinary';
 import { EDITORIAL_CATEGORIES } from '../utils/editorialCategories';
 import CreditsPanel from '../components/social/CreditsPanel';
+import { youtubeId, validateEditionRelease } from '../utils/publishing';
+import EditionDraftPreview from './EditionDraftPreview';
+import './publishing.css';
 import { 
   Save, 
   Edit3, 
@@ -152,7 +155,7 @@ function PagesEditor({ pages, onChange, onPreview, label, accent = 'blue' }) {
   );
 }
 
-export default function NoticiasTab() {
+export default function NoticiasTab({ previewMode = false }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
   const [gimgNews, setGimgNews] = useState([]); 
@@ -165,6 +168,10 @@ export default function NoticiasTab() {
   const [gimgVideoPortadaArchivo, setGimgVideoPortadaArchivo] = useState(null);
   const [paginas, setPaginas] = useState([]);
   const [previewPage, setPreviewPage] = useState(null);
+  const [previewEdition, setPreviewEdition] = useState(false);
+  const [releaseMode, setReleaseMode] = useState('now');
+  const [coverPreview, setCoverPreview] = useState('');
+  const [videoPreview, setVideoPreview] = useState('');
 
   // NUEVO: Estado para gestionar Múltiples Idiomas Simultáneos
   const [traducciones, setTraducciones] = useState([]);
@@ -192,6 +199,7 @@ export default function NoticiasTab() {
   }, []);
 
   const fetchNewsData = async () => {
+    if (previewMode) return;
     try {
       const { data, error } = await supabase
         .from('contenido')
@@ -208,6 +216,27 @@ export default function NoticiasTab() {
     } catch (err) {
       console.error("Error al recopilar el archivo de prensa:", err);
     }
+  };
+
+  useEffect(() => {
+    if (!portadaArchivo) { setCoverPreview(formData.portada_url); return; }
+    const url = URL.createObjectURL(portadaArchivo);
+    setCoverPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [portadaArchivo, formData.portada_url]);
+
+  useEffect(() => {
+    if (!gimgVideoArchivo) { setVideoPreview(formData.gimg_video_url); return; }
+    const url = URL.createObjectURL(gimgVideoArchivo);
+    setVideoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [gimgVideoArchivo, formData.gimg_video_url]);
+
+  const openEditionPreview = () => {
+    try {
+      validateEditionRelease(releaseMode, formData, Boolean(gimgVideoArchivo || formData.gimg_video_url));
+      setPreviewEdition(true);
+    } catch (error) { setStatus({ type: 'error', msg: error.message }); }
   };
 
   const handleChange = (e) => {
@@ -241,6 +270,7 @@ export default function NoticiasTab() {
 
   const handleEdit = (item) => {
     setEditingItem(item);
+    setReleaseMode(item.gimg_video_url ? 'video' : item.publicar_at && new Date(item.publicar_at).getTime() > Date.now() ? 'cover' : 'now');
     const baseLang = item.idioma_original || 'es';
     const storedBasePages = Object.prototype.hasOwnProperty.call(item.paginas_i18n || {}, baseLang)
       ? item.paginas_i18n[baseLang]
@@ -256,7 +286,7 @@ export default function NoticiasTab() {
       gimg_video_portada_url: item.gimg_video_portada_url || '',
       gimg_video_titulo: item.gimg_video_titulo || '',
       gimg_video_descripcion: item.gimg_video_descripcion || '',
-      gimg_video_estreno_at: toDateTimeLocal(item.gimg_video_estreno_at),
+      gimg_video_estreno_at: toDateTimeLocal(item.gimg_video_estreno_at || (item.gimg_video_url ? new Date() : null)),
       publicar_at: toDateTimeLocal(item.publicar_at),
       idioma_original: baseLang,
       categoria_editorial: item.categoria_editorial || 'comunidad'
@@ -296,7 +326,7 @@ export default function NoticiasTab() {
         urls.push(page.url);
         continue;
       }
-      const uploadedUrl = await uploadToCloudinary(page.file, folderPath);
+      const uploadedUrl = previewMode ? page.preview : await uploadToCloudinary(page.file, folderPath);
       if (!uploadedUrl) throw new Error(`No se pudo subir ${page.name}.`);
       urls.push(uploadedUrl);
     }
@@ -309,9 +339,12 @@ export default function NoticiasTab() {
     setStatus(null);
 
     try {
+      validateEditionRelease(releaseMode, formData, Boolean(gimgVideoArchivo || formData.gimg_video_url));
+      const linkedYoutubeId = formData.youtube_id.trim() ? youtubeId(formData.youtube_id) : '';
+      if (formData.youtube_id.trim() && !linkedYoutubeId) throw new Error('El enlace complementario de YouTube no es válido.');
       let finalPortadaUrl = formData.portada_url;
-      let finalGimgVideoUrl = formData.gimg_video_url;
-      let finalGimgVideoPortadaUrl = formData.gimg_video_portada_url;
+      let finalGimgVideoUrl = releaseMode === 'video' ? formData.gimg_video_url : '';
+      let finalGimgVideoPortadaUrl = releaseMode === 'video' ? formData.gimg_video_portada_url : '';
       let finalPaginas = [];
 
       const isComunidad = editingItem ? editingItem.es_comunidad : false;
@@ -319,20 +352,20 @@ export default function NoticiasTab() {
       const sanitizedSello = selloStr.replace(/[^a-zA-Z0-9]/g, '_');
       const folderPath = `Mothership_Prensa/${sanitizedSello}/${Date.now()}`;
 
-      if (!isComunidad && gimgVideoArchivo) {
+      if (!isComunidad && releaseMode === 'video' && gimgVideoArchivo) {
         setStatus({ type: 'info', msg: 'Subiendo presentación de Global Insight...' });
-        finalGimgVideoUrl = await uploadToCloudinary(gimgVideoArchivo, `${folderPath}/Premiere`);
+        finalGimgVideoUrl = previewMode ? URL.createObjectURL(gimgVideoArchivo) : await uploadToCloudinary(gimgVideoArchivo, `${folderPath}/Premiere`);
         if (!finalGimgVideoUrl) throw new Error('No se pudo subir el video de la presentación.');
       }
 
-      if (!isComunidad && gimgVideoPortadaArchivo) {
+      if (!isComunidad && releaseMode === 'video' && gimgVideoPortadaArchivo) {
         setStatus({ type: 'info', msg: 'Subiendo imagen previa del estreno...' });
-        finalGimgVideoPortadaUrl = await uploadToCloudinary(gimgVideoPortadaArchivo, `${folderPath}/Premiere`);
+        finalGimgVideoPortadaUrl = previewMode ? URL.createObjectURL(gimgVideoPortadaArchivo) : await uploadToCloudinary(gimgVideoPortadaArchivo, `${folderPath}/Premiere`);
         if (!finalGimgVideoPortadaUrl) throw new Error('No se pudo subir la imagen previa.');
       }
 
-      const videoReleaseAt = toIsoDate(formData.gimg_video_estreno_at);
-      const editionReleaseAt = toIsoDate(formData.publicar_at);
+      const videoReleaseAt = releaseMode === 'video' ? toIsoDate(formData.gimg_video_estreno_at) : null;
+      const editionReleaseAt = releaseMode === 'now' ? null : toIsoDate(formData.publicar_at);
       if (!isComunidad && finalGimgVideoUrl && !videoReleaseAt) {
         throw new Error('Indica la fecha y hora en que se estrenará el video.');
       }
@@ -342,7 +375,7 @@ export default function NoticiasTab() {
       // 1. Subida del Idioma Base (Portada)
       if (portadaArchivo) {
         setStatus({ type: 'info', msg: 'Subiendo ilustración principal...' });
-        const uploadedUrl = await uploadToCloudinary(portadaArchivo, folderPath);
+        const uploadedUrl = previewMode ? coverPreview : await uploadToCloudinary(portadaArchivo, folderPath);
         if (!uploadedUrl) throw new Error("Fallo crítico al subir la ilustración.");
         finalPortadaUrl = uploadedUrl;
       } else if (!editingItem && !finalPortadaUrl) {
@@ -391,7 +424,8 @@ export default function NoticiasTab() {
         
         let tPortada = posters[trad.lang]; // Mantenemos la que estaba si no suben nueva
         if (trad.portadaArchivo) {
-          tPortada = await uploadToCloudinary(trad.portadaArchivo, folderPath);
+          tPortada = previewMode ? URL.createObjectURL(trad.portadaArchivo) : await uploadToCloudinary(trad.portadaArchivo, folderPath);
+          if (!tPortada) throw new Error('No se pudo subir la portada traducida.');
         }
         if (tPortada) posters[trad.lang] = tPortada;
 
@@ -404,14 +438,14 @@ export default function NoticiasTab() {
         descripcion: formData.descripcion, 
         poster_url: finalPortadaUrl,
         banner_url: finalPortadaUrl,
-        enlace_pdf: finalPaginasJsonStr || null, 
-        youtube_id: formData.youtube_id || null,
+        enlace_pdf: finalPaginas.length ? finalPaginasJsonStr : (/^https:\/\//.test(formData.enlace_pdf) ? formData.enlace_pdf : finalPaginasJsonStr),
+        youtube_id: linkedYoutubeId || null,
         gimg_video_url: isComunidad ? null : (finalGimgVideoUrl || null),
         gimg_video_portada_url: isComunidad ? null : (finalGimgVideoPortadaUrl || null),
-        gimg_video_titulo: isComunidad ? null : (formData.gimg_video_titulo || null),
-        gimg_video_descripcion: isComunidad ? null : (formData.gimg_video_descripcion || null),
+        gimg_video_titulo: isComunidad || releaseMode !== 'video' ? null : (formData.gimg_video_titulo || null),
+        gimg_video_descripcion: isComunidad || releaseMode !== 'video' ? null : (formData.gimg_video_descripcion || null),
         gimg_video_estreno_at: isComunidad ? null : videoReleaseAt,
-        publicar_at: isComunidad ? null : editionReleaseAt,
+        publicar_at: editionReleaseAt,
         es_comunidad: isComunidad,
         categoria: editingItem ? editingItem.categoria : 'Noticia',
         categoria_editorial: formData.categoria_editorial,
@@ -427,9 +461,13 @@ export default function NoticiasTab() {
 
       const successMessage = editingItem
         ? 'Publicación actualizada. Las páginas ya están sincronizadas.'
-        : '¡Comunicado global GIMG publicado con éxito!';
+        : releaseMode === 'cover' ? 'Portada anunciada. Las páginas se abrirán en la fecha indicada.' : 'Edición publicada correctamente.';
 
-      if (editingItem) {
+      if (previewMode) {
+        const next = { ...editingItem, ...payload, id: editingItem?.id || `preview-${Date.now()}` };
+        const update = current => [next, ...current.filter(item => item.id !== next.id)];
+        if (isComunidad) setKioscoNews(update); else setGimgNews(update);
+      } else if (editingItem) {
         const { error } = await supabase.from('contenido').update(payload).eq('id', editingItem.id);
         if (error) throw error;
       } else {
@@ -438,7 +476,7 @@ export default function NoticiasTab() {
       }
 
       resetForm();
-      setStatus({ type: 'success', msg: successMessage });
+      setStatus({ type: 'success', msg: previewMode ? 'Vista de desarrollo: edición guardada solo en esta página.' : successMessage });
       await fetchNewsData();
     } catch (err) {
       console.error(err);
@@ -451,9 +489,14 @@ export default function NoticiasTab() {
   const handleDelete = async (id) => {
     if (!window.confirm("¿Deseas eliminar definitivamente esta publicación del servidor de la Alianza?")) return;
     try {
-      const { error } = await supabase.from('contenido').delete().eq('id', id);
-      if (error) throw error;
-      fetchNewsData();
+      if (previewMode) {
+        setGimgNews(current => current.filter(item => item.id !== id));
+        setKioscoNews(current => current.filter(item => item.id !== id));
+      } else {
+        const { error } = await supabase.from('contenido').delete().eq('id', id);
+        if (error) throw error;
+        await fetchNewsData();
+      }
       if (editingItem?.id === id) resetForm();
     } catch (err) {
       console.error(err);
@@ -463,6 +506,7 @@ export default function NoticiasTab() {
 
   const resetForm = () => {
     setEditingItem(null);
+    setReleaseMode('now');
     setFormData(initialFormState);
     setPortadaArchivo(null);
     setGimgVideoArchivo(null);
@@ -480,15 +524,15 @@ export default function NoticiasTab() {
 
   return (
     <>
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-12 text-white">
+    <div className="ms-publishing">
       
       {/* FORMULARIO EDITORIAL INTELLIGENT (DARK MODE) */}
-      <div className="xl:col-span-1">
-        <div className="bg-[#121212] border border-white/10 p-8 rounded-[2.5rem] sticky top-8 shadow-2xl">
+      <div>
+        <div className="ms-editor">
           
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold flex items-center gap-3">
-              {editingItem ? <><Edit3 className="text-yellow-500"/> Editar Prensa</> : <><PlusCircle className="text-blue-500"/> Nuevo Reporte</>}
+          <div className="ms-editor-head">
+            <h2 className="flex items-center gap-3">
+              {editingItem ? <><Edit3 className="text-yellow-500"/> Editar edición.</> : <><PlusCircle className="text-blue-500"/> Publicar una edición.</>}
             </h2>
             {editingItem && (
               <button onClick={resetForm} className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full flex items-center gap-1 transition-colors">
@@ -497,131 +541,40 @@ export default function NoticiasTab() {
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* Bloque A: Texto Principal */}
-            <div className="space-y-4 p-5 bg-black/40 rounded-2xl border border-white/5">
-              <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest flex items-center gap-1.5">
-                <FileText size={12}/> Datos del Idioma Base
-              </p>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1 flex items-center gap-1">
-                    <Globe size={10}/> Idioma Base
-                  </label>
-                  <select 
-                    name="idioma_original"
-                    value={formData.idioma_original} 
-                    onChange={handleChange}
-                    className="w-full bg-transparent border-b border-white/10 p-2 font-bold outline-none focus:border-blue-500 text-sm transition-colors cursor-pointer appearance-none text-white"
-                  >
-                    <option value="es" className="bg-neutral-900">Español (ES)</option>
-                    <option value="en" className="bg-neutral-900">Inglés (EN)</option>
-                    <option value="nah" className="bg-neutral-900">Náhuatl (NAH)</option>
-                    <option value="pt" className="bg-neutral-900">Portugués (PT)</option>
-                    <option value="fr" className="bg-neutral-900">Francés (FR)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Titular Principal</label>
-                  <input 
-                    type="text" name="titulo" required placeholder="Ej. Comunicado..."
-                    value={formData.titulo} onChange={handleChange}
-                    className="w-full bg-transparent border-b border-white/10 p-2 font-bold outline-none focus:border-blue-500 text-sm transition-colors"
-                  />
-                </div>
+          {previewMode && <p className="ms-preview-note mb-6">Vista de desarrollo. Las ediciones no se publican en VISTA.</p>}
+          <form onSubmit={handleSubmit}>
+            <section className="ms-step"><h3><span className="ms-step-number">1</span>Presenta la edición</h3>
+              <label className="ms-field"><span>Título de la edición</span><input name="titulo" value={formData.titulo} onChange={handleChange} required placeholder="Ej. Edición 1 · Un nuevo comienzo"/></label>
+              <label className="ms-field"><span>Descripción</span><textarea name="descripcion" value={formData.descripcion} onChange={handleChange} rows={3} required placeholder="Lo que encontrará la comunidad en esta edición."/></label>
+              <div className="ms-fields"><label className="ms-field"><span>Idioma principal</span><select name="idioma_original" value={formData.idioma_original} onChange={handleChange}>{[['es','Español'],['en','Inglés'],['nah','Náhuatl'],['pt','Portugués'],['fr','Francés']].map(([value,text]) => <option key={value} value={value}>{text}</option>)}</select></label><label className="ms-field"><span>Categoría editorial</span><select name="categoria_editorial" value={formData.categoria_editorial} onChange={handleChange}>{EDITORIAL_CATEGORIES.map(category => <option key={category.value} value={category.value}>{category.label}</option>)}</select></label></div>
+            </section>
+            <section className="ms-step"><h3><span className="ms-step-number">2</span>Portada y páginas</h3>
+              <div className="flex flex-wrap gap-5 items-center">{coverPreview && <img className="ms-cover-preview" src={coverPreview} alt="Vista previa de la portada"/>}<label className="ms-upload flex-1"><ImageIcon size={21}/><span><span className="block mb-2">{portadaArchivo?.name || (formData.portada_url ? 'Cambiar portada' : 'Subir portada')}</span><input aria-label="Subir portada del periódico" type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setPortadaArchivo(e.target.files?.[0] || null)}/></span></label></div>
+              <label className="ms-field"><span>O utiliza una imagen ya publicada</span><input type="url" name="portada_url" value={formData.portada_url} onChange={handleChange} placeholder="https://…"/></label>
+              <PagesEditor pages={paginas} onChange={setPaginas} onPreview={setPreviewPage} label="Páginas de la edición"/>
+              <p className="ms-help">Puedes ordenar o reemplazar cada página. Si anuncias solo la portada, puedes añadir las páginas antes del estreno.</p>
+              <label className="ms-field"><span>PDF de la edición (opcional)</span><input type="url" value={/^https:\/\//.test(formData.enlace_pdf) ? formData.enlace_pdf : ''} onChange={e => setFormData(current => ({...current,enlace_pdf:e.target.value}))} placeholder="https://…/edicion.pdf"/><small>Si utilizas imágenes para las páginas, VISTA mostrará esas imágenes.</small></label>
+            </section>
+            <section className="ms-step"><h3><span className="ms-step-number">3</span>Cómo quieres publicarla</h3>
+              <div className="ms-release-options">
+                <label className="ms-option"><input type="radio" name="edition-release" checked={releaseMode === 'now'} onChange={() => setReleaseMode('now')}/><span><strong>Publicar la edición completa</strong><small>Portada y páginas disponibles al guardar. Sin video de presentación.</small></span></label>
+                <label className="ms-option"><input type="radio" name="edition-release" checked={releaseMode === 'cover'} onChange={() => setReleaseMode('cover')}/><span><strong>Portada primero, edición después</strong><small>Anuncia la portada ahora y elige cuándo abrir las páginas. No requiere video.</small></span></label>
+                {(!editingItem || !editingItem.es_comunidad) && <label className="ms-option"><input type="radio" name="edition-release" checked={releaseMode === 'video'} onChange={() => setReleaseMode('video')}/><span><strong>Presentación en video</strong><small>Estrena un video de GIMG antes de abrir la edición.</small></span></label>}
               </div>
-
-              <div>
-                <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Cuerpo del Reporte</label>
-                <textarea 
-                  name="descripcion" required rows="4" placeholder="Escribe el desglose completo..."
-                  value={formData.descripcion} onChange={handleChange}
-                  className="w-full bg-transparent border-b border-white/10 p-2 text-xs resize-none outline-none focus:border-blue-500 leading-relaxed custom-scrollbar transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Categoría editorial</label>
-                <select name="categoria_editorial" value={formData.categoria_editorial} onChange={handleChange} className="w-full bg-transparent border-b border-white/10 p-2 text-sm outline-none focus:border-blue-500 [&>option]:bg-[#1d1d1f]">
-                  {EDITORIAL_CATEGORIES.map(category => <option key={category.value} value={category.value}>{category.label}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Bloque B: Sistema de Archivos Dinámico */}
-            <div className="space-y-4 p-5 bg-black/40 rounded-2xl border border-white/5">
-              <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest flex items-center gap-1.5 mb-4">
-                <Globe size={12}/> Servidor de Medios (Base)
-              </p>
-
-              <div className="relative flex items-center justify-center w-full mb-4">
-                <label className="flex flex-col items-center justify-center w-full h-32 border border-white/10 border-dashed rounded-xl cursor-pointer bg-black/20 hover:bg-white/5 transition-all p-4 text-center">
-                  <div className="flex flex-col items-center justify-center">
-                    <ImageIcon size={24} className={portadaArchivo || formData.portada_url ? 'text-blue-500 mb-2' : 'text-neutral-600 mb-2'} />
-                    <p className="text-xs text-white font-bold truncate max-w-[200px]">
-                      {portadaArchivo ? portadaArchivo.name : (formData.portada_url ? 'Sustituir Portada Actual' : 'Seleccionar Portada')}
-                    </p>
-                  </div>
-                  <input type="file" accept="image/*" onChange={(e) => setPortadaArchivo(e.target.files[0])} className="hidden" />
-                </label>
-              </div>
-
-              <PagesEditor
-                pages={paginas}
-                onChange={setPaginas}
-                onPreview={setPreviewPage}
-                label="Paginas del documento base"
-              />
-            </div>
-
-            {(!editingItem || !editingItem.es_comunidad) && (
-              <div className="space-y-5 p-5 bg-black/40 rounded-2xl border border-blue-500/20">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest flex items-center gap-1.5"><Film size={13}/>Presentación de Global Insight</p>
-                  <p className="text-[10px] text-neutral-500 mt-1.5 leading-relaxed">Adjunta un video a esta misma edición y programa su estreno antes de liberar las páginas.</p>
-                </div>
-
-                <label className="flex items-center justify-center gap-3 min-h-20 border border-white/10 border-dashed rounded-xl cursor-pointer hover:bg-white/5 transition-colors px-4 text-center">
-                  <UploadCloud size={20} className={gimgVideoArchivo || formData.gimg_video_url ? 'text-blue-400' : 'text-neutral-600'}/>
-                  <span className="text-xs font-bold text-white/80 truncate">{gimgVideoArchivo?.name || (formData.gimg_video_url ? 'Sustituir video actual' : 'Seleccionar video')}</span>
-                  <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={event => setGimgVideoArchivo(event.target.files?.[0] || null)} className="hidden"/>
-                </label>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Título del video</label>
-                    <input type="text" name="gimg_video_titulo" placeholder="Ej. Presentación oficial de la Edición 1" value={formData.gimg_video_titulo} onChange={handleChange} className="w-full bg-transparent border-b border-white/10 p-2 text-sm font-bold outline-none focus:border-blue-500"/>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Descripción breve</label>
-                    <textarea name="gimg_video_descripcion" rows="2" placeholder="Texto que aparecerá en el coverflow antes de la edición." value={formData.gimg_video_descripcion} onChange={handleChange} className="w-full bg-transparent border-b border-white/10 p-2 text-xs resize-none outline-none focus:border-blue-500"/>
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1 flex items-center gap-1"><Clock3 size={11}/>Estreno del video</label>
-                    <input type="datetime-local" name="gimg_video_estreno_at" value={formData.gimg_video_estreno_at} onChange={handleChange} className="w-full bg-transparent border-b border-white/10 p-2 text-xs outline-none focus:border-blue-500 [color-scheme:dark]"/>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1 flex items-center gap-1"><Clock3 size={11}/>Publicación de la edición</label>
-                    <input type="datetime-local" name="publicar_at" value={formData.publicar_at} onChange={handleChange} className="w-full bg-transparent border-b border-white/10 p-2 text-xs outline-none focus:border-blue-500 [color-scheme:dark]"/>
-                  </div>
-                </div>
-
-                <label className="flex items-center justify-center gap-3 min-h-16 border border-white/10 border-dashed rounded-xl cursor-pointer hover:bg-white/5 transition-colors px-4 text-center">
-                  <ImageIcon size={18} className={gimgVideoPortadaArchivo || formData.gimg_video_portada_url ? 'text-blue-400' : 'text-neutral-600'}/>
-                  <span className="text-[11px] font-bold text-white/70 truncate">{gimgVideoPortadaArchivo?.name || (formData.gimg_video_portada_url ? 'Sustituir portada del video' : 'Portada del video (opcional)')}</span>
-                  <input type="file" accept="image/*" onChange={event => setGimgVideoPortadaArchivo(event.target.files?.[0] || null)} className="hidden"/>
-                </label>
-              </div>
-            )}
-
-            {/* =========================================================
-                NUEVO BLOQUE: TRADUCCIONES DINÁMICAS (EN LÍNEA)
-            ========================================================= */}
-            <div className="pt-6 mt-6 border-t border-white/10 space-y-6">
+              {releaseMode !== 'now' && <label className="ms-field"><span>{releaseMode === 'cover' ? 'Las páginas se abrirán el' : 'Apertura de las páginas (opcional)'}</span><input aria-label="Fecha de apertura de la edición" type="datetime-local" name="publicar_at" value={formData.publicar_at} onChange={handleChange} required={releaseMode === 'cover'}/></label>}
+              {releaseMode === 'cover' && <p className="ms-preview-note">Se mostrará la portada y el aviso de la próxima edición. El lector de páginas estará disponible a partir de la fecha que elijas.</p>}
+              {releaseMode === 'video' && <div className="grid gap-4 border border-white/15 rounded-lg p-4">
+                <label className="ms-upload"><UploadCloud size={20}/><span><span className="block mb-2">{gimgVideoArchivo?.name || (formData.gimg_video_url ? 'Sustituir video de presentación' : 'Subir video de presentación')}</span><input aria-label="Subir video de presentación" type="file" accept="video/mp4,video/webm,video/quicktime" onChange={e => setGimgVideoArchivo(e.target.files?.[0] || null)}/></span></label>
+                <label className="ms-field"><span>O enlace al archivo del video</span><input type="url" name="gimg_video_url" value={formData.gimg_video_url} onChange={handleChange} placeholder="https://…/presentacion.mp4"/></label>
+                <label className="ms-field"><span>Estreno del video</span><input type="datetime-local" name="gimg_video_estreno_at" value={formData.gimg_video_estreno_at} onChange={handleChange} required/></label>
+                <label className="ms-field"><span>Título del video (opcional)</span><input name="gimg_video_titulo" value={formData.gimg_video_titulo} onChange={handleChange} placeholder="Se utilizará el título de la edición"/></label>
+                <label className="ms-field"><span>Descripción del video (opcional)</span><textarea name="gimg_video_descripcion" value={formData.gimg_video_descripcion} onChange={handleChange} rows={2}/></label>
+                <label className="ms-field"><span>Imagen previa del video (opcional)</span><input type="url" name="gimg_video_portada_url" value={formData.gimg_video_portada_url} onChange={handleChange} placeholder="https://…"/></label>
+                <label className="ms-field"><span>O subir imagen previa</span><input aria-label="Subir imagen previa del video" type="file" accept="image/*" onChange={e => setGimgVideoPortadaArchivo(e.target.files?.[0] || null)}/></label>
+              </div>}
+            </section>
+            <details className="ms-more" open={traducciones.length > 0 ? true : undefined}><summary>Traducciones · otros idiomas</summary><div>
+                          <div className="pt-6 mt-6 border-t border-white/10 space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -701,48 +654,24 @@ export default function NoticiasTab() {
               ))}
             </div>
 
-            <div className="pt-4 mt-4 border-t border-white/10">
-              <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">ID Video YouTube (Opcional)</label>
-              <input 
-                type="text" name="youtube_id" placeholder="Ej. dQw4w9WgXcQ"
-                value={formData.youtube_id} onChange={handleChange}
-                className="w-full bg-transparent border-b border-white/10 p-2 font-mono text-xs outline-none focus:border-blue-500 transition-colors"
-              />
-            </div>
 
-            {status && (
-              <div className={`p-3 rounded-xl text-xs text-center font-bold border ${
-                status.type === 'error' ? 'text-red-300 bg-red-900/20 border-red-500/30' : 
-                status.type === 'info' ? 'text-blue-300 bg-blue-900/20 border-blue-500/30 animate-pulse' :
-                'text-green-300 bg-green-900/20 border-green-500/30'
-              }`}>
-                {status.msg}
-              </div>
-            )}
-
-            <button 
-              type="submit" disabled={loading}
-              className={`w-full py-4 font-black uppercase tracking-widest text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${
-                loading ? 'opacity-50 cursor-not-allowed' : ''
-              } ${
-                editingItem ? 'bg-yellow-500 text-black hover:bg-yellow-400' : 'bg-[#0066FF] text-white hover:bg-blue-600'
-              }`}
-            >
-              <Save size={18}/> {editingItem ? 'Actualizar Registro Global' : 'Publicar Multi-Idioma'}
-            </button>
-
+            </div></details>
+            <details className="ms-more"><summary>Enlace de YouTube complementario</summary><div><label className="ms-field"><span>Video vinculado a la edición (opcional)</span><input name="youtube_id" value={formData.youtube_id} onChange={handleChange} placeholder="Enlace de YouTube o ID"/></label></div></details>
+            {status && <p role={status.type === 'error' ? 'alert' : 'status'} className={`ms-notice ms-notice-${status.type}`}>{status.msg}</p>}
+            <div className="ms-actions"><button type="button" className="ms-button" onClick={openEditionPreview}><Eye size={15}/>Vista previa</button><button type="submit" className="ms-button ms-button-primary" disabled={loading}><Save size={15}/>{loading ? 'Guardando…' : editingItem ? 'Guardar cambios' : releaseMode === 'cover' ? 'Anunciar portada' : 'Publicar edición'}</button></div>
           </form>
-          {editingItem && <CreditsPanel subjectType="content" subjectId={editingItem.id} editable dark className="mt-7"/>}
+
+          {editingItem && !previewMode && <CreditsPanel subjectType="content" subjectId={editingItem.id} editable dark className="mt-7"/>}
         </div>
       </div>
 
       {/* HISTORIAL Y ARCHIVO DE FLUX */}
-      <div className="xl:col-span-2 space-y-12">
+      <div className="ms-catalogue space-y-12">
         
         {/* LISTA 1: NUESTRAS NOTICIAS (GIMG) */}
         <div>
           <h3 className="text-xl font-bold mb-6 text-neutral-400 font-serif italic flex items-center gap-2">
-            <Globe size={18} className="text-blue-500"/> Reportes y Campañas Oficiales GIMG
+            <Globe size={18} className="text-blue-500"/> Ediciones de GIMG.
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {gimgNews.map(item => (
@@ -776,7 +705,7 @@ export default function NoticiasTab() {
         {/* LISTA 2: PUBLICACIONES DEL KIOSCO (COMUNIDAD) */}
         <div>
           <h3 className="text-xl font-bold mb-6 text-neutral-400 font-serif italic flex items-center gap-2">
-            <BookOpen size={18} className="text-green-500"/> Ediciones Autorizadas en el Kiosco
+            <BookOpen size={18} className="text-green-500"/> Ediciones de la comunidad.
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {kioscoNews.map(item => (
@@ -817,6 +746,7 @@ export default function NoticiasTab() {
       </div>
     </div>
 
+    {previewEdition && <EditionDraftPreview form={{...formData, gimg_video_url: videoPreview}} cover={coverPreview} pages={paginas} mode={releaseMode} onClose={() => setPreviewEdition(false)}/>}
     {previewPage && (
       <div
         className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md p-4 md:p-8 flex items-center justify-center"
