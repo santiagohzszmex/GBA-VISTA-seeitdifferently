@@ -44,14 +44,14 @@ export default function ContentRow({ title, items = [], onSelect }) {
             <div 
               key={item.id}
               onClick={() => onSelect && onSelect(item)}
-              className="flex-none w-48 sm:w-56 snap-start group/card cursor-pointer"
+              className={`flex-none ${item.es_comunidad && isVideoContent(item) ? 'w-[min(82vw,360px)] sm:w-[420px]' : 'w-56 sm:w-64'} snap-start group/card cursor-pointer`}
             >
               {/* Tarjeta de Contenido */}
               <div className={`relative ${item.es_comunidad && isVideoContent(item) ? 'aspect-video' : 'aspect-[4/5]'} bg-[#f5f5f7] rounded-2xl overflow-hidden shadow-sm group-hover/card:shadow-xl transition-all duration-500 ease-out border border-[#d2d2d7]/30`}>
                 <VideoCover
                   item={item}
                   alt={item.titulo}
-                  className="w-full h-full object-cover filter grayscale group-hover/card:grayscale-0 group-hover/card:scale-105 transition-all duration-700 ease-out"
+                  className="w-full h-full object-cover group-hover/card:scale-105 transition-all duration-700 ease-out"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
               </div>

@@ -23,10 +23,10 @@ const HeroSection = ({ movie, onPlay, onSelectMovie, showBrandLine = true }) => 
 
   useEffect(() => {
     setShowVideo(false);
-    if (!movie) return;
+    if (!movie?.youtube_id) return;
     const timer = setTimeout(() => setShowVideo(true), 3000);
     return () => clearTimeout(timer);
-  }, [movie?.id]); // comparamos por id, no por referencia del objeto
+  }, [movie?.id, movie?.youtube_id]); // comparamos por id, no por referencia del objeto
 
   const handlePlay = useCallback(() => {
     onPlay && onPlay(movie?.youtube_id);
@@ -67,8 +67,8 @@ const HeroSection = ({ movie, onPlay, onSelectMovie, showBrandLine = true }) => 
       )}
 
       {/* Degradados Cinemáticos */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a]/95 via-[#0a0a0a]/50 to-transparent pointer-events-none opacity-90" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/90 via-[#0a0a0a]/30 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,.75), transparent 55%)' }} data-vista-shade="bottom" />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(90deg, rgba(0,0,0,.55), transparent 70%)' }} data-vista-shade="text" />
 
       {/* Título Insignia */}
       {showBrandLine && (
@@ -190,7 +190,7 @@ const CampaignHeroSection = ({ campaign, onOpen, onScrollNext, isOpen }) => {
           key={videoAsset.id || videoAsset.url}
           src={videoAsset.url}
           poster={videoAsset.thumbnail_url || imageAsset?.url || undefined}
-          className="absolute inset-0 w-full h-full object-cover opacity-80"
+          className="absolute inset-0 w-full h-full object-cover"
           autoPlay
           muted
           loop
@@ -200,7 +200,7 @@ const CampaignHeroSection = ({ campaign, onOpen, onScrollNext, isOpen }) => {
       ) : imageAsset?.url ? (
         <img
           src={imageAsset.url}
-          className="absolute inset-0 w-full h-full object-cover opacity-80"
+          className="absolute inset-0 w-full h-full object-cover"
           alt={campaign.titulo}
         />
       ) : (
@@ -210,11 +210,11 @@ const CampaignHeroSection = ({ campaign, onOpen, onScrollNext, isOpen }) => {
       )}
 
       {isOpen && (
-        <div className="absolute inset-0 bg-black/20 backdrop-saturate-50 pointer-events-none transition-opacity duration-500 z-10" />
+        <div className="absolute inset-0 bg-black/20 pointer-events-none transition-opacity duration-500 z-10" />
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-t from-[#fbfbfd] via-black/45 to-black/10 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/35 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,.75), transparent 55%)' }} data-vista-shade="bottom" />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(90deg, rgba(0,0,0,.55), transparent 70%)' }} data-vista-shade="text" />
 
       <div className="absolute top-8 left-6 md:left-32 z-20 pointer-events-none">
         <h2
@@ -515,16 +515,17 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
         </div>
       )}
 
-      <div className="w-screen md:w-[100vw] md:-ml-24 h-48 bg-gradient-to-b from-transparent via-[#fbfbfd]/80 to-transparent absolute z-0 -translate-y-24 pointer-events-none" />
 
       {featuredMovies.length > 1 && (
         <div className="flex justify-center gap-2.5 -mt-8 mb-12 relative z-30">
           {featuredMovies.map((movie, idx) => (
             <button
               key={movie.id}
+              aria-label={`Ver ${movie.titulo}`}
+              aria-current={idx === currentIndex}
               onClick={() => handleDotClick(idx)}
               className={`h-1.5 rounded-full transition-all duration-500 ease-out ${
-                idx === currentIndex ? 'w-12 bg-[#1d1d1f]' : 'w-2 bg-[#d2d2d7] hover:bg-[#86868b]'
+                idx === currentIndex ? 'w-12 bg-white' : 'w-2 bg-white/40 hover:bg-white/80'
               }`}
             />
           ))}
