@@ -65,7 +65,7 @@ export default function ConversationPanel({ subjectType, subjectId, dark = false
   const border = dark ? 'border-white/10' : 'border-[#d2d2d7]';
   const muted = dark ? 'text-neutral-400' : 'text-[#86868b]';
 
-  return <section className={`border-t ${border} ${className}`}>
+  return <section className={`border-t ${border} ${dark ? 'text-white' : 'text-[#1d1d1f]'} ${className}`}>
     <button type="button" aria-expanded={open} onClick={() => setOpen(current => !current)} className="w-full min-h-14 flex items-center gap-3 text-left">
       <MessageCircle size={15} className={dark ? 'text-blue-400' : 'text-[#0066FF]'}/>
       <span className="text-xs font-bold flex-1">Conversación <span className={`font-medium ${muted}`}>({messages.length})</span></span>
