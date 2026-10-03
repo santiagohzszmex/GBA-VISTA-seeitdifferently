@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
+import { useAppearance } from './context/AppearanceContext';
 import { useNotifications } from './hooks/useNotifications';
 import { supabase } from './supabaseClient';
 import { 
@@ -12,6 +13,8 @@ import {
   LogOut,
   PenTool,
   Moon,
+  Sun,
+  Monitor,
   Bell,
   FileUp,
   User,
@@ -36,7 +39,11 @@ function AllianceLogo({ className = "hover:scale-105 transition-transform durati
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const { user, isDueño, logout } = useAuth();
   const { unreadCount } = useNotifications();
+  const { preference, setPreference } = useAppearance();
   const [showMenu, setShowMenu] = useState(false);
+  const [showAppearance, setShowAppearance] = useState(false);
+  const accountTrigger = useRef(null);
+  const toggleMenu = event => { accountTrigger.current = event.currentTarget; setShowMenu(open => !open); };
   const [hasWorkspaceAccess, setHasWorkspaceAccess] = useState(isDueño);
   const menuRef = useRef(null);
   const sidebarRef = useRef(null);
@@ -53,8 +60,15 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         setShowMenu(false);
       }
     };
+    const handleEscape = event => {
+      if (event.key === 'Escape' && menuRef.current) { setShowMenu(false); accountTrigger.current?.focus(); }
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   useEffect(() => {
@@ -92,83 +106,58 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       ========================================================= */}
       <div 
         ref={sidebarRef}
-        className="hidden md:flex fixed left-0 top-0 h-screen w-24 hover:w-64 flex-col bg-[#fbfbfd]/90 backdrop-blur-2xl border-r border-[#d2d2d7]/50 z-[1300] transition-all duration-500 group overflow-visible shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
+        className="hidden md:flex fixed left-0 top-0 h-screen w-24 hover:w-64 focus-within:w-64 flex-col bg-[#fbfbfd]/90 backdrop-blur-2xl border-r border-[#d2d2d7]/50 z-[1300] transition-all duration-500 group overflow-visible shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
       >
-        <div className="p-8 mb-4 flex items-center gap-5">
-          <div className="min-w-[34px] flex items-center justify-center">
+        <div className="h-24 mb-4 relative flex items-center shrink-0">
+          <div className="w-24 shrink-0 flex items-center justify-center">
             <AllianceLogo />
           </div>
-          <span className="font-serif italic text-2xl tracking-tight opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-[#1d1d1f]">
+          <span className="absolute left-24 font-serif italic text-2xl tracking-tight opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 text-[#1d1d1f]">
             VISTA
           </span>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+        <nav aria-label="Navegación principal" className="flex-1 px-4 space-y-2 overflow-y-auto overflow-x-hidden">
           {navItems.map((item) => (
             <button
               key={item.id}
+              aria-label={item.label}
+              aria-current={activeTab === item.id ? 'page' : undefined}
               onClick={() => {
                 setActiveTab(item.id);
                 setShowMenu(false);
               }}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${
+              className={`relative w-full h-14 flex items-center rounded-2xl transition-all duration-300 ${
                 activeTab === item.id 
                 ? 'bg-[#1d1d1f] text-white shadow-md' 
                 : 'text-[#86868b] hover:bg-black/5 hover:text-[#1d1d1f]'
               }`}
             >
-              <div className="min-w-[24px] flex justify-center relative">
+              <div className="w-16 h-full shrink-0 flex items-center justify-center">
                 {item.icon}
               </div>
-              <span className="font-medium text-sm tracking-wide opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              <span className="absolute left-16 font-medium text-sm tracking-wide opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap">
                 {item.label}
               </span>
             </button>
           ))}
-
-          {(hasWorkspaceAccess || isDueño) && (
-            <div className="pt-5 mt-5 border-t border-[#d2d2d7]/50 space-y-2">
-              <p className="px-4 mb-3 text-[9px] font-bold text-[#86868b] uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-opacity">
-                GBA Systems
-              </p>
-              {hasWorkspaceAccess && <button
-                onClick={() => {setActiveTab('workspace'); setShowMenu(false)}}
-                className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${
-                  activeTab === 'workspace'
-                  ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-500/20'
-                  : 'text-blue-600/80 hover:bg-blue-50 hover:text-blue-700'
-                }`}
-              >
-                <div className="min-w-[24px] flex justify-center"><PanelsTopLeft size={22} strokeWidth={1.5}/></div>
-                <span className="font-bold text-sm tracking-tight opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">WORKSPACE</span>
-              </button>}
-              {isDueño && <button
-                onClick={() => {setActiveTab('mothership'); setShowMenu(false)}}
-                className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${
-                  activeTab === 'mothership' 
-                  ? 'bg-red-600 text-white shadow-lg shadow-red-500/20' 
-                  : 'text-red-500/70 hover:bg-red-50 hover:text-red-600'
-                }`}
-              >
-                <div className="min-w-[24px] flex justify-center"><ShieldAlert size={22} strokeWidth={1.5} /></div>
-                <span className="font-bold text-sm tracking-tight opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  MOTHERSHIP
-                </span>
-              </button>}
-            </div>
-          )}
         </nav>
 
         <div className="p-4 border-t border-[#d2d2d7]/50 bg-white/50 mt-auto">
            {/* TRIGGER DEL MENÚ: El cuadro del usuario ahora es el botón principal */}
            <button 
-            onClick={() => setShowMenu(!showMenu)}
-            className={`w-full flex items-center gap-4 p-2 rounded-2xl transition-all duration-300 border ${showMenu ? 'bg-black/5 border-blue-500/20' : 'border-transparent hover:bg-black/5'}`}
+            onClick={toggleMenu}
+            aria-label="Menú de usuario"
+            aria-expanded={showMenu}
+            aria-controls="vista-account-menu"
+            className={`relative w-full h-14 flex items-center rounded-2xl transition-all duration-300 ring-1 ring-inset ${showMenu ? 'bg-black/5 ring-blue-500/20' : 'ring-transparent hover:bg-black/5'}`}
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-100 to-blue-50 border border-[#d2d2d7] flex items-center justify-center text-sm font-black text-blue-600 min-w-[40px] shadow-sm">
-              {(user?.nombre_publico || user?.nombre)?.slice(0, 2).toUpperCase() || 'GB'}
+            <div className="w-16 shrink-0 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-100 to-blue-50 border border-[#d2d2d7] flex items-center justify-center text-sm font-black text-blue-600 min-w-[40px] shadow-sm">
+                {(user?.nombre_publico || user?.nombre)?.slice(0, 2).toUpperCase() || 'GB'}
+              </div>
             </div>
-            <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity overflow-hidden whitespace-nowrap text-left">
+            <div className="absolute left-16 right-2 flex flex-col opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity overflow-hidden whitespace-nowrap text-left">
               <span className="text-sm font-bold truncate text-[#1d1d1f] tracking-tight">{user?.nombre_publico || user?.nombre || 'GBA ID'}</span>
               <span className="text-[9px] text-[#86868b] uppercase font-bold tracking-[0.2em]">
                 {user?.rol || 'Ciudadano'}
@@ -197,7 +186,10 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         
         {/* Botón de Perfil / Menú Móvil */}
         <button 
-          onClick={() => setShowMenu(!showMenu)}
+          onClick={toggleMenu}
+            aria-label="Menú de usuario"
+            aria-expanded={showMenu}
+            aria-controls="vista-account-menu"
           className={`mobile-nav-btn flex flex-col items-center justify-center w-14 gap-1.5 transition-colors ${showMenu ? 'text-[#0066FF]' : 'text-[#86868b]'}`}
         >
           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm transition-all ${showMenu ? 'bg-blue-600 text-white border-none' : 'bg-gradient-to-tr from-blue-100 to-blue-50 border border-[#d2d2d7] text-blue-600'}`}>
@@ -213,6 +205,9 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       {showMenu && (
         <div 
           ref={menuRef}
+          id="vista-account-menu"
+          role="region"
+          aria-label="Cuenta de usuario"
           className="fixed left-4 right-4 bottom-24 md:left-28 md:right-auto md:bottom-6 md:w-72 max-h-[calc(100vh-7rem)] md:max-h-[calc(100vh-3rem)] overflow-y-auto bg-white/95 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.12)] p-2 animate-in slide-in-from-bottom-4 duration-300 z-[1400] text-[#1d1d1f] border border-[#d2d2d7]/60"
         >
           {/* IDENTIDAD */}
@@ -226,10 +221,13 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
 
           {/* OPCIONES COMUNES (CIUDADANO) */}
           <div className="px-2 py-1 space-y-1 mb-1">
-            <button className="w-full flex items-center justify-between px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
+            <button type="button" onClick={() => setShowAppearance(open => !open)} aria-expanded={showAppearance} aria-controls="vista-appearance-options" className="w-full flex items-center justify-between px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
               <div className="flex items-center gap-3"><Moon size={16} className="text-[#86868b]"/> Apariencia</div>
-              <span className="text-[10px] font-black text-[#86868b]">CLARO</span>
+              <span className="text-[10px] font-black text-[#86868b]">{({light:'CLARO',dark:'OSCURO',system:'SISTEMA'})[preference]}</span>
             </button>
+            {showAppearance && <div id="vista-appearance-options" className="grid grid-cols-3 gap-1 rounded-xl bg-[#f5f5f7] p-1" role="group" aria-label="Elegir apariencia">
+              {[{value:'light',label:'Claro',Icon:Sun},{value:'dark',label:'Oscuro',Icon:Moon},{value:'system',label:'Sistema',Icon:Monitor}].map(({value,label,Icon}) => <button key={value} type="button" aria-pressed={preference === value} onClick={() => setPreference(value)} className={`min-h-16 rounded-lg flex flex-col items-center justify-center gap-2 text-[11px] font-medium transition-colors ${preference === value ? 'bg-white text-[#0066FF] shadow-sm' : 'text-[#6e6e73] hover:text-[#1d1d1f]'}`}><Icon size={17}/>{label}</button>)}
+            </div>}
             <button onClick={() => {setActiveTab('notifications'); setShowMenu(false)}} className="w-full flex items-center justify-between px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
               <div className="flex items-center gap-3"><Bell size={16} className="text-[#86868b]"/> Notificaciones</div>
               {unreadCount > 0 && <span className="min-w-6 h-6 px-2 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">{unreadCount}</span>}
@@ -275,7 +273,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
           )}
 
           {hasWorkspaceAccess && (
-            <div className="md:hidden px-2 py-2 border-t border-[#d2d2d7]/40 mt-1 space-y-1">
+            <div className="px-2 py-2 border-t border-[#d2d2d7]/40 mt-1 space-y-1">
                <p className="px-3 py-2 text-[9px] font-black text-blue-600 uppercase tracking-[0.2em] opacity-80">GBA Systems</p>
                <button onClick={() => {setActiveTab('workspace'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-blue-50 text-blue-600 rounded-2xl transition-colors text-sm font-bold">
                  <PanelsTopLeft size={16}/> GBA Workspace
@@ -283,9 +281,9 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             </div>
           )}
 
-          {/* MOTHERSHIP EN MÓVIL PARA EL DUEÑO */}
+          {/* MOTHERSHIP PARA ADMINISTRADORES */}
           {isDueño && (
-            <div className="md:hidden px-2 py-2 border-t border-[#d2d2d7]/40 mt-1 space-y-1">
+            <div className="px-2 py-2 border-t border-[#d2d2d7]/40 mt-1 space-y-1">
                <p className="px-3 py-2 text-[9px] font-black text-red-500 uppercase tracking-[0.2em] opacity-80">Admin Systems</p>
                <button onClick={() => {setActiveTab('mothership'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-red-50 text-red-600 rounded-2xl transition-colors text-sm font-bold">
                  <ShieldAlert size={16}/> Mothership Command
