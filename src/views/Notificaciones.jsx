@@ -1,9 +1,10 @@
 import React from 'react';
 import { AtSign, BadgeCheck, Bell, CheckCheck, Heart, MessageCircle, Newspaper, UserPlus } from 'lucide-react';
+import { notificationLink } from '../utils/social';
 import { useNotifications } from '../hooks/useNotifications';
 
 export default function Notificaciones({ onNavigateNews }) {
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, loading, error, markingRead, fetchNotifications, markAsRead, markAllAsRead } = useNotifications();
 
   const iconFor = notification => {
     if (notification.tipo === 'nuevo_seguidor') return UserPlus;
@@ -15,13 +16,9 @@ export default function Notificaciones({ onNavigateNews }) {
     return Newspaper;
   };
 
-  const openNotification = notification => {
-    markAsRead(notification.id);
-    if (notification.action_url && notification.action_url !== '/') {
-      window.location.href = notification.action_url;
-      return;
-    }
-    if (notification.contenido_id) onNavigateNews?.({ id: notification.contenido_id });
+  const openNotification = async notification => {
+    await markAsRead(notification.id);
+    window.location.href = notificationLink(notification);
   };
 
   return (
@@ -29,9 +26,10 @@ export default function Notificaciones({ onNavigateNews }) {
       <div className="max-w-4xl mx-auto">
         <header className="flex items-end justify-between gap-6 border-b border-[#d2d2d7]/60 pb-8 mb-8">
           <div><p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#0066FF] mb-3">GBA ID</p><h1 className="font-serif italic text-4xl md:text-6xl tracking-tight">Notificaciones.</h1><p className="text-[#86868b] mt-3">{unreadCount} pendientes</p></div>
-          {unreadCount > 0 && <button type="button" onClick={markAllAsRead} className="px-4 py-3 border border-[#d2d2d7] bg-white rounded-xl text-xs font-bold flex items-center gap-2"><CheckCheck size={16}/>Marcar leídas</button>}
+          {unreadCount > 0 && <button type="button" disabled={markingRead} onClick={markAllAsRead} className="px-4 py-3 border border-[#d2d2d7] bg-white rounded-xl text-xs font-bold flex items-center gap-2"><CheckCheck size={16}/>{markingRead ? 'Guardando...' : 'Marcar leídas'}</button>}
         </header>
 
+        {error && <p role="alert" className="text-sm text-red-700 mb-6">{error} <button type="button" onClick={() => fetchNotifications()} className="underline">Reintentar</button></p>}
         {loading ? <p className="py-16 text-center text-[#86868b]">Cargando avisos...</p> : notifications.length > 0 ? (
           <div className="divide-y divide-[#d2d2d7]/60 border-y border-[#d2d2d7]/60">
             {notifications.map(notification => {
@@ -49,7 +47,7 @@ export default function Notificaciones({ onNavigateNews }) {
               </button>
             );})}
           </div>
-        ) : <div className="py-24 text-center border border-dashed border-[#d2d2d7] rounded-2xl"><Bell size={38} className="mx-auto text-[#d2d2d7] mb-4"/><p className="font-serif italic text-2xl">Todo está al día.</p><p className="text-sm text-[#86868b] mt-2">Aquí aparecerán publicaciones y avisos de las editoriales que sigues.</p></div>}
+        ) : !error && <div className="py-24 text-center border border-dashed border-[#d2d2d7] rounded-2xl"><Bell size={38} className="mx-auto text-[#d2d2d7] mb-4"/><p className="font-serif italic text-2xl">Todo está al día.</p><p className="text-sm text-[#86868b] mt-2">Aquí aparecerán colaboraciones, respuestas, menciones y avisos de las cuentas y editoriales que sigues.</p></div>}
       </div>
     </div>
   );

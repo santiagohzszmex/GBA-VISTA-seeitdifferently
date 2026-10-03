@@ -1,4 +1,6 @@
 import React, { lazy, Suspense, useState } from 'react';
+import { supabase } from './supabaseClient';
+import { isVideoContent } from './utils/contentTypes';
 import { useAuth } from './context/AuthContext';
 import Sidebar from './Sidebar';
 
@@ -34,6 +36,8 @@ import ContentDetailModal from './components/modals/ContentDetailModal'; // <-- 
 
 export default function VISTAHome() {
   const { user, isDueño } = useAuth();
+  const sharedContentId = new URLSearchParams(window.location.search).get('content');
+  const [contentLinkError, setContentLinkError] = useState('');
   const sharedEditionId = new URLSearchParams(window.location.search).get('edition');
   const sharedCampaignId = new URLSearchParams(window.location.search).get('campaign');
   const sharedKeynoteSlug = new URLSearchParams(window.location.search).get('keynote');
@@ -53,6 +57,20 @@ export default function VISTAHome() {
   const showWelcome = user?.onboarding_completado !== true;
   const [studioInitialSection, setStudioInitialSection] = useState('publish');
   const showsSiteFooter = !['mothership', 'workspace', 'publicar', 'settings', 'notifications', 'radio'].includes(activeTab);
+
+  React.useEffect(() => {
+    if (!sharedContentId || !user?.id) return;
+    let active = true;
+    setContentLinkError('');
+    supabase.from('contenido').select('*').eq('id', sharedContentId).eq('estado_publicacion', 'aprobado').maybeSingle()
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error || !data) { setContentLinkError('Esta publicación no está disponible.'); return; }
+        if (isVideoContent(data)) setSelectedMovieInfo(data);
+        else { setFocusedNewsId(data.id); setActiveTab('news'); }
+      });
+    return () => { active = false; };
+  }, [sharedContentId, user?.id]);
 
   // Manejadores de acciones que serán inyectados a las vistas hijas
   const handlePlayVideo = (youtubeId) => {
@@ -232,6 +250,7 @@ export default function VISTAHome() {
       {/* 🛠️ CAPAS SUPERPUESTAS GLOBALES (MODALES)              */}
       {/* =================================================== */}
       
+      {contentLinkError && <div role="alert" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9000] bg-white border border-[#d2d2d7] rounded-md shadow-lg p-4 text-sm text-[#1d1d1f]">{contentLinkError}<button className="ml-4 underline" onClick={() => { setContentLinkError(''); replaceVistaLocation(); }}>Cerrar</button></div>}
       {/* 1. REPRODUCTOR DE VIDEO (PANTALLA COMPLETA) */}
       {playingVideo && (
         <VideoPlayer 
@@ -244,7 +263,7 @@ export default function VISTAHome() {
       {selectedMovieInfo && (
         <ContentDetailModal 
           movie={selectedMovieInfo} 
-          onClose={() => setSelectedMovieInfo(null)}
+          onClose={() => { setSelectedMovieInfo(null); if (sharedContentId) replaceVistaLocation(); }}
           onPlay={(id) => {
             setPlayingVideo(id); // Dispara la reproducción cinematográfica
             setSelectedMovieInfo(null); // Limpia el foco del modal cerrándolo limpiamente

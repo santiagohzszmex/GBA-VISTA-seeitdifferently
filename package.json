@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:network": "node tests/network-pilot.mjs",
     "test:publishing": "node tests/publishing.test.mjs",
-    "test:survey": "node tests/survey.test.mjs"
+    "test:survey": "node tests/survey.test.mjs",
+    "test:social": "node tests/social.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import NewsCard from '../components/news/NewsCard';
 import Estadisticas from './Estadisticas';
 import { buildVistaPublicUrl } from '../utils/publicUrl';
+import { contentLink } from '../utils/social';
 import ProfileCollaborations from '../components/social/ProfileCollaborations';
 import ActivityFeed from '../components/social/ActivityFeed';
 
@@ -20,8 +21,9 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeSection, setActiveSection] = useState(initialSection);
-  const [followState, setFollowState] = useState({ is_following: false, followers: 0, following: 0 });
+  const [followState, setFollowState] = useState({ is_following: false, followers: null, following: null });
   const [followLoading, setFollowLoading] = useState(false);
+  const [actionError, setActionError] = useState('');
   const [draft, setDraft] = useState({ nombre_publico: '', bio: '', servidor: '', nacion: '', discord_id: '', perfil_publico: true });
 
   useEffect(() => {
@@ -85,13 +87,14 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
 
   const saveProfile = async () => {
     if (!user?.id) return;
-    setSaving(true);
+    setSaving(true); setActionError('');
     const { error } = await supabase.from('usuarios').update(draft).eq('id', user.id);
     if (!error) {
       await refreshUser();
       setProfile(prev => ({ ...prev, ...draft }));
       setEditing(false);
     }
+    if (error) setActionError('No pudimos guardar el perfil. Tus cambios siguen en el formulario.');
     setSaving(false);
   };
 
@@ -109,11 +112,13 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
   const toggleFollow = async () => {
     if (!profile?.id || isOwnProfile || followLoading) return;
     setFollowLoading(true);
-    const { data } = await supabase.rpc('vista_set_profile_follow', {
+    setActionError('');
+    const { data, error } = await supabase.rpc('vista_set_profile_follow', {
       p_profile_id: profile.id,
       p_follow: !followState.is_following
     });
     if (data) setFollowState(data);
+    if (error) setActionError('No pudimos actualizar el seguimiento. Vuelve a intentarlo.');
     setFollowLoading(false);
   };
 
@@ -156,12 +161,13 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
           </div>
         </header>
 
+        {actionError && !editing && <p role="alert" className="text-sm text-red-700 mt-5">{actionError}</p>}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4 py-8 border-b border-[#d2d2d7]/60">
           {[
             ['Publicaciones', profile.publicaciones || publications.length, Newspaper],
             ['Lecturas', profile.vistas || 0, Eye],
             ['Likes', profile.likes || 0, Heart],
-            ['Seguidores', followState.followers || profile.seguidores || 0, Users]
+            ['Seguidores', followState.followers ?? profile.seguidores ?? 0, Users]
           ].map(([label, value, Icon]) => (
             <div key={label} className="text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2 text-[#86868b] text-[10px] font-black uppercase tracking-widest"><Icon size={13}/>{label}</div>
@@ -195,7 +201,7 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
             <h2 className="text-2xl font-serif italic font-bold mb-8">Aportaciones públicas</h2>
             {publications.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
-                {publications.map(item => <NewsCard key={item.id} item={item} onRead={() => {}} onNavigateProfile={null}/>) }
+                {publications.map(item => <NewsCard key={item.id} item={item} onRead={() => { window.location.href = contentLink(item.id); }} onNavigateProfile={null}/>) }
               </div>
             ) : <div className="py-20 border border-dashed border-[#d2d2d7] rounded-2xl text-center text-[#86868b]">Este perfil todavía no tiene aportaciones públicas.</div>}
           </section>
@@ -212,6 +218,7 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
             <div className="grid grid-cols-2 gap-3"><input value={draft.servidor} onChange={e => setDraft(prev => ({ ...prev, servidor: e.target.value }))} placeholder="Servidor" className="border border-[#d2d2d7] rounded-xl p-3 outline-none"/><input value={draft.nacion} onChange={e => setDraft(prev => ({ ...prev, nacion: e.target.value }))} placeholder="Nación" className="border border-[#d2d2d7] rounded-xl p-3 outline-none"/></div>
             <div><input value={draft.discord_id} onChange={e => setDraft(prev => ({ ...prev, discord_id: e.target.value }))} placeholder="Usuario de Discord (opcional)" className="w-full border border-[#d2d2d7] rounded-xl p-3 outline-none"/><p className="text-[10px] text-[#86868b] mt-1.5 px-1">Dato privado para contacto y administración; no aparece en tu perfil público.</p></div>
             <label className="flex items-center justify-between gap-4 p-3 bg-[#f5f5f7] rounded-xl font-medium text-sm">Perfil visible mediante enlace<input type="checkbox" checked={draft.perfil_publico} onChange={e => setDraft(prev => ({ ...prev, perfil_publico: e.target.checked }))}/></label>
+            {actionError && <p role="alert" className="text-sm text-red-700">{actionError}</p>}
             <button type="button" onClick={saveProfile} disabled={saving} className="w-full py-4 bg-[#1d1d1f] text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"><Save size={17}/>Guardar perfil</button>
           </div>
         </div>
