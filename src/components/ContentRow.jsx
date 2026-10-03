@@ -22,7 +22,7 @@ export default function ContentRow({ title, items = [], onSelect }) {
   return (
     <div className="space-y-4 relative group/row">
       {/* Título de la Categoría */}
-      <h3 className="font-serif italic text-2xl text-[#1d1d1f] px-1">
+      <h3 className="font-sans font-medium tracking-tight text-2xl text-[#1d1d1f] px-1">
         {title}
       </h3>
       
