@@ -106,18 +106,18 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       ========================================================= */}
       <div 
         ref={sidebarRef}
-        className="hidden md:flex fixed left-0 top-0 h-screen w-24 hover:w-64 focus-within:w-64 flex-col bg-[#fbfbfd]/90 backdrop-blur-2xl border-r border-[#d2d2d7]/50 z-[1300] transition-all duration-500 group overflow-visible shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
+        className="hidden md:flex fixed left-0 top-0 h-screen w-24 hover:w-64 has-[:focus-visible]:w-64 flex-col bg-[#fbfbfd]/90 backdrop-blur-2xl border-r border-[#d2d2d7]/50 z-[1300] transition-all duration-500 group overflow-visible shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
       >
-        <div className="h-24 mb-4 relative flex items-center shrink-0">
+        <div className="h-24 relative flex items-center shrink-0">
           <div className="w-24 shrink-0 flex items-center justify-center">
             <AllianceLogo />
           </div>
-          <span className="absolute left-24 font-serif italic text-2xl tracking-tight opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 text-[#1d1d1f]">
+          <span className="absolute left-24 font-serif italic text-2xl tracking-tight opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 transition-opacity duration-300 text-[#1d1d1f]">
             VISTA
           </span>
         </div>
 
-        <nav aria-label="Navegación principal" className="flex-1 px-4 space-y-2 overflow-y-auto overflow-x-hidden">
+        <nav aria-label="Navegación principal" className="flex-1 flex flex-col gap-2 px-4 py-4 min-h-0 overflow-y-auto overflow-x-hidden" style={{ justifyContent: 'safe center' }}>
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -127,7 +127,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 setActiveTab(item.id);
                 setShowMenu(false);
               }}
-              className={`relative w-full h-14 flex items-center rounded-2xl transition-all duration-300 ${
+              className={`relative w-full h-14 shrink-0 flex items-center rounded-2xl transition-all duration-300 ${
                 activeTab === item.id 
                 ? 'bg-[#1d1d1f] text-white shadow-md' 
                 : 'text-[#86868b] hover:bg-black/5 hover:text-[#1d1d1f]'
@@ -136,14 +136,14 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
               <div className="w-16 h-full shrink-0 flex items-center justify-center">
                 {item.icon}
               </div>
-              <span className="absolute left-16 font-medium text-sm tracking-wide opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap">
+              <span className="absolute left-16 font-medium text-sm tracking-wide opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 transition-opacity whitespace-nowrap">
                 {item.label}
               </span>
             </button>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-[#d2d2d7]/50 bg-white/50 mt-auto">
+        <div className="h-24 shrink-0 flex items-center px-4 border-t border-[#d2d2d7]/50 bg-white/50 mt-auto">
            {/* TRIGGER DEL MENÚ: El cuadro del usuario ahora es el botón principal */}
            <button 
             onClick={toggleMenu}
@@ -157,7 +157,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 {(user?.nombre_publico || user?.nombre)?.slice(0, 2).toUpperCase() || 'GB'}
               </div>
             </div>
-            <div className="absolute left-16 right-2 flex flex-col opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity overflow-hidden whitespace-nowrap text-left">
+            <div className="absolute left-16 right-2 flex flex-col opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 transition-opacity overflow-hidden whitespace-nowrap text-left">
               <span className="text-sm font-bold truncate text-[#1d1d1f] tracking-tight">{user?.nombre_publico || user?.nombre || 'GBA ID'}</span>
               <span className="text-[9px] text-[#86868b] uppercase font-bold tracking-[0.2em]">
                 {user?.rol || 'Ciudadano'}
