@@ -8,12 +8,14 @@ import EditorialProfileSettings from '../components/studio/EditorialProfileSetti
 import EditorialStudioHeader from '../components/studio/EditorialStudioHeader';
 import EditorialTeamManager from '../components/studio/EditorialTeamManager';
 import NetworkBusinessStudio from '../components/studio/NetworkBusinessStudio';
+import DevelopmentStudioWorkspace from '../components/studio/DevelopmentStudioWorkspace';
 import NetworkServerStudio from '../components/studio/NetworkServerStudio';
 import CreditsPanel from '../components/social/CreditsPanel';
 import { 
   PenTool, 
   Upload, 
   Send, 
+  Users,
   ShieldCheck, 
   Clock, 
   FileText, 
@@ -87,7 +89,7 @@ export default function Publicar({ initialSection = 'publish' }) {
   }, [user, activeEditorial?.id, activeEditorial?.nombre, workspaceLoading]);
 
   useEffect(() => {
-    if (initialSection === 'network' || initialSection === 'publish') setStudioSection(initialSection);
+    if (['network','publish','studios'].includes(initialSection)) setStudioSection(initialSection);
   }, [initialSection]);
 
   const comprobarSolicitudPrevia = async () => {
@@ -314,11 +316,11 @@ export default function Publicar({ initialSection = 'publish' }) {
   // ========================================================
   // RENDER INTERFAZ ZERO: INTERCEPTOR PARA DUEÑOS/ADMINS
   // ========================================================
-  if (workspaceLoading) {
+  if (workspaceLoading && !['network','studios'].includes(studioSection)) {
     return <div className="min-h-screen flex items-center justify-center text-xs font-bold uppercase tracking-widest text-[#86868b]">Abriendo VISTA Studio...</div>;
   }
 
-  if (studioSection === 'network') {
+  if (studioSection === 'network' || studioSection === 'studios') {
     return (
       <div className="w-full min-h-screen bg-[#fbfbfd] pb-24">
         <StudioStyles/>
@@ -328,10 +330,10 @@ export default function Publicar({ initialSection = 'publish' }) {
               <div><div className="flex items-center gap-2 text-[#0066FF] mb-3"><ShieldCheck size={18}/><span className="text-[10px] font-bold tracking-widest uppercase">GBA ID · Network Beta</span></div><h1 className="text-4xl md:text-5xl font-serif italic tracking-tight text-[#1d1d1f]">VISTA Studio</h1><p className="text-sm text-[#86868b] mt-2">Registra y administra los servidores geopolíticos de tu comunidad.</p></div>
               <button type="button" onClick={() => setStudioSection('publish')} className="sm:ml-auto h-10 px-4 rounded-md border border-[#d2d2d7] bg-white text-xs font-bold text-[#5f6368] hover:text-[#1d1d1f]">Volver a Editorial</button>
             </div>
-            <nav className="flex items-center gap-1 mt-7 -mb-6 overflow-x-auto" aria-label="Areas de VISTA Studio"><button type="button" onClick={() => setStudioSection('publish')} className="h-11 px-4 flex items-center gap-2 text-xs font-bold border-b-2 border-transparent text-[#86868b]"><FileText size={15}/>Editorial</button><button type="button" className="h-11 px-4 flex items-center gap-2 text-xs font-bold border-b-2 border-[#0066FF] text-[#0066FF]"><Building size={15}/>Network Beta</button></nav>
+            <nav className="flex items-center gap-1 mt-7 -mb-6 overflow-x-auto" aria-label="Areas de VISTA Studio"><button type="button" onClick={() => setStudioSection('publish')} className="h-11 px-4 flex items-center gap-2 text-xs font-bold border-b-2 border-transparent text-[#86868b]"><FileText size={15}/>Editorial</button><button type="button" aria-pressed={studioSection==='network'} onClick={()=>setStudioSection('network')} className="h-11 px-4 flex items-center gap-2 text-xs font-bold"><Building size={15}/>Servidores</button><button type="button" aria-pressed={studioSection==='studios'} onClick={()=>setStudioSection('studios')} className="h-11 px-4 flex items-center gap-2 text-xs font-bold"><Users size={15}/>Estudios</button></nav>
           </header>
-          <NetworkServerStudio userId={user?.id} previewMode={previewMode}/>
-          <details className="mt-12 border-t border-[#dce3dc] pt-6"><summary className="cursor-pointer text-xs font-bold text-[#708078]">Perfiles anteriores de negocios y empresas</summary><div className="mt-6"><NetworkBusinessStudio userId={user?.id} previewMode={previewMode}/></div></details>
+          {studioSection==='studios'?<DevelopmentStudioWorkspace/>:<NetworkServerStudio userId={user?.id} previewMode={previewMode}/>}
+          {studioSection==='network'&&<details className="mt-12 border-t border-[#dce3dc] pt-6"><summary className="cursor-pointer text-xs font-bold text-[#708078]">Perfiles anteriores de negocios y empresas</summary><div className="mt-6"><NetworkBusinessStudio userId={user?.id} previewMode={previewMode}/></div></details>}
         </div>
       </div>
     );
@@ -358,7 +360,7 @@ export default function Publicar({ initialSection = 'publish' }) {
           >
             Ir a Mothership Command
           </button>
-          <button type="button" onClick={() => setStudioSection('network')} className="w-full mt-3 border border-[#d2d2d7] bg-white text-[#1d1d1f] font-bold py-4 rounded-xl flex items-center justify-center gap-2 text-sm"><Building size={16}/>Registrar un servidor en Network</button>
+          <button type="button" onClick={() => setStudioSection('network')} className="w-full mt-3 border border-[#d2d2d7] bg-white text-[#1d1d1f] font-bold py-4 rounded-xl flex items-center justify-center gap-2 text-sm"><Building size={16}/>Registrar un servidor en Network</button><button type="button" onClick={()=>setStudioSection('studios')} className="vn-button vn-button-quiet mx-auto mb-6 mt-3">Registrar o administrar un estudio</button>
         </div>
       </div>
     );
@@ -383,7 +385,7 @@ export default function Publicar({ initialSection = 'publish' }) {
             VISTA Studio es el espacio de publicación para equipos editoriales. Registra una organización o acepta una invitación con tu GBA ID.
           </p>
 
-          <button type="button" onClick={() => setStudioSection('network')} className="h-11 px-4 mb-8 mx-auto rounded-md border border-[#d2d2d7] bg-white text-sm font-bold flex items-center justify-center gap-2"><Building size={16} className="text-[#0066FF]"/>Registrar un servidor en Network</button>
+          <button type="button" onClick={() => setStudioSection('network')} className="h-11 px-4 mb-8 mx-auto rounded-md border border-[#d2d2d7] bg-white text-sm font-bold flex items-center justify-center gap-2"><Building size={16} className="text-[#0066FF]"/>Registrar un servidor en Network</button><button type="button" onClick={()=>setStudioSection('studios')} className="vn-button vn-button-quiet mx-auto mb-6 mt-3">Registrar o administrar un estudio</button>
 
           {solicitudExistente ? (
             <div className="bg-white border border-[#d2d2d7] rounded-3xl p-8 max-w-lg mx-auto flex flex-col items-center shadow-[0_10px_30px_rgba(0,0,0,0.02)] animate-in fade-in">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Download, RefreshCw } from 'lucide-react';
 import { networkRpc } from '../../hooks/useNetworkServers';
-const metrics=[['people','GBA ID únicos'],['hero_views','Vistas del hero'],['directory_views','Vistas en directorio'],['profile_views','Visitas a la ficha'],['copy_ip','Copias de IP'],['discord_click','Clics a Discord'],['website_click','Clics al sitio'],['map_click','Clics al mapa']];
+const metrics=[['people','GBA ID únicos'],['hero_views','Vistas del hero'],['directory_views','Vistas en directorio'],['profile_views','Visitas a la ficha'],['copy_ip','Copias de IP'],['discord_click','Clics a Discord'],['website_click','Clics al sitio'],['map_click','Clics al mapa'],['access_click','Clics al acceso'],['support_click','Clics a apoyo']];
 export default function NetworkReport({serverId,partner=null,previewMode=false,dark=false}){
   const [days,setDays]=useState('30');const [data,setData]=useState(null);const [error,setError]=useState('');const [loading,setLoading]=useState(false);const [refresh,setRefresh]=useState(0);
   useEffect(()=>{

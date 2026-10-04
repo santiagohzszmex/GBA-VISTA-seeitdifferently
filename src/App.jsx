@@ -9,6 +9,7 @@ import NetworkPreview from './views/NetworkPreview';
 import GlobalRadioPlayer from './components/radio/GlobalRadioPlayer';
 import { RadioProvider } from './radio/RadioContext';
 
+const StudioProfile = React.lazy(() => import('./views/StudioProfile'));
 const SurveyPage = React.lazy(() => import('./views/SurveyPage'));
 const isSurveyRoute = window.location.pathname.replace(/\/$/, '') === '/encuesta/partners'
   || new URLSearchParams(window.location.search).get('encuesta') === 'partners';
@@ -18,6 +19,8 @@ function MainApp() {
   const { user } = useAuth();
   const searchParams = new URLSearchParams(window.location.search);
   if (isSurveyRoute) return <React.Suspense fallback={<div className="min-h-screen bg-[#0a0a0a] text-white p-12">Abriendo VISTA…</div>}><SurveyPage previewMode={import.meta.env.DEV && searchParams.get('survey-preview') === '1'} /></React.Suspense>;
+  const publicStudio = searchParams.get('studio');
+  if (publicStudio) return user ? <React.Suspense fallback={<div className="p-12">Abriendo estudio…</div>}><StudioProfile slug={publicStudio}/></React.Suspense> : <VISTAAuth onLogin={() => {}}/>;
   const publicHandle = searchParams.get('profile');
   const publicEditorial = searchParams.get('editorial');
   const workspacePreview = import.meta.env.DEV

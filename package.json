@@ -11,6 +11,7 @@
     "test:publishing": "node tests/publishing.test.mjs",
     "test:survey": "node tests/survey.test.mjs",
     "test:social": "node tests/social.test.mjs",
+    "test:studios": "node tests/studios.test.mjs",
     "test:session": "node tests/session.test.mjs"
   },
   "dependencies": {

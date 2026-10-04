@@ -7,7 +7,8 @@ export const PARTNER_STATUS = { draft: 'Borrador', active: 'Activo', paused: 'Pa
 export const safeUrl = value => { try { const url = new URL(value); return url.protocol === 'https:' ? url.href : null; } catch { return null; } };
 export const activePartners = (partners, now = Date.now()) => partners.filter(p => new Date(p.starts_at).getTime() <= now && new Date(p.ends_at).getTime() > now);
 export const partnerStatus = p => p.state === 'active' && new Date(p.ends_at).getTime() <= Date.now() ? 'Vencido' : p.state === 'active' && new Date(p.starts_at).getTime() > Date.now() ? 'Programado' : PARTNER_STATUS[p.state];
-export const EMPTY_SERVER = { nombre: '', headline: '', descripcion: '', ip: '', discord_url: '', website_url: '', map_url: '', logo_url: '', portada_url: '', idioma: 'Español', edition: 'java', version: '', estilo: 'Geopolítico', region: '', game_status: 'activo' };
+export const ACCESS_TYPES = {direct:'Dirección IP',modpack:'Modpack',invitation:'Invitación o solicitud de acceso'};
+export const EMPTY_SERVER = { access_type:'direct',access_url:'',access_instructions:'',support_url:'',developer_studio_id:'',developer_handle:'', nombre: '', headline: '', descripcion: '', ip: '', discord_url: '', website_url: '', map_url: '', logo_url: '', portada_url: '', idioma: 'Español', edition: 'java', version: '', estilo: 'Geopolítico', region: '', game_status: 'activo' };
 export const serverPayload = server => Object.fromEntries(Object.keys(EMPTY_SERVER).map(key => [key, server[key] ?? EMPTY_SERVER[key]]));
 // Demonstration data is available only in Vite's development preview.
 export const PREVIEW_SERVERS = [

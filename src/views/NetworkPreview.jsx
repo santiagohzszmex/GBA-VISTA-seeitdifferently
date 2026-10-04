@@ -3,6 +3,7 @@ import { ArrowDown, ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, Globe2,
 import { useNetworkDirectory, useNetworkImpression } from '../hooks/useNetworkServers';
 import { activePartners, EDITIONS, GAME_STATUS, safeUrl, STYLES } from '../network/serverData';
 import ServerDetail from '../components/network/ServerDetail';
+import StudioDirectory from '../components/network/StudioDirectory';
 import PartnerPlans from '../components/network/PartnerPlans';
 import SurveyInvitation from '../components/survey/SurveyInvitation';
 import Mothership from './Mothership';
@@ -15,7 +16,7 @@ function ServerCard({server,partner,onOpen,track,blocked}){
   useNetworkImpression(ref,blocked?null:server.id,'directory_view','directory',partner?.id||null,track);
   return <button ref={ref} className="vn-card" type="button" onClick={()=>onOpen(server,partner?.id)} aria-label={`Ver servidor ${server.nombre}`}>
     <div className="vn-card-image">{safeUrl(server.portada_url)?<img loading="lazy" src={safeUrl(server.portada_url)} alt=""/>:<span className="vn-card-initial">{server.nombre.slice(0,2).toUpperCase()}</span>}{partner&&<span className="vn-sponsored">GBA Partner · Patrocinado</span>}</div>
-    <div className="vn-card-body"><div className="vn-card-title">{safeUrl(server.logo_url)?<img className="vn-logo" src={safeUrl(server.logo_url)} alt="" loading="lazy"/>:<span className="vn-logo">{server.nombre.slice(0,2).toUpperCase()}</span>}<div><h3>{server.nombre}{server.verificada&&<ShieldCheck size={14} className="vn-verified" aria-label="Administración verificada"/>}</h3><p>{server.estilo} · {server.idioma}</p></div></div><p className="vn-card-description">{server.headline||server.descripcion}</p><div className="vn-card-footer"><span>{EDITIONS[server.edition]}</span><span className="vn-status"><i className="vn-dot" style={server.game_status!=='activo'?{background:'#ac9665'}:undefined}/>{GAME_STATUS[server.game_status]}<ArrowUpRight size={13}/></span></div></div>
+    <div className="vn-card-body"><div className="vn-card-title">{safeUrl(server.logo_url)?<img className="vn-logo" src={safeUrl(server.logo_url)} alt="" loading="lazy"/>:<span className="vn-logo">{server.nombre.slice(0,2).toUpperCase()}</span>}<div><h3>{server.nombre}{server.verificada&&<ShieldCheck size={14} className="vn-verified" aria-label="Administración verificada"/>}</h3><p>{server.estilo} · {server.idioma}</p></div></div><p className="vn-card-description">{server.headline||server.descripcion}</p>{server.developer&&<p className="vn-note text-xs">Desarrollado por {server.developer.name}</p>}<div className="vn-card-footer"><span>{EDITIONS[server.edition]}</span><span className="vn-status"><i className="vn-dot" style={server.game_status!=='activo'?{background:'#ac9665'}:undefined}/>{GAME_STATUS[server.game_status]}<ArrowUpRight size={13}/></span></div></div>
   </button>;
 }
 function NetworkHero({heroes,onOpen,onStudio,onDiscover,track,previewMode,blocked}){
@@ -66,6 +67,7 @@ export default function NetworkPreview({previewMode=false,onOpenStudio}){
       {loading?<div className="vn-empty" role="status">Abriendo Network…</div>:error?<div className="vn-error" role="alert">{error}<button className="vn-button vn-button-quiet ml-4" onClick={refresh}>Reintentar</button></div>:visible.length?<div className="vn-grid">{visible.map(server=><ServerCard server={server} key={server.id} partner={directoryPartners.get(server.id)} onOpen={open} track={track} blocked={Boolean(selected)}/>)}</div>:<div className="vn-empty"><Globe2 size={30} className="mx-auto text-[#0066ff]"/><h3>{servers.length?'Todavía hay mundos por descubrir.':'El siguiente mundo puede ser el tuyo.'}</h3><p>{servers.length?'Prueba con otro idioma, enfoque o nombre.':'Registra la ficha gratuita de tu servidor. Las primeras comunidades de Network aparecerán aquí después de su revisión.'}</p><div className="vn-actions"><button className="vn-button" onClick={servers.length?()=>{setSearch('');setEdition('');setStyle('');setLanguage('');}:studio}>{servers.length?'Limpiar filtros':'Registrar mi servidor'}<ArrowRight size={15}/></button></div></div>}
       <p className="vn-note">Los espacios pagados se identifican como patrocinados. El estado de cada servidor es declarado por su administración.</p>
     </section>
+    {!previewMode&&<StudioDirectory/>}
     {!previewMode&&<SurveyInvitation dark/>}
     <PartnerPlans onChoose={studio}/>
     {selected&&<ServerDetail server={selected.server} partnerId={selected.partnerId} track={track} onClose={close} previewMode={previewMode}/>}

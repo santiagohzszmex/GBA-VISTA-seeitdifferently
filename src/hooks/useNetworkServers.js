@@ -62,6 +62,7 @@ export function useNetworkWorkspace(previewMode = false) {
   useEffect(() => { void refresh(); },[refresh]);
   const save = async (id,payload) => {
     const next = previewMode ? { ...servers.find(s=>s.id===id), ...payload, id:id||`preview-${Date.now()}`, owner_id:'preview-owner', estado:'pendiente', slug:payload.nombre.toLowerCase().replaceAll(' ','-') } : await networkRpc('vista_save_network_server',{p_server_id:id||null,p_data:payload});
+    next.developer_handle=payload.developer_handle||'';
     setServers(current=>[next,...current.filter(s=>s.id!==next.id)]);
     return next;
   };

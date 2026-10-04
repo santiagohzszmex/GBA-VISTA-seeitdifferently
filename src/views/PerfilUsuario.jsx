@@ -6,6 +6,7 @@ import NewsCard from '../components/news/NewsCard';
 import Estadisticas from './Estadisticas';
 import { buildVistaPublicUrl } from '../utils/publicUrl';
 import { contentLink } from '../utils/social';
+import ProfileStudios from '../components/social/ProfileStudios';
 import ProfileCollaborations from '../components/social/ProfileCollaborations';
 import ActivityFeed from '../components/social/ActivityFeed';
 
@@ -206,6 +207,7 @@ export default function PerfilUsuario({ publicHandle = null, setActiveTab, initi
             ) : <div className="py-20 border border-dashed border-[#d2d2d7] rounded-2xl text-center text-[#86868b]">Este perfil todavía no tiene aportaciones públicas.</div>}
           </section>
         )}
+        {activeSection !== 'analytics' && <ProfileStudios userId={profile.id}/>}
         {activeSection !== 'analytics' && <ProfileCollaborations userId={profile.id}/>}
       </div>
 

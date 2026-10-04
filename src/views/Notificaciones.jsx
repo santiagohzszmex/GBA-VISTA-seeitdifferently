@@ -1,5 +1,5 @@
 import React from 'react';
-import { AtSign, BadgeCheck, Bell, CheckCheck, Heart, MessageCircle, Newspaper, UserPlus } from 'lucide-react';
+import { AtSign, BadgeCheck, Building2, Bell, CheckCheck, Heart, MessageCircle, Newspaper, UserPlus } from 'lucide-react';
 import { notificationLink } from '../utils/social';
 import { useNotifications } from '../hooks/useNotifications';
 
@@ -7,6 +7,7 @@ export default function Notificaciones({ onNavigateNews }) {
   const { notifications, unreadCount, loading, error, markingRead, fetchNotifications, markAsRead, markAllAsRead } = useNotifications();
 
   const iconFor = notification => {
+    if (['invitacion_estudio','desarrollo_pendiente'].includes(notification.tipo)) return Building2;
     if (notification.tipo === 'nuevo_seguidor') return UserPlus;
     if (notification.tipo === 'credito_pendiente') return BadgeCheck;
     if (notification.tipo === 'conversacion') return MessageCircle;

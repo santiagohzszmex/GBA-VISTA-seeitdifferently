@@ -46,7 +46,8 @@ export default function VISTAHome() {
     || new URLSearchParams(window.location.search).has('server');
   const sharedRadioShortcode = new URLSearchParams(window.location.search).get('radio');
   const studioPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get('studio-preview') === '1';
-  const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : sharedKeynoteSlug ? 'keynotes' : sharedRadioShortcode ? 'radio' : sharedNetwork ? 'network' : studioPreview ? 'publicar' : 'home');
+  const workspaceSection = new URLSearchParams(window.location.search).get('workspace');
+  const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : sharedKeynoteSlug ? 'keynotes' : sharedRadioShortcode ? 'radio' : sharedNetwork ? 'network' : ['studios','network'].includes(workspaceSection) ? 'publicar' : studioPreview ? 'publicar' : 'home');
 
   // Estados locales para el control de overlays e interacciones globales
   const [playingVideo, setPlayingVideo] = useState(null);
@@ -55,7 +56,7 @@ export default function VISTAHome() {
   const [focusedNewsId, setFocusedNewsId] = useState(sharedEditionId || null);
   const [focusedKeynoteSlug, setFocusedKeynoteSlug] = useState(sharedKeynoteSlug || null);
   const showWelcome = user?.onboarding_completado !== true;
-  const [studioInitialSection, setStudioInitialSection] = useState('publish');
+  const [studioInitialSection, setStudioInitialSection] = useState(['studios','network'].includes(workspaceSection) ? workspaceSection : 'publish');
   const showsSiteFooter = !['mothership', 'workspace', 'publicar', 'settings', 'notifications', 'radio'].includes(activeTab);
 
   React.useEffect(() => {

@@ -13,6 +13,7 @@ const TABS = [
   { id: 'publish', label: 'Publicar', icon: FileUp },
   { id: 'profile', label: 'Perfil', icon: Settings2 },
   { id: 'team', label: 'Equipo', icon: Users },
+  { id: 'studios', label: 'Estudios', icon: Users },
   { id: 'network', label: 'Network Beta', icon: Store }
 ];
 
