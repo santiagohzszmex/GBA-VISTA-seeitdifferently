@@ -9,9 +9,12 @@ export function useDevelopmentStudios() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const request = useRef(0);
+  const hasSettled = useRef(false);
   const refresh = useCallback(async () => {
     const id = ++request.current;
-    setLoading(true);
+    // Native file pickers refocus the window when they close. Keep the
+    // editor (and its file inputs) mounted during subsequent refreshes.
+    setLoading(!hasSettled.current);
     setError("");
     try {
       const [workspace, developerRequests] = await Promise.all([
@@ -23,7 +26,10 @@ export function useDevelopmentStudios() {
       if (id === request.current)
         setError(e.message || "No pudimos abrir tus estudios.");
     } finally {
-      if (id === request.current) setLoading(false);
+      if (id === request.current) {
+        hasSettled.current = true;
+        setLoading(false);
+      }
     }
   }, []);
   useEffect(() => {
