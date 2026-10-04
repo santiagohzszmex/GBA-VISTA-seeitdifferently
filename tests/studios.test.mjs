@@ -251,6 +251,20 @@ create function public.vista_editorial_slugify(value text) returns text language
   await scalar("select vista_review_network_server($1,'aprobado',false,'')", [
     server.id,
   ]);
+  await scalar("select vista_review_network_server($1,'rechazado',false,'Corrige la ficha')", [server.id]);
+  ok((await scalar("select vista_admin_network()")).servers.find(s => s.id === server.id).estado, "rechazado");
+  ok((await scalar("select vista_network_directory()")).servers.length, 0);
+  await actor("owner");
+  const resubmitted = await scalar("select to_jsonb(vista_save_network_server($1,$2))", [server.id, serverPayload]);
+  ok(resubmitted.estado, "pendiente");
+  ok(resubmitted.review_notes, "");
+  await actor("admin");
+  await scalar("select vista_review_network_server($1,'suspendido',false,'Pausa')", [server.id]);
+  await actor("owner");
+  const suspended = await scalar("select to_jsonb(vista_save_network_server($1,$2))", [server.id, serverPayload]);
+  ok(suspended.estado, "suspendido");
+  await actor("admin");
+  await scalar("select vista_review_network_server($1,'aprobado',false,'')", [server.id]);
   await actor("guest");
   const published = (await scalar("select vista_network_directory()"))
     .servers[0];

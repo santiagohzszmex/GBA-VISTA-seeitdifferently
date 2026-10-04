@@ -52,17 +52,29 @@ export function useNetworkWorkspace(previewMode = false) {
   const [servers,setServers] = useState(previewMode ? PREVIEW_SERVERS.slice(0,1) : []);
   const [loading,setLoading] = useState(!previewMode);
   const [error,setError] = useState('');
+  const request = useRef(0);
+  const hasSettled = useRef(previewMode);
   const refresh = useCallback(async () => {
     if (previewMode) return;
-    setLoading(true);setError('');
-    try { setServers(await networkRpc('vista_my_network_servers')); }
-    catch (e) { setError(e.message || 'No se pudo abrir Network Studio.'); }
-    finally { setLoading(false); }
+    const version = ++request.current;
+    setLoading(!hasSettled.current);setError('');
+    try {
+      const next = await networkRpc('vista_my_network_servers');
+      if (version === request.current) setServers(next);
+    } catch (e) {
+      if (version === request.current) setError(e.message || 'No se pudo abrir Network Studio.');
+    } finally {
+      if (version === request.current) { hasSettled.current = true; setLoading(false); }
+    }
   },[previewMode]);
-  useEffect(() => { void refresh(); },[refresh]);
+  useEffect(() => { void refresh(); return () => { request.current++; }; },[refresh]);
   const save = async (id,payload) => {
     const next = previewMode ? { ...servers.find(s=>s.id===id), ...payload, id:id||`preview-${Date.now()}`, owner_id:'preview-owner', estado:'pendiente', slug:payload.nombre.toLowerCase().replaceAll(' ','-') } : await networkRpc('vista_save_network_server',{p_server_id:id||null,p_data:payload});
     next.developer_handle=payload.developer_handle||'';
+    // An older list request must not overwrite a successfully saved server.
+    request.current++;
+    hasSettled.current = true;
+    setLoading(false);setError('');
     setServers(current=>[next,...current.filter(s=>s.id!==next.id)]);
     return next;
   };

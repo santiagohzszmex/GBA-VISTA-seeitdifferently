@@ -2,7 +2,7 @@ export const EDITIONS = { java: 'Java', bedrock: 'Bedrock', crossplay: 'Java + B
 export const STYLES = ['Geopolítico', 'Towny', 'Naciones', 'Roleplay'];
 export const GAME_STATUS = { activo: 'Activo', proximamente: 'Próximamente', mantenimiento: 'Mantenimiento' };
 export const PLACEMENTS = { directory: 'Destacado en el directorio', hero: 'Hero de pantalla completa', both: 'Hero + directorio' };
-export const REVIEW_STATUS = { pendiente: 'En revisión', aprobado: 'Publicado', rechazado: 'Requiere cambios', suspendido: 'Suspendido' };
+export const REVIEW_STATUS = { pendiente: 'En revisión', aprobado: 'Publicado', rechazado: 'Rechazada', suspendido: 'Suspendido' };
 export const PARTNER_STATUS = { draft: 'Borrador', active: 'Activo', paused: 'Pausado', ended: 'Finalizado' };
 export const safeUrl = value => { try { const url = new URL(value); return url.protocol === 'https:' ? url.href : null; } catch { return null; } };
 export const activePartners = (partners, now = Date.now()) => partners.filter(p => new Date(p.starts_at).getTime() <= now && new Date(p.ends_at).getTime() > now);
