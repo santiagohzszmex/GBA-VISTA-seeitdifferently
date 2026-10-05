@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useCampaigns } from '../hooks/useCampaigns';
 import { useKeynotes } from '../hooks/useKeynotes';
 import { supabase } from '../supabaseClient';
@@ -16,29 +15,6 @@ import { Compass, Users } from 'lucide-react';
 import '../components/home/home.css';
 import '../components/network/network.css';
 
-function CampaignDialog({ campaign, onClose, onNavigateNews }) {
-  const dialog = useRef(null);
-  useEffect(() => {
-    const previous = document.activeElement;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    dialog.current?.focus();
-    const keys = event => {
-      if (event.key === 'Escape') onClose();
-      if (event.key === 'Tab') {
-        const nodes = [...dialog.current.querySelectorAll('button:not(:disabled),a[href],input,select,textarea,[tabindex="0"]')].filter(node => node.getClientRects().length);
-        const first = nodes[0], last = nodes[nodes.length - 1];
-        if (!first) { event.preventDefault(); return; }
-        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) { event.preventDefault(); last.focus(); }
-        else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog.current)) { event.preventDefault(); first.focus(); }
-      }
-    };
-    document.addEventListener('keydown', keys);
-    return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', keys); previous?.focus?.(); };
-  }, [onClose]);
-  return createPortal(<div className="vh-campaign-modal" onClick={onClose}><section ref={dialog} role="dialog" aria-modal="true" aria-label={campaign.titulo} tabIndex={-1} onClick={event => event.stopPropagation()}><CampaignDetailInline campaign={campaign} onClose={onClose} onNavigateNews={item => { onClose(); onNavigateNews?.(item); }}/></section></div>, document.body);
-}
-
 export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigateKeynotes, onOpenRadio, onOpenNetworkStudio, initialCampaignId = null, initialUpdateId = null }) {
   const { fetchActiveCampaigns, trackCampaignEvent } = useCampaigns();
   const { fetchPublishedKeynotes } = useKeynotes();
@@ -53,6 +29,8 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
   const [homeMode, setHomeMode] = useState(initialUpdateId ? 'following' : 'featured');
   const [focusedUpdateId, setFocusedUpdateId] = useState(initialUpdateId);
   const partnerAnchor = useRef(null);
+  const campaignAnchor = useRef(null);
+  const campaignReader = useRef(null);
   const lastRefresh = useRef(0);
   const discoveryRequest = useRef(0);
   const refreshDiscovery = useCallback(async () => {
@@ -78,7 +56,31 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
     window.addEventListener('focus', refresh);
     return () => { active = false; discoveryRequest.current++; clearInterval(timer); window.removeEventListener('focus', refresh); };
   }, [initialCampaignId, fetchActiveCampaigns, fetchPublishedKeynotes, refreshDiscovery]);
-  const closeCampaign = useCallback(() => setExpandedCampaign(null), []);
+  useEffect(() => {
+    if (!expandedCampaign) return;
+    // Match the newspaper reader: unfold in the document, then scroll to it.
+    const timer = window.setTimeout(() => {
+      campaignReader.current?.focus({ preventScroll: true });
+      campaignReader.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [expandedCampaign?.id]);
+  const closeCampaign = useCallback(() => {
+    setExpandedCampaign(null);
+    window.requestAnimationFrame(() => {
+      campaignAnchor.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      campaignAnchor.current?.querySelector('[aria-controls="vista-home-campaign-reader"]')?.focus({ preventScroll: true });
+    });
+  }, []);
+  const openCampaign = campaign => {
+    if (expandedCampaign?.id === campaign.id) {
+      campaignReader.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      campaignReader.current?.focus({ preventScroll: true });
+      return;
+    }
+    void trackCampaignEvent(campaign.id, 'click');
+    setExpandedCampaign(campaign);
+  };
   const closeServer = useCallback(() => setServerSelection(null), []);
   const openEntry = entry => {
     if (entry.server || entry.kind === 'server') setServerSelection({ server:entry.server || entry.item, partnerId:entry.partner?.id || null });
@@ -87,7 +89,8 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
   };
   return <div className="relative font-sans pb-20">
     <div className="vh-stack vh-fullbleed" data-home-stack>
-      {campaigns[0] ? <CampaignHero campaign={campaigns[0]} onOpen={() => { void trackCampaignEvent(campaigns[0].id, 'click'); setExpandedCampaign(campaigns[0]); }} onScrollNext={() => partnerAnchor.current?.scrollIntoView({ behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })} isOpen={Boolean(expandedCampaign)}/> : <section className="vh-hero" aria-label="Campañas de VISTA"><div className="vh-atmosphere"/><div className="vh-topline"><span className="vh-brand">See it differently.</span></div><div className="vh-copy"><p className="vh-label">VISTA · Campañas</p><h1 className="vh-title">Una nueva forma\nde ver tu mundo.</h1><p className="vh-description">Historias, comunidades y proyectos de Minecraft. Las próximas campañas aparecerán aquí.</p></div></section>}
+      <div ref={campaignAnchor}>{campaigns[0] ? <CampaignHero campaign={campaigns[0]} onOpen={() => openCampaign(campaigns[0])} onScrollNext={() => partnerAnchor.current?.scrollIntoView({ behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })} isOpen={Boolean(expandedCampaign)}/> : <section className="vh-hero" aria-label="Campañas de VISTA"><div className="vh-atmosphere"/><div className="vh-topline"><span className="vh-brand">See it differently.</span></div><div className="vh-copy"><p className="vh-label">VISTA · Campañas</p><h1 className="vh-title">Una nueva forma\nde ver tu mundo.</h1><p className="vh-description">Historias, comunidades y proyectos de Minecraft. Las próximas campañas aparecerán aquí.</p></div></section>}</div>
+      {expandedCampaign && <div ref={campaignReader} id="vista-home-campaign-reader" className="vh-campaign-reader" role="region" aria-label={`Campaña: ${expandedCampaign.titulo}`} tabIndex={-1}><CampaignDetailInline campaign={expandedCampaign} onClose={closeCampaign} onNavigateNews={item => { setExpandedCampaign(null); onNavigateNews?.(item); }}/></div>}
       <div ref={partnerAnchor}><DiscoveryHero mode="partners" entries={discovery.partners} loading={loading} error={discoveryError} onRetry={refreshDiscovery} onOpen={openEntry} onStudio={onOpenNetworkStudio} track={track}/></div>
       <DiscoveryHero mode="ranking" entries={discovery.ranking} loading={loading} error={discoveryError} onRetry={refreshDiscovery} onOpen={openEntry} onPlay={onPlay} track={track}/>
     </div>
@@ -116,7 +119,6 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
       </section>
 
 
-    {expandedCampaign && <CampaignDialog campaign={expandedCampaign} onClose={closeCampaign} onNavigateNews={onNavigateNews}/>}
     {serverSelection && <ServerDetail {...serverSelection} track={track} onClose={closeServer}/>}
   </div>;
 }

@@ -31,10 +31,10 @@ export default function Videos({ onSelectMovie, onPlay }) {
   const community = catalog.filter(item => item.es_comunidad);
   const current = featured[Math.min(index, featured.length - 1)];
   return <div className="pb-20 font-sans">
-    {current ? <div className="relative" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocusCapture={() => setPaused(true)} onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false); }}>
+    {current ? <div className="vh-fullbleed relative" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocusCapture={() => setPaused(true)} onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false); }}>
       <VideoHero movie={current} onPlay={onPlay} onSelectMovie={onSelectMovie}/>
       {featured.length > 1 && <div className="vh-pager"><div className="vh-pages">{featured.map((item, i) => <button type="button" key={item.id} aria-current={i === index} aria-label={`Ver ${item.titulo}`} onClick={() => setIndex(i)}>{i + 1}</button>)}</div></div>}
-    </div> : <div className="vh-hero vh-fullbleed"><div className="vh-copy"><span className="vh-brand">VISTA Videos.</span><h1 className="vh-title">{loading ? 'Un momento.' : 'Nuevas historias, pronto.'}</h1></div></div>}
+    </div> : <div className="vh-fullbleed"><div className="vh-hero"><div className="vh-copy"><span className="vh-brand">VISTA Videos.</span><h1 className="vh-title">{loading ? 'Un momento.' : 'Nuevas historias, pronto.'}</h1></div></div></div>}
     <div className="px-6 md:px-12 pt-12 space-y-16">
       <header><h1 className="text-3xl font-medium tracking-tight">Videos</h1><p className="text-[#86868b] mt-3">Producciones de GIMG y contenido de la comunidad.</p></header>
       {top.some(item => item.vistas > 0) && <ContentRow title="Los videos más vistos" items={top.filter(item => item.vistas > 0)} onSelect={onSelectMovie}/>}

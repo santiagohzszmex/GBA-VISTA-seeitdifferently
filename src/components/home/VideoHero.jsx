@@ -18,7 +18,7 @@ export default function VideoHero ({ movie, onPlay, onSelectMovie, showBrandLine
   if (!movie) return null;
 
   return (
-    <div className="vh-hero vh-fullbleed group">
+    <div className="vh-hero group">
 
       <ImmersiveMedia image={movie.banner_url || movie.poster_url} item={movie} youtubeId={movie.youtube_id} />
 

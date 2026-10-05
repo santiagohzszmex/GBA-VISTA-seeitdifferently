@@ -107,6 +107,8 @@ export default function CampaignHero ({ campaign, onOpen, onScrollNext, isOpen }
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={onOpen}
+            aria-expanded={isOpen}
+            aria-controls="vista-home-campaign-reader"
             className={`px-8 md:px-10 py-4 rounded-full font-bold inline-flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] ${
               isOpen ? 'bg-[#0066FF] text-white' : 'bg-white text-[#1d1d1f]'
             }`}

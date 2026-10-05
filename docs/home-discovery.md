@@ -3,7 +3,9 @@
 Inicio conserva este orden sin separaciones: campaña principal, GBA Partners,
 Top 10 y GBA Keynotes. Los tres primeros espacios miden `100svh`; Keynotes
 conserva su componente y sus medidas anteriores. La encuesta, radio y actividad
-social aparecen después. El catálogo completo y su hero están en Videos.
+social aparecen después. El catálogo completo y su hero están en Videos. Ver campaña despliega un lector
+dentro de la página, debajo de su hero, con altura medida por ResizeObserver y
+archivos completos en cascada. Plegar campaña devuelve al hero.
 
 ## Publicar un Partner en Inicio
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
 import { ArrowUpRight, Check, ChevronUp, Film, Heart, Image as ImageIcon, Layers, Music, Newspaper, Share2 } from 'lucide-react';
 import { useCampaigns } from '../../hooks/useCampaigns';
 import { useCampaignShare } from '../../hooks/useCampaignShare';
@@ -78,6 +78,17 @@ export function CampaignDetailInline({ campaign, onClose, onNavigateNews }) {
   const { shareCampaign, shareStatus } = useCampaignShare(campaign);
   const videoAsset = getCampaignVideoAsset(campaign);
   const audioAsset = getCampaignAudioAsset(campaign);
+  const contentRef = useRef(null);
+  const [height, setHeight] = useState(0);
+  useLayoutEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+    const measure = () => setHeight(content.scrollHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [campaign.id]);
 
   const handleAssetClick = (asset) => {
     if (asset.tipo === 'video') {
@@ -93,12 +104,13 @@ export function CampaignDetailInline({ campaign, onClose, onNavigateNews }) {
   };
 
   return (
-    <section className="relative z-30 px-6 md:px-12 -mt-4 mb-16 animate-in slide-in-from-top-4 fade-in duration-500">
-      <div className="w-full bg-[#101010] text-white rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
-        <div className="p-6 md:p-10 border-b border-white/10 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+    <section className="relative z-30 px-6 md:px-12 py-6">
+      <div className="max-w-4xl mx-auto overflow-hidden transition-[height] ease-[cubic-bezier(0.25,1,0.5,1)] motion-reduce:transition-none" style={{ height, transitionDuration: '700ms' }}>
+      <div ref={contentRef} className="w-full bg-[#121212] text-white rounded-3xl border border-white/10 shadow-2xl overflow-clip flex flex-col animate-in fade-in duration-500">
+        <div className="sticky top-0 z-30 bg-[#121212]/95 backdrop-blur-xl border-b border-white/10 px-6 md:px-8 py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-xl">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#0066FF] mb-3">Campaña VISTA</p>
-            <h2 className="text-3xl md:text-5xl font-serif italic tracking-tight">{campaign.titulo}</h2>
+            <h2 className="font-serif italic font-bold text-xl md:text-2xl text-white/95">{campaign.titulo}</h2>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <CampaignLikeButton campaign={campaign} />
               <button
@@ -116,12 +128,10 @@ export function CampaignDetailInline({ campaign, onClose, onNavigateNews }) {
             onClick={onClose}
             className="self-start px-5 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold uppercase tracking-widest text-xs flex items-center gap-2 transition-all border border-white/10 active:scale-95"
           >
-            <ChevronUp size={16} strokeWidth={3} /> Cerrar
+            <ChevronUp size={16} strokeWidth={3} /> Cerrar campaña
           </button>
-          {campaign.descripcion && (
-            <p className="text-neutral-400 md:max-w-2xl text-base leading-relaxed">{campaign.descripcion}</p>
-          )}
         </div>
+        {campaign.descripcion && <p className="px-6 md:px-8 pt-6 text-neutral-400 text-base leading-relaxed whitespace-pre-wrap">{campaign.descripcion}</p>}
 
         {videoAsset && (
           <div className="p-6 md:p-10 border-b border-white/10">
@@ -129,6 +139,8 @@ export function CampaignDetailInline({ campaign, onClose, onNavigateNews }) {
               src={videoAsset.url}
               poster={videoAsset.thumbnail_url || undefined}
               controls
+              playsInline
+              preload="metadata"
               className="w-full rounded-2xl bg-black shadow-2xl"
               onPlay={() => handleAssetClick(videoAsset)}
             />
@@ -150,20 +162,20 @@ export function CampaignDetailInline({ campaign, onClose, onNavigateNews }) {
           </div>
         )}
 
-        <div className="p-6 md:p-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {(campaign.assets || []).filter(asset => asset.id !== videoAsset?.id).map((asset) => (
+        <div className="p-6 md:p-8 flex flex-col gap-6">
+          {(campaign.assets || []).filter(asset => asset.id !== videoAsset?.id && asset.id !== audioAsset?.id).map((asset) => (
             <a
               key={asset.id}
               href={asset.url}
               target="_blank"
               rel="noreferrer"
               onClick={() => handleAssetClick(asset)}
-              className="group block rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-white/30 transition-colors"
+              className="group block w-full rounded-xl overflow-hidden bg-[#1d1d1f] border border-white/5 shadow-lg hover:border-white/30 transition-colors"
             >
               {asset.tipo === 'poster' || asset.tipo === 'banner' ? (
-                <img src={asset.url} alt={asset.titulo || campaign.titulo} className="w-full aspect-[4/5] object-cover group-hover:scale-105 transition-transform duration-700" />
+                <img src={asset.url} alt={asset.titulo || campaign.titulo} className="w-full h-auto object-contain" loading="lazy" />
               ) : (
-                <div className="aspect-[4/5] flex flex-col items-center justify-center text-neutral-400 gap-3">
+                <div className="py-8 flex items-center justify-center text-neutral-400 gap-3">
                   <Layers size={34} />
                   <span className="text-xs font-bold uppercase tracking-widest">{asset.tipo}</span>
                 </div>
@@ -251,6 +263,10 @@ export function CampaignDetailInline({ campaign, onClose, onNavigateNews }) {
             </div>
           </div>
         )}
+        <div className="flex justify-center p-6 md:p-8 border-t border-white/10">
+          <button type="button" onClick={onClose} className="px-8 py-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-black uppercase tracking-widest text-sm flex items-center gap-3 transition-all border border-white/10"><ChevronUp size={20} strokeWidth={3}/>Plegar campaña</button>
+        </div>
+      </div>
       </div>
     </section>
   );
