@@ -23,6 +23,7 @@ import {
   Mail
 } from 'lucide-react';
 import { GBA_MAIL } from './config/mail';
+import { halloweenIcon, isHalloweenSeason } from './utils/season';
 
 function AllianceLogo({ className = "hover:scale-105 transition-transform duration-300" }) {
   return (
@@ -89,6 +90,8 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     }
   };
 
+  const halloween = isHalloweenSeason();
+  const seasonalIcons = { home:'haunted-house', videos:'bat', news:'ghost', network:'moon', publicar:'potion', search:'eye' };
   const navItems = [
     { id: 'home', label: 'Inicio', icon: <Home size={22} strokeWidth={1.5} /> },
     { id: 'videos', label: 'Videos', icon: <Tv size={22} strokeWidth={1.5} /> },
@@ -96,7 +99,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: 'network', label: 'Network', icon: <Globe2 size={22} strokeWidth={1.5} /> },
     { id: 'publicar', label: 'Studio', icon: <PenTool size={22} strokeWidth={1.5} /> },
     { id: 'search', label: 'Buscar', icon: <Search size={22} strokeWidth={1.5} /> },
-  ];
+  ].map(item => halloween ? { ...item, icon: <img className="hw-nav-icon" src={halloweenIcon(seasonalIcons[item.id])} alt="" width="30" height="30"/> } : item);
   const mobileNavItems = ['home', 'news', 'network', 'publicar'].map(id => navItems.find(item => item.id === id));
 
   return (
@@ -106,11 +109,11 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       ========================================================= */}
       <div 
         ref={sidebarRef}
-        className="hidden md:flex fixed left-0 top-0 h-screen w-24 hover:w-64 has-[:focus-visible]:w-64 flex-col bg-[#fbfbfd]/90 backdrop-blur-2xl border-r border-[#d2d2d7]/50 z-[1300] transition-all duration-500 group overflow-visible shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
+        className={`${halloween ? 'hw-sidebar ' : ''}hidden md:flex fixed left-0 top-0 h-screen w-24 hover:w-64 has-[:focus-visible]:w-64 flex-col bg-[#fbfbfd]/90 backdrop-blur-2xl border-r border-[#d2d2d7]/50 z-[1300] transition-all duration-500 group overflow-visible shadow-[4px_0_24px_rgba(0,0,0,0.02)]`}
       >
         <div className="h-24 relative flex items-center shrink-0">
           <div className="w-24 shrink-0 flex items-center justify-center">
-            <AllianceLogo />
+            <div className={halloween ? 'hw-logo' : undefined}><AllianceLogo />{halloween && <img src={halloweenIcon('witch-hat')} alt="" width="32" height="32"/>}</div>
           </div>
           <span className="absolute left-24 font-serif italic text-2xl tracking-tight opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 transition-opacity duration-300 text-[#1d1d1f]">
             VISTA
@@ -170,16 +173,17 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       {/* =========================================================
           📱 VISTA MÓVIL (BOTTOM NAVIGATION BAR)
       ========================================================= */}
-      <div className="md:hidden fixed bottom-0 left-0 w-full h-[84px] bg-[#fbfbfd]/90 backdrop-blur-2xl border-t border-[#d2d2d7]/50 z-[900] flex items-center justify-between px-4 pb-4 pt-2 shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
+      <div className={`${halloween ? 'hw-mobile-nav ' : ''}md:hidden fixed bottom-0 left-0 w-full h-[84px] bg-[#fbfbfd]/90 backdrop-blur-2xl border-t border-[#d2d2d7]/50 z-[900] flex items-center justify-between px-4 pb-4 pt-2 shadow-[0_-4px_24px_rgba(0,0,0,0.04)]`}>
         {/* Mostramos los primeros 4 items principales para no saturar */}
         {mobileNavItems.map((item) => (
           <button
             key={item.id}
+            aria-current={activeTab === item.id ? 'page' : undefined}
             onClick={() => { setActiveTab(item.id); setShowMenu(false); }}
             className={`flex flex-col items-center justify-center w-14 gap-1.5 transition-colors ${activeTab === item.id ? 'text-[#0066FF]' : 'text-[#86868b]'}`}
           >
             {/* Ajustamos tamaño para móvil */}
-            {React.cloneElement(item.icon, { size: 24, className: activeTab === item.id ? 'fill-blue-50/50' : '' })}
+            {React.cloneElement(item.icon, { size: 24, className: halloween ? 'hw-nav-icon' : activeTab === item.id ? 'fill-blue-50/50' : '' })}
             <span className="text-[9px] font-bold tracking-wide">{item.label}</span>
           </button>
         ))}

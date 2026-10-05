@@ -1,3 +1,5 @@
+import { isHalloweenSeason } from './utils/season';
+import './components/seasonal/halloween.css';
 import React, { lazy, Suspense, useState } from 'react';
 import { supabase } from './supabaseClient';
 import { isVideoContent } from './utils/contentTypes';
@@ -251,7 +253,7 @@ export default function VISTAHome() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] text-[#1d1d1f] font-sans selection:bg-[#1d1d1f] selection:text-white flex">
+    <div className={`${isHalloweenSeason() ? 'vista-halloween ' : ''}min-h-screen bg-[#fbfbfd] text-[#1d1d1f] font-sans selection:bg-[#1d1d1f] selection:text-white flex`}>
       
       {/* BARRA DE NAVEGACIÓN LATERAL */}
       <Sidebar activeTab={activeTab} setActiveTab={handleSidebarNavigation} user={user} />
