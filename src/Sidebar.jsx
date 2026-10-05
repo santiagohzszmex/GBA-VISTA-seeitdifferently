@@ -91,7 +91,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
 
   const navItems = [
     { id: 'home', label: 'Inicio', icon: <Home size={22} strokeWidth={1.5} /> },
-    { id: 'originals', label: 'Originals', icon: <Tv size={22} strokeWidth={1.5} /> }, 
+    { id: 'videos', label: 'Videos', icon: <Tv size={22} strokeWidth={1.5} /> },
     { id: 'news', label: 'Noticias', icon: <Radio size={22} strokeWidth={1.5} /> },
     { id: 'network', label: 'Network', icon: <Globe2 size={22} strokeWidth={1.5} /> },
     { id: 'publicar', label: 'Studio', icon: <PenTool size={22} strokeWidth={1.5} /> },
@@ -251,10 +251,10 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
               </a>
             )}
             
-            {/* Buscador y Originals en móvil (no caben en la barra inferior). */}
+            {/* Buscador y Videos en móvil (no caben en la barra inferior). */}
             <div className="md:hidden pt-1 border-t border-[#d2d2d7]/40 mt-1">
-              <button onClick={() => {setActiveTab('originals'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
-                <Tv size={16} className="text-[#86868b]"/> VISTA Originals
+              <button onClick={() => {setActiveTab('videos'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
+                <Tv size={16} className="text-[#86868b]"/> VISTA Videos
               </button>
               <button onClick={() => {setActiveTab('search'); setShowMenu(false)}} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#f5f5f7] rounded-2xl transition-colors text-sm font-medium text-[#1d1d1f]">
                 <Search size={16} className="text-[#86868b]"/> Explorar Bóveda

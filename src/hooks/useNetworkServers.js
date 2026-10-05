@@ -9,7 +9,6 @@ export async function networkRpc(name, params) {
   return data;
 }
 export function useNetworkDirectory(previewMode = false) {
-  const { user } = useAuth();
   const [data, setData] = useState({ servers: previewMode ? PREVIEW_SERVERS : [], partners: previewMode ? PREVIEW_PARTNERS : [] });
   const [loading, setLoading] = useState(!previewMode);
   const [error, setError] = useState('');
@@ -21,6 +20,11 @@ export function useNetworkDirectory(previewMode = false) {
     finally { setLoading(false); }
   }, [previewMode]);
   useEffect(() => { void refresh(); }, [refresh]);
+  const track = useNetworkTracking(previewMode);
+  return { ...data, loading, error, refresh, track };
+}
+export function useNetworkTracking(previewMode = false) {
+  const { user } = useAuth();
   const seen = useRef(new Set());
   const track = useCallback(async (serverId, event, source, partnerId = null) => {
     if (previewMode || !user?.id) return;
@@ -30,7 +34,7 @@ export function useNetworkDirectory(previewMode = false) {
     try { await networkRpc('vista_track_network_event', { p_server_id:serverId, p_event:event, p_source:source, p_partner_id:partnerId }); }
     catch { seen.current.delete(key); }
   }, [previewMode, user?.id]);
-  return { ...data, loading, error, refresh, track };
+  return track;
 }
 export function useNetworkImpression(ref, serverId, event, source, partnerId, track) {
   useEffect(() => {

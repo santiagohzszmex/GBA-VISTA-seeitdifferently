@@ -1,557 +1,99 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useContent } from '../hooks/useContent';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useCampaigns } from '../hooks/useCampaigns';
-import { useCampaignShare } from '../hooks/useCampaignShare';
 import { useKeynotes } from '../hooks/useKeynotes';
-import { useLibrary } from '../hooks/useLibrary';
-import ContentRow from '../components/ContentRow';
-import SurveyInvitation from '../components/survey/SurveyInvitation';
+import { supabase } from '../supabaseClient';
+import { useNetworkTracking } from '../hooks/useNetworkServers';
+import CampaignHero from '../components/home/CampaignHero';
+import DiscoveryHero from '../components/home/DiscoveryHero';
 import KeynoteSpotlight from '../components/keynotes/KeynoteSpotlight';
+import { CampaignDetailInline } from '../components/campaigns/CampaignShowcase';
+import ServerDetail from '../components/network/ServerDetail';
+import SurveyInvitation from '../components/survey/SurveyInvitation';
 import ActivityFeed from '../components/social/ActivityFeed';
 import HomeRadioStrip from '../components/radio/HomeRadioStrip';
-import { CampaignDetailInline, CampaignLikeButton, getCampaignAudioAsset, getCampaignPrimaryAsset, getCampaignVideoAsset } from '../components/campaigns/CampaignShowcase';
-import { ArrowUpRight, ChevronDown, Compass, Film, Megaphone, Music, Play, Plus, Check, Info, Share2, Users, Volume2, VolumeX } from 'lucide-react';
+import { Compass, Users } from 'lucide-react';
+import '../components/home/home.css';
+import '../components/network/network.css';
 
-// ==========================================
-// HERO SECTION (Inmersivo, debajo del Sidebar)
-// ==========================================
-const HeroSection = ({ movie, onPlay, onSelectMovie, showBrandLine = true }) => {
-  // Los hooks SIEMPRE se llaman, sin condicionales antes.
-  // useLibrary debe tolerar movie undefined/null internamente (id undefined -> no-op).
-  const { isInLibrary, toggleLibrary, loading } = useLibrary(movie);
-  const [showVideo, setShowVideo] = useState(false);
-
+function CampaignDialog({ campaign, onClose, onNavigateNews }) {
+  const dialog = useRef(null);
   useEffect(() => {
-    setShowVideo(false);
-    if (!movie?.youtube_id) return;
-    const timer = setTimeout(() => setShowVideo(true), 3000);
-    return () => clearTimeout(timer);
-  }, [movie?.id, movie?.youtube_id]); // comparamos por id, no por referencia del objeto
-
-  const handlePlay = useCallback(() => {
-    onPlay && onPlay(movie?.youtube_id);
-  }, [onPlay, movie?.youtube_id]);
-
-  const handleSelect = useCallback(() => {
-    onSelectMovie && onSelectMovie(movie);
-  }, [onSelectMovie, movie]);
-
-  // El guard va DESPUÉS de declarar todos los hooks.
-  if (!movie) return null;
-
-  return (
-    <div className="relative w-screen md:w-[100vw] md:-ml-24 h-[85vh] md:h-[95vh] overflow-hidden group bg-[#0a0a0a] shadow-2xl">
-
-      {/* Imagen Fondo */}
-      <img
-        src={movie.banner_url || movie.poster_url || "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&q=80"}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${showVideo ? 'opacity-0' : 'opacity-100'}`}
-        alt={movie.titulo || 'Hero VISTA'}
-      />
-
-      {/* Video Fondo */}
-      {movie.youtube_id && (
-        <div className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${showVideo ? 'opacity-100' : 'opacity-0'}`}>
-           <div className="w-full h-full pointer-events-none scale-[1.35]">
-              <iframe
-                key={movie.youtube_id}
-                className="w-full h-full object-cover"
-                src={`https://www.youtube.com/embed/${movie.youtube_id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${movie.youtube_id}&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&disablekb=1`}
-                title="Hero"
-                frameBorder="0"
-                allow="autoplay; encrypted-media"
-                allowFullScreen>
-              </iframe>
-           </div>
-        </div>
-      )}
-
-      {/* Degradados Cinemáticos */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,.75), transparent 55%)' }} data-vista-shade="bottom" />
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(90deg, rgba(0,0,0,.55), transparent 70%)' }} data-vista-shade="text" />
-
-      {/* Título Insignia */}
-      {showBrandLine && (
-        <div className="absolute top-8 left-6 md:left-32 z-50 pointer-events-none">
-           <h2
-             className="text-3xl md:text-4xl italic tracking-tight text-white/90 drop-shadow-xl"
-             style={{ fontFamily: "'Playfair Display', serif" }}
-           >
-             See it differently.
-           </h2>
-        </div>
-      )}
-
-      {/* Info del Hero */}
-      <div
-        key={movie.id} // solo re-dispara la animación de entrada del texto, sin destruir el resto del Hero
-        className="absolute bottom-24 left-6 md:left-32 max-w-3xl pointer-events-auto z-20 animate-in slide-in-from-bottom-10 fade-in duration-1000 font-sans"
-      >
-
-        <div className="flex items-center gap-3 mb-4">
-           {movie.es_top_10 && (
-             <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest text-white border border-white/20 shadow-sm">
-               N.º 1 en VISTA
-             </span>
-           )}
-           <span className="text-white/70 text-xs font-bold uppercase tracking-widest drop-shadow-md">
-             {movie.categoria || 'Original'}
-           </span>
-        </div>
-
-        <h1
-          className="text-5xl md:text-7xl font-bold tracking-tight mb-4 text-white drop-shadow-2xl cursor-pointer hover:opacity-80 transition-opacity leading-[1.1]"
-          onClick={handleSelect}
-        >
-          {movie.titulo || 'Sin Título'}
-        </h1>
-
-        <p className="text-lg md:text-xl text-neutral-300 mb-10 line-clamp-2 md:line-clamp-3 font-medium drop-shadow-md max-w-2xl leading-relaxed">
-          {movie.descripcion || 'Descripción no disponible.'}
-        </p>
-
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handlePlay}
-            className="bg-white text-[#1d1d1f] px-8 md:px-10 py-4 md:py-4 rounded-full font-bold flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
-          >
-            <Play fill="currentColor" size={20} /> Reproducir
-          </button>
-
-          <button
-            onClick={toggleLibrary}
-            disabled={loading}
-            className={`backdrop-blur-xl border p-4 rounded-full transition-all flex items-center justify-center group ${
-              isInLibrary
-              ? 'bg-green-500/20 text-green-400 border-green-500/50 hover:bg-green-500/30'
-              : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/40'
-            }`}
-          >
-            {isInLibrary ? <Check size={20} className="group-active:scale-90 transition-transform" /> : <Plus size={20} className="group-active:scale-90 transition-transform" />}
-          </button>
-
-          <button
-            onClick={handleSelect}
-            className="bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-full hover:bg-white/20 hover:border-white/40 transition-all text-white group"
-          >
-            <Info size={20} className="group-active:scale-90 transition-transform" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const CampaignHeroSection = ({ campaign, onOpen, onScrollNext, isOpen }) => {
-  const imageAsset = getCampaignPrimaryAsset(campaign);
-  const videoAsset = getCampaignVideoAsset(campaign);
-  const audioAsset = getCampaignAudioAsset(campaign);
-  const { shareCampaign, shareStatus } = useCampaignShare(campaign);
-  const heroRef = useRef(null);
-  const audioRef = useRef(null);
-  const [audioEnabled, setAudioEnabled] = useState(false);
-
-  useEffect(() => {
-    if (!audioAsset?.url || !heroRef.current || !audioRef.current) return undefined;
-
-    const audio = audioRef.current;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && entry.intersectionRatio > 0.45) {
-        audio.play().catch(() => {});
-      } else {
-        audio.pause();
+    const previous = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialog.current?.focus();
+    const keys = event => {
+      if (event.key === 'Escape') onClose();
+      if (event.key === 'Tab') {
+        const nodes = [...dialog.current.querySelectorAll('button:not(:disabled),a[href],input,select,textarea,[tabindex="0"]')].filter(node => node.getClientRects().length);
+        const first = nodes[0], last = nodes[nodes.length - 1];
+        if (!first) { event.preventDefault(); return; }
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog.current)) { event.preventDefault(); first.focus(); }
       }
-    }, { threshold: [0, 0.45, 0.8] });
-
-    observer.observe(heroRef.current);
-
-    return () => {
-      observer.disconnect();
-      audio.pause();
     };
-  }, [audioAsset?.url]);
+    document.addEventListener('keydown', keys);
+    return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', keys); previous?.focus?.(); };
+  }, [onClose]);
+  return createPortal(<div className="vh-campaign-modal" onClick={onClose}><section ref={dialog} role="dialog" aria-modal="true" aria-label={campaign.titulo} tabIndex={-1} onClick={event => event.stopPropagation()}><CampaignDetailInline campaign={campaign} onClose={onClose} onNavigateNews={item => { onClose(); onNavigateNews?.(item); }}/></section></div>, document.body);
+}
 
-  const toggleAudio = (e) => {
-    e.stopPropagation();
-    if (!audioRef.current) return;
-
-    const nextEnabled = !audioEnabled;
-    audioRef.current.muted = !nextEnabled;
-    setAudioEnabled(nextEnabled);
-    if (nextEnabled) audioRef.current.play().catch(() => {});
-  };
-
-  if (!campaign) return null;
-
-  return (
-    <div ref={heroRef} className="relative w-screen md:w-[100vw] md:-ml-24 h-[100svh] min-h-[620px] overflow-hidden bg-[#0a0a0a] shadow-2xl">
-      {videoAsset?.url ? (
-        <video
-          key={videoAsset.id || videoAsset.url}
-          src={videoAsset.url}
-          poster={videoAsset.thumbnail_url || imageAsset?.url || undefined}
-          className="absolute inset-0 w-full h-full object-cover"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-        />
-      ) : imageAsset?.url ? (
-        <img
-          src={imageAsset.url}
-          className="absolute inset-0 w-full h-full object-cover"
-          alt={campaign.titulo}
-        />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center text-white/20">
-          <Megaphone size={96} strokeWidth={1.2} />
-        </div>
-      )}
-
-      {isOpen && (
-        <div className="absolute inset-0 bg-black/20 pointer-events-none transition-opacity duration-500 z-10" />
-      )}
-
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,.75), transparent 55%)' }} data-vista-shade="bottom" />
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(90deg, rgba(0,0,0,.55), transparent 70%)' }} data-vista-shade="text" />
-
-      <div className="absolute top-8 left-6 md:left-32 z-20 pointer-events-none">
-        <h2
-          className="text-3xl md:text-4xl italic tracking-tight text-white/90 drop-shadow-xl"
-          style={{ fontFamily: "'Playfair Display', serif" }}
-        >
-          See it differently.
-        </h2>
-      </div>
-
-      <div className="absolute bottom-20 left-6 md:left-32 max-w-3xl z-20 animate-in slide-in-from-bottom-8 fade-in duration-700">
-        {isOpen && (
-          <div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-white text-[#1d1d1f] text-[10px] font-black uppercase tracking-widest shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <Check size={14} strokeWidth={3} /> Campaña abierta
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center gap-3 mb-5">
-          <span className="bg-[#0066FF] text-white px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shadow-sm">
-            Campaña Oficial
-          </span>
-          {videoAsset && (
-            <span className="bg-white/15 backdrop-blur-md text-white px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-              <Film size={12} /> Video
-            </span>
-          )}
-          {campaign.linkedContent?.length > 0 && (
-            <span className="bg-white/15 backdrop-blur-md text-white px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">
-              {campaign.linkedContent.length} edición(es)
-            </span>
-          )}
-          {audioAsset && (
-            <span className="bg-white/15 backdrop-blur-md text-white px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-              <Music size={12} /> Audio
-            </span>
-          )}
-        </div>
-
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-5 text-white drop-shadow-2xl leading-[1.05]">
-          {campaign.titulo}
-        </h1>
-
-        {campaign.descripcion && (
-          <p className="text-lg md:text-xl text-neutral-300 mb-9 line-clamp-3 font-medium drop-shadow-md max-w-2xl leading-relaxed">
-            {campaign.descripcion}
-          </p>
-        )}
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={onOpen}
-            className={`px-8 md:px-10 py-4 rounded-full font-bold inline-flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] ${
-              isOpen ? 'bg-[#0066FF] text-white' : 'bg-white text-[#1d1d1f]'
-            }`}
-          >
-            {isOpen ? 'Campaña abierta' : (campaign.cta_texto || 'Ver campaña')} <ArrowUpRight size={18} />
-          </button>
-          <CampaignLikeButton campaign={campaign} />
-          <button
-            type="button"
-            onClick={shareCampaign}
-            className="bg-white/10 text-white border border-white/20 p-4 rounded-full hover:bg-white/20 transition-colors"
-            title={shareStatus === 'idle' ? 'Compartir campaña y video' : 'Campaña lista para compartir'}
-            aria-label={shareStatus === 'idle' ? 'Compartir campaña y video' : 'Campaña lista para compartir'}
-          >
-            {shareStatus === 'idle' ? <Share2 size={18} /> : <Check size={18} className="text-green-300" />}
-          </button>
-          {audioAsset && (
-            <button
-              type="button"
-              onClick={toggleAudio}
-              className="bg-white/10 text-white border border-white/20 px-5 py-4 rounded-full font-bold inline-flex items-center gap-2 hover:bg-white/20 transition-colors"
-            >
-              {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-              {audioEnabled ? 'Audio activo' : 'Activar audio'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={onScrollNext}
-        className="absolute bottom-7 left-1/2 z-20 -translate-x-1/2 inline-flex flex-col items-center gap-2 text-white/80 hover:text-white transition-colors"
-      >
-        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Desliza para ver VISTA</span>
-        <ChevronDown size={24} className="animate-bounce" />
-      </button>
-
-      {audioAsset && (
-        <audio ref={audioRef} src={audioAsset.url} loop muted preload="metadata" />
-      )}
-    </div>
-  );
-};
-
-// ==========================================
-// VISTA HOME PRINCIPAL (Controlador)
-// ==========================================
-export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigateKeynotes, onOpenRadio, initialCampaignId = null, initialUpdateId = null }) {
-  const { getAllContent, getTop10, loading } = useContent();
+export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigateKeynotes, onOpenRadio, onOpenNetworkStudio, initialCampaignId = null, initialUpdateId = null }) {
   const { fetchActiveCampaigns, trackCampaignEvent } = useCampaigns();
   const { fetchPublishedKeynotes } = useKeynotes();
-  const [featuredMovies, setFeaturedMovies] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [top10, setTop10] = useState([]);
-  const [moviesByGenre, setMoviesByGenre] = useState({});
-  const [communityVideos, setCommunityVideos] = useState([]);
+  const track = useNetworkTracking();
   const [campaigns, setCampaigns] = useState([]);
   const [latestKeynote, setLatestKeynote] = useState(null);
   const [expandedCampaign, setExpandedCampaign] = useState(null);
-  const [showCampaignReturn, setShowCampaignReturn] = useState(false);
+  const [serverSelection, setServerSelection] = useState(null);
+  const [discovery, setDiscovery] = useState({ partners: [], ranking: [] });
+  const [loading, setLoading] = useState(true);
+  const [discoveryError, setDiscoveryError] = useState('');
   const [homeMode, setHomeMode] = useState(initialUpdateId ? 'following' : 'featured');
   const [focusedUpdateId, setFocusedUpdateId] = useState(initialUpdateId);
-  const campaignDetailRef = useRef(null);
-  const campaignHeroAnchorRef = useRef(null);
-  const editorialHeroRef = useRef(null);
-  const intervalRef = useRef(null);
-  const featuredCampaign = campaigns[0] || null;
-
+  const partnerAnchor = useRef(null);
+  const lastRefresh = useRef(0);
+  const discoveryRequest = useRef(0);
+  const refreshDiscovery = useCallback(async () => {
+    const request = ++discoveryRequest.current;
+    const { data, error } = await supabase.rpc('vista_home_discovery');
+    if (request !== discoveryRequest.current) return;
+    if (error) setDiscoveryError('No se pudo actualizar este espacio. Inténtalo de nuevo.');
+    else { setDiscovery(data || { partners: [], ranking: [] }); setDiscoveryError(''); lastRefresh.current = Date.now(); }
+    setLoading(false);
+  }, []);
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [all, top, activeCampaigns, publishedKeynotes] = await Promise.all([
-          getAllContent(),
-          getTop10(),
-          fetchActiveCampaigns(),
-          fetchPublishedKeynotes()
-        ]);
-        const allContent = all || [];
-        const topContent = top || [];
-        const active = activeCampaigns || [];
-
-        const sharedCampaign = initialCampaignId
-          ? active.find((campaign) => campaign.id === initialCampaignId)
-          : null;
-        const orderedCampaigns = sharedCampaign
-          ? [sharedCampaign, ...active.filter((campaign) => campaign.id !== sharedCampaign.id)]
-          : active;
-
-        setTop10(topContent.filter(m => m && m.es_comunidad !== true));
-        setCampaigns(orderedCampaigns);
-        setLatestKeynote(publishedKeynotes?.[0] || null);
-        if (sharedCampaign) setExpandedCampaign(sharedCampaign);
-
-        const heroContent = allContent.filter(m => m && m.en_hero === true && m.es_comunidad !== true);
-
-        if (heroContent.length > 0) {
-          setFeaturedMovies(heroContent);
-        } else if (topContent.some(item => item && !item.es_comunidad)) {
-          setFeaturedMovies(topContent.filter(item => item && !item.es_comunidad).slice(0, 5));
-        } else {
-          setFeaturedMovies(allContent.filter(item => item && !item.es_comunidad).slice(0, 5));
-        }
-
-        const groups = {};
-        allContent.filter(m => m && m.es_comunidad !== true).forEach(movie => {
-          if (Array.isArray(movie.generos) && movie.generos.length > 0) {
-            movie.generos.forEach(genero => {
-              if (!groups[genero]) groups[genero] = [];
-              groups[genero].push(movie);
-            });
-          } else {
-            if (!groups['General']) groups['General'] = [];
-            groups['General'].push(movie);
-          }
-        });
-        setMoviesByGenre(groups);
-        setCommunityVideos(allContent.filter(item => item?.es_comunidad === true));
-      } catch (error) {
-        console.error("Error al cargar datos del Home:", error);
-      }
-    };
-    loadData();
-  }, [initialCampaignId]);
-
-  // Reinicia el temporizador del carrusel (usado por autoplay y por clics manuales)
-  const resetInterval = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (featuredMovies.length <= 1) return;
-    intervalRef.current = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % featuredMovies.length);
-    }, 12000);
-  }, [featuredMovies.length]);
-
-  useEffect(() => {
-    resetInterval();
-
-    // Pausa el carrusel cuando la pestaña no está visible (ahorra CPU/batería
-    // y evita que el índice "salte" varias posiciones al volver a la pestaña).
-    const handleVisibility = () => {
-      if (document.hidden) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      } else {
-        resetInterval();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [resetInterval]);
-
-  const handleDotClick = useCallback((idx) => {
-    setCurrentIndex(idx);
-    resetInterval(); // evita que el auto-avance se dispare casi inmediatamente después del clic
-  }, [resetInterval]);
-
-  useEffect(() => {
-    if (currentIndex >= featuredMovies.length) {
-      setCurrentIndex(0);
-    }
-  }, [currentIndex, featuredMovies.length]);
-
-  const currentMovie = featuredMovies[currentIndex];
-
-  useEffect(() => {
-    if (!featuredCampaign) return undefined;
-
-    const handleScroll = () => {
-      setShowCampaignReturn(window.scrollY > window.innerHeight * 1.2);
-    };
-
-    handleScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [featuredCampaign]);
-
-  useEffect(() => {
-    if (!expandedCampaign) return;
-    window.requestAnimationFrame(() => {
-      campaignDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    let active = true;
+    fetchActiveCampaigns().then(items => {
+      if (!active) return;
+      const shared = items.find(item => item.id === initialCampaignId);
+      setCampaigns(shared ? [shared, ...items.filter(item => item.id !== shared.id)] : items);
+      if (shared) setExpandedCampaign(shared);
     });
-  }, [expandedCampaign]);
-
-  const openCampaign = useCallback((campaign) => {
-    if (!campaign) return;
-    trackCampaignEvent(campaign.id, 'click');
-    setExpandedCampaign(campaign);
-  }, [trackCampaignEvent]);
-
-  const scrollToCampaign = useCallback(() => {
-    campaignHeroAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
-
-  const scrollToEditorialHero = useCallback(() => {
-    editorialHeroRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="w-full min-h-[80vh] flex flex-col items-center justify-center font-sans">
-        <div className="font-serif italic text-4xl text-[#1d1d1f] animate-pulse mb-4">VISTA</div>
-        <p className="text-[#86868b] text-[10px] uppercase tracking-widest font-bold">Iniciando Ecosistema</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="animate-in fade-in duration-1000 pb-20 relative font-sans">
-
-      <SurveyInvitation />
-
-      {/* 1. HERO DE CAMPAÑA — separado del hero editorial */}
-      {featuredCampaign && (
-        <>
-          <div ref={campaignHeroAnchorRef}>
-            <CampaignHeroSection
-              campaign={featuredCampaign}
-              onOpen={() => openCampaign(featuredCampaign)}
-              onScrollNext={scrollToEditorialHero}
-              isOpen={expandedCampaign?.id === featuredCampaign.id}
-            />
-          </div>
-          {expandedCampaign && (
-            <div ref={campaignDetailRef}>
-              <CampaignDetailInline
-                campaign={expandedCampaign}
-                onClose={() => setExpandedCampaign(null)}
-                onNavigateNews={onNavigateNews}
-              />
-            </div>
-          )}
-        </>
-      )}
-
-      {/* 2. HERO ROTATIVO — contenido editorial / videos */}
-      {currentMovie && (
-        <div ref={editorialHeroRef}>
-          <HeroSection
-            movie={currentMovie}
-            onPlay={onPlay}
-            onSelectMovie={onSelectMovie}
-            showBrandLine={!featuredCampaign}
-          />
-        </div>
-      )}
-
-
-      {featuredMovies.length > 1 && (
-        <div className="flex justify-center gap-2.5 -mt-8 mb-12 relative z-30">
-          {featuredMovies.map((movie, idx) => (
-            <button
-              key={movie.id}
-              aria-label={`Ver ${movie.titulo}`}
-              aria-current={idx === currentIndex}
-              onClick={() => handleDotClick(idx)}
-              className={`h-1.5 rounded-full transition-all duration-500 ease-out ${
-                idx === currentIndex ? 'w-12 bg-white' : 'w-2 bg-white/40 hover:bg-white/80'
-              }`}
-            />
-          ))}
-        </div>
-      )}
-
-      {!featuredCampaign && expandedCampaign && (
-        <CampaignDetailInline
-          campaign={expandedCampaign}
-          onClose={() => setExpandedCampaign(null)}
-          onNavigateNews={onNavigateNews}
-        />
-      )}
-
-      {featuredCampaign && showCampaignReturn && (
-        <button
-          type="button"
-          onClick={scrollToCampaign}
-          className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 inline-flex items-center gap-2 rounded-full bg-[#1d1d1f] text-white border border-white/10 px-4 md:px-5 py-3 text-[10px] md:text-xs font-black uppercase tracking-widest shadow-2xl hover:bg-black active:scale-95 transition-all"
-        >
-          <Megaphone size={16} /> Volver a campaña
-        </button>
-      )}
-
-      <HomeRadioStrip onOpen={onOpenRadio} />
-
+    fetchPublishedKeynotes().then(items => { if (active) setLatestKeynote(items[0] || null); });
+    void refreshDiscovery();
+    const refresh = () => { if (!document.hidden && Date.now() - lastRefresh.current > 55000) void refreshDiscovery(); };
+    const timer = setInterval(refresh, 60000);
+    window.addEventListener('focus', refresh);
+    return () => { active = false; discoveryRequest.current++; clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, [initialCampaignId, fetchActiveCampaigns, fetchPublishedKeynotes, refreshDiscovery]);
+  const closeCampaign = useCallback(() => setExpandedCampaign(null), []);
+  const closeServer = useCallback(() => setServerSelection(null), []);
+  const openEntry = entry => {
+    if (entry.server || entry.kind === 'server') setServerSelection({ server:entry.server || entry.item, partnerId:entry.partner?.id || null });
+    else if (entry.kind === 'newspaper') onNavigateNews?.(entry.item);
+    else onSelectMovie?.(entry.item);
+  };
+  return <div className="relative font-sans pb-20">
+    <div className="vh-stack vh-fullbleed" data-home-stack>
+      {campaigns[0] ? <CampaignHero campaign={campaigns[0]} onOpen={() => { void trackCampaignEvent(campaigns[0].id, 'click'); setExpandedCampaign(campaigns[0]); }} onScrollNext={() => partnerAnchor.current?.scrollIntoView({ behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })} isOpen={Boolean(expandedCampaign)}/> : <section className="vh-hero" aria-label="Campañas de VISTA"><div className="vh-atmosphere"/><div className="vh-topline"><span className="vh-brand">See it differently.</span></div><div className="vh-copy"><p className="vh-label">VISTA · Campañas</p><h1 className="vh-title">Una nueva forma\nde ver tu mundo.</h1><p className="vh-description">Historias, comunidades y proyectos de Minecraft. Las próximas campañas aparecerán aquí.</p></div></section>}
+      <div ref={partnerAnchor}><DiscoveryHero mode="partners" entries={discovery.partners} loading={loading} error={discoveryError} onRetry={refreshDiscovery} onOpen={openEntry} onStudio={onOpenNetworkStudio} track={track}/></div>
+      <DiscoveryHero mode="ranking" entries={discovery.ranking} loading={loading} error={discoveryError} onRetry={refreshDiscovery} onOpen={openEntry} onPlay={onPlay} track={track}/>
+    </div>
+    <KeynoteSpotlight keynote={latestKeynote} onOpen={onNavigateKeynotes}/>
+    <SurveyInvitation/>
+    <HomeRadioStrip onOpen={onOpenRadio}/>
       <section className="max-w-[1500px] mx-auto px-6 md:px-12 pt-12 md:pt-16 relative z-20">
         <div className="flex flex-col sm:flex-row sm:items-end gap-5 pb-5 border-b border-[#d2d2d7]">
           <div>
@@ -573,27 +115,8 @@ export default function Home({ onSelectMovie, onPlay, onNavigateNews, onNavigate
         />
       </section>
 
-      {homeMode === 'featured' && latestKeynote && (
-        <div className="mt-10 md:mt-14">
-          <KeynoteSpotlight keynote={latestKeynote} onOpen={onNavigateKeynotes}/>
-        </div>
-      )}
 
-      {/* 2. CONTENIDO (Filas Editoriales) */}
-      {homeMode === 'featured' && <div className="px-6 md:px-12 space-y-16 mt-8 relative z-20">
-        {top10.length > 0 && (
-          <ContentRow title="Top 10: Lo más visto en GIMG" items={top10} onSelect={onSelectMovie} />
-        )}
-
-        {communityVideos.length > 0 && <ContentRow title="Videos de la comunidad" items={communityVideos} onSelect={onSelectMovie} />}
-
-        {Object.entries(moviesByGenre).map(([genero, peliculas]) => (
-          peliculas.length > 0 && (
-            <ContentRow key={genero} title={genero} items={peliculas} onSelect={onSelectMovie} />
-          )
-        ))}
-      </div>}
-
-    </div>
-  );
+    {expandedCampaign && <CampaignDialog campaign={expandedCampaign} onClose={closeCampaign} onNavigateNews={onNavigateNews}/>}
+    {serverSelection && <ServerDetail {...serverSelection} track={track} onClose={closeServer}/>}
+  </div>;
 }

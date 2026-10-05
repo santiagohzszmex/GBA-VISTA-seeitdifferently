@@ -6,7 +6,7 @@ import Sidebar from './Sidebar';
 
 // Importación del ecosistema modular desde la carpeta views
 import HomeView from './views/Home';
-import OriginalsView from './views/Originals';
+import VideosView from './views/Videos';
 import NoticiasView from './views/news/Noticias';
 import PerfilEditorialView from './views/news/PerfilEditorial'; // <-- Nueva vista importada
 import BuscarView from './views/Buscar';
@@ -47,7 +47,7 @@ export default function VISTAHome() {
   const sharedRadioShortcode = new URLSearchParams(window.location.search).get('radio');
   const studioPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get('studio-preview') === '1';
   const workspaceSection = new URLSearchParams(window.location.search).get('workspace');
-  const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : sharedKeynoteSlug ? 'keynotes' : sharedRadioShortcode ? 'radio' : sharedNetwork ? 'network' : ['studios','network'].includes(workspaceSection) ? 'publicar' : studioPreview ? 'publicar' : 'home');
+  const [activeTab, setActiveTab] = useState(sharedEditionId ? 'news' : sharedKeynoteSlug ? 'keynotes' : sharedRadioShortcode ? 'radio' : sharedNetwork ? 'network' : ['studios','network'].includes(workspaceSection) ? 'publicar' : studioPreview ? 'publicar' : new URLSearchParams(window.location.search).get('videos') === '1' ? 'videos' : 'home');
 
   // Estados locales para el control de overlays e interacciones globales
   const [playingVideo, setPlayingVideo] = useState(null);
@@ -74,9 +74,19 @@ export default function VISTAHome() {
   }, [sharedContentId, user?.id]);
 
   // Manejadores de acciones que serán inyectados a las vistas hijas
-  const handlePlayVideo = (youtubeId) => {
-    if (youtubeId) setPlayingVideo(youtubeId);
+  const handlePlayVideo = (youtubeId, movie = null) => {
+    if (youtubeId) {
+      setPlayingVideo(youtubeId);
+      if (movie?.id && isVideoContent(movie)) void supabase.rpc('vista_register_content_view', { p_content_id: movie.id });
+    }
   };
+
+  // Opening a video deliberately counts once per GBA ID; background autoplay does not.
+  React.useEffect(() => {
+    if (selectedMovieInfo?.id && isVideoContent(selectedMovieInfo)) {
+      void supabase.rpc('vista_register_content_view', { p_content_id: selectedMovieInfo.id });
+    }
+  }, [selectedMovieInfo?.id]);
 
   const handleSelectMovieInfo = (movie) => {
     if (movie) setSelectedMovieInfo(movie);
@@ -134,6 +144,7 @@ export default function VISTAHome() {
     setFocusedKeynoteSlug(null);
     replaceVistaLocation();
     setActiveTab(tab);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
   };
 
   // El cerebro del tráfico: decide qué archivo montar según el Sidebar u acciones del usuario
@@ -147,13 +158,15 @@ export default function VISTAHome() {
             onNavigateNews={handleNavigateNews}
             onNavigateKeynotes={handleNavigateKeynotes}
             onOpenRadio={handleOpenRadio}
+            onOpenNetworkStudio={handleOpenNetworkStudio}
             initialCampaignId={sharedCampaignId}
             initialUpdateId={sharedUpdateId}
           />
         );
-      case 'originals':
+      case 'originals': // Compatibility for older internal navigation.
+      case 'videos':
         return (
-          <OriginalsView 
+          <VideosView
             onSelectMovie={handleSelectMovieInfo} 
             onPlay={handlePlayVideo} 
           />
@@ -214,6 +227,7 @@ export default function VISTAHome() {
             onNavigateNews={handleNavigateNews}
             onNavigateKeynotes={handleNavigateKeynotes}
             onOpenRadio={handleOpenRadio}
+            onOpenNetworkStudio={handleOpenNetworkStudio}
             initialCampaignId={sharedCampaignId}
             initialUpdateId={sharedUpdateId}
           />
@@ -228,6 +242,7 @@ export default function VISTAHome() {
             onNavigateNews={handleNavigateNews}
             onNavigateKeynotes={handleNavigateKeynotes}
             onOpenRadio={handleOpenRadio}
+            onOpenNetworkStudio={handleOpenNetworkStudio}
             initialCampaignId={sharedCampaignId}
             initialUpdateId={sharedUpdateId}
           />

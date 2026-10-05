@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { VIDEO_CATEGORIES } from '../utils/contentTypes';
 
 export function useContent() {
   const [loading, setLoading] = useState(false);
 
-  const getAllContent = async () => {
+  const getAllContent = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -23,9 +23,9 @@ export function useContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const getTop10 = async () => {
+  const getTop10 = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -44,7 +44,7 @@ export function useContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return { getAllContent, getTop10, loading };
 }
