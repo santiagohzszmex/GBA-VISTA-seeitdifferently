@@ -27,12 +27,12 @@ export default function ImmersiveMedia({ image, item, videoUrl, youtubeId, alt =
     setReady(false);
     if (!visible || reducedMotion) { video.current?.pause(); return; }
     video.current?.play().catch(() => {});
-    const timer = setTimeout(() => setReady(true), 3000);
+    const timer = !videoUrl ? setTimeout(() => setReady(true), 3000) : null;
     return () => { clearTimeout(timer); video.current?.pause(); };
   }, [visible, reducedMotion, videoUrl, youtubeId]);
   return <div ref={host} className="vh-media" aria-hidden="true">
     {item ? <VideoCover item={item} prefer="banner" className="vh-image" alt=""/> : image ? <img className="vh-image" src={image} alt={alt} onError={e => { e.currentTarget.style.visibility = 'hidden'; }}/> : <div className="vh-atmosphere"/>}
-    {videoUrl && <video ref={video} key={videoUrl} src={videoUrl} poster={image || undefined} muted loop playsInline preload={visible ? "metadata" : "none"} className="vh-image" style={{ opacity: ready ? 1 : 0 }} onError={() => setReady(false)}/>}
+    {videoUrl && <video ref={video} key={videoUrl} src={videoUrl} poster={image || undefined} muted loop playsInline preload={visible ? "metadata" : "none"} className="vh-image" style={{ opacity: ready ? 1 : 0 }} onPlaying={() => setReady(true)} onError={() => setReady(false)}/>}
     {!videoUrl && youtubeId && visible && !reducedMotion && <div className="vh-youtube" style={{ opacity: ready ? 1 : 0 }}><iframe tabIndex={-1} title="Video de fondo" src={`https://www.youtube.com/embed/${encodeURIComponent(youtubeId)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${encodeURIComponent(youtubeId)}&rel=0&disablekb=1&playsinline=1`} allow="autoplay; encrypted-media"/></div>}
   </div>;
 }

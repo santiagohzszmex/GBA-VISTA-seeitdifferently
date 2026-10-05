@@ -94,4 +94,3 @@ export default function VideoHero ({ movie, onPlay, onSelectMovie, showBrandLine
     </div>
   );
 };
-
