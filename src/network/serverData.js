@@ -8,7 +8,20 @@ export const safeUrl = value => { try { const url = new URL(value); return url.p
 export const activePartners = (partners, now = Date.now()) => partners.filter(p => new Date(p.starts_at).getTime() <= now && new Date(p.ends_at).getTime() > now);
 export const partnerStatus = p => p.state === 'active' && new Date(p.ends_at).getTime() <= Date.now() ? 'Vencido' : p.state === 'active' && new Date(p.starts_at).getTime() > Date.now() ? 'Programado' : PARTNER_STATUS[p.state];
 export const ACCESS_TYPES = {direct:'Dirección IP',modpack:'Modpack',invitation:'Invitación o solicitud de acceso'};
-export const EMPTY_SERVER = { access_type:'direct',access_url:'',access_instructions:'',support_url:'',developer_studio_id:'',developer_handle:'', nombre: '', headline: '', descripcion: '', ip: '', discord_url: '', website_url: '', map_url: '', logo_url: '', portada_url: '', idioma: 'Español', edition: 'java', version: '', estilo: 'Geopolítico', region: '', game_status: 'activo' };
+export const ACCOUNT_ACCESS = { unspecified: 'Sin indicar', premium: 'Solo premium', non_premium: 'Solo no premium', both_shared: 'Premium y no premium · mismo acceso', both_separate: 'Premium y no premium · accesos diferentes' };
+export const accessVariants = server => {
+  const mode = server.account_access || 'unspecified';
+  const main = { label: mode === 'non_premium' ? 'No premium' : mode === 'premium' || mode === 'both_separate' ? 'Premium' : mode === 'both_shared' ? 'Premium y no premium' : '', ip: server.ip || '', url: server.access_url || '' };
+  return mode === 'both_separate' ? [main, { label: 'No premium', ip: server.ip_non_premium || '', url: server.access_url_non_premium || '' }] : [main];
+};
+export const normalizeServerAccess = server => ({ ...server,
+  account_access: server.access_type === 'invitation' ? 'unspecified' : server.account_access || 'unspecified',
+  ip: server.access_type === 'direct' ? server.ip : '',
+  ip_non_premium: server.access_type === 'direct' && server.account_access === 'both_separate' ? server.ip_non_premium : '',
+  access_url: server.access_type === 'direct' ? '' : server.access_url,
+  access_url_non_premium: server.access_type === 'modpack' && server.account_access === 'both_separate' ? server.access_url_non_premium : '',
+});
+export const EMPTY_SERVER = { account_access:'unspecified', ip_non_premium:'', access_url_non_premium:'', access_type:'direct',access_url:'',access_instructions:'',support_url:'',developer_studio_id:'',developer_handle:'', nombre: '', headline: '', descripcion: '', ip: '', discord_url: '', website_url: '', map_url: '', logo_url: '', portada_url: '', idioma: 'Español', edition: 'java', version: '', estilo: 'Geopolítico', region: '', game_status: 'activo' };
 export const serverPayload = server => Object.fromEntries(Object.keys(EMPTY_SERVER).map(key => [key, server[key] ?? EMPTY_SERVER[key]]));
 // Demonstration data is available only in Vite's development preview.
 export const PREVIEW_SERVERS = [

@@ -3,10 +3,10 @@ import { createPortal } from 'react-dom';
 import { ArrowUpRight, Check, Copy, Map, ShieldCheck, X } from 'lucide-react';
 import { profileLink,studioLink } from '../../studios/studioData';
 import '../../studios/studios.css';
-import { EDITIONS, GAME_STATUS, safeUrl } from '../../network/serverData';
+import { ACCOUNT_ACCESS, accessVariants, EDITIONS, GAME_STATUS, safeUrl } from '../../network/serverData';
 
 export default function ServerDetail({ server, partnerId = null, track, onClose, previewMode }) {
-  const [copied,setCopied]=useState(false);
+  const [copied,setCopied]=useState('');
   const [notice,setNotice]=useState('');
   const dialog=useRef(null);
   useEffect(()=>{
@@ -28,9 +28,9 @@ export default function ServerDetail({ server, partnerId = null, track, onClose,
     document.addEventListener('keydown',keys);
     return()=>{document.body.style.overflow=previousOverflow;document.removeEventListener('keydown',keys);previousFocus?.focus?.();};
   },[server.id,partnerId,track,onClose]);
-  const copy=async()=>{
+  const copy=async(ip)=>{
     if(previewMode){setNotice('Vista de muestra: esta dirección no corresponde a un servidor real.');return;}
-    try{await navigator.clipboard.writeText(server.ip);setCopied(true);void track(server.id,'copy_ip','profile',partnerId);}
+    try{await navigator.clipboard.writeText(ip);setCopied(ip);void track(server.id,'copy_ip','profile',partnerId);}
     catch{setNotice('Puedes seleccionar y copiar la dirección que aparece abajo.');}
   };
   const link=(url,label,event,icon)=>(safeUrl(url)&&<a className="vn-button vn-button-quiet" href={safeUrl(url)} target="_blank" rel="noopener noreferrer" onClick={()=>{if(!previewMode) void track(server.id,event,'profile',partnerId);}}>{icon}{label}<ArrowUpRight size={14}/></a>);
@@ -40,11 +40,11 @@ export default function ServerDetail({ server, partnerId = null, track, onClose,
     <div className="vn-modal-body"><span className="vn-eyebrow">{server.estilo} · {EDITIONS[server.edition]}</span><h2 id="vn-server-name">{server.nombre}</h2>
       {server.verificada&&<p className="vn-link vn-verified"><ShieldCheck size={15}/>Administración verificada por GBA</p>}
       {server.headline&&<p className="vn-note">{server.headline}</p>}<p className="vn-modal-copy">{server.descripcion}</p>
-      <div className="vn-detail-grid">{[['Idioma',server.idioma],['Edición',EDITIONS[server.edition]],['Versión',server.version||'Consultar con el servidor'],['Comunidad',server.region||'Global'],['Enfoque',server.estilo],['Estado declarado',GAME_STATUS[server.game_status]]].map(([label,value])=><div key={label}><small>{label}</small>{value}</div>)}</div>
+      <div className="vn-detail-grid">{[['Idioma',server.idioma],['Edición',EDITIONS[server.edition]],['Versión',server.version||'Consultar con el servidor'],['Comunidad',server.region||'Global'],['Enfoque',server.estilo],['Estado declarado',GAME_STATUS[server.game_status]],...(server.account_access&&server.account_access!=='unspecified'?[['Cuentas admitidas',ACCOUNT_ACCESS[server.account_access]]]:[])].map(([label,value])=><div key={label}><small>{label}</small>{value}</div>)}</div>
       {server.developer&&<div className="ds-developer"><div><small className="vn-eyebrow block mb-2">Desarrollado por</small><a className="vn-link" href={server.developer.type==='studio'?studioLink(server.developer.slug):profileLink(server.developer.handle)}>{server.developer.name}<ArrowUpRight size={14}/></a></div></div>}
       {server.access_instructions&&<p className="vn-note whitespace-pre-wrap">{server.access_instructions}</p>}
-      <div className="vn-actions">{link(server.access_url,server.access_type==='modpack'?'Obtener modpack':'Solicitar acceso','access_click')}{server.ip&&<button className="vn-button" onClick={copy}>{copied?<Check size={15}/>:<Copy size={15}/>} {copied?'Dirección copiada':'Copiar IP'}</button>}{link(server.discord_url,'Discord','discord_click')}{link(server.website_url,'Sitio web','website_click')}{link(server.map_url,'Ver mapa','map_click',<Map size={15}/>)}{link(server.support_url,'Apoyar el proyecto','support_click')}</div>
-      {server.ip&&<div className="vn-ip mt-4">{server.ip}</div>}{notice&&<p className="vn-alert" role="status">{notice}</p>}
+      <div className="vn-actions">{accessVariants(server).map((variant,index)=><React.Fragment key={index}>{(server.access_type||'direct')==='direct'?(variant.ip&&<button className="vn-button" onClick={()=>copy(variant.ip)}>{copied===variant.ip?<Check size={15}/>:<Copy size={15}/>} {copied===variant.ip?'Dirección copiada':`Copiar IP${variant.label?` · ${variant.label}`:''}`}</button>):link(variant.url,`${server.access_type==='modpack'?'Obtener modpack':'Solicitar acceso'}${variant.label?` · ${variant.label}`:''}`,'access_click')}</React.Fragment>)}{link(server.discord_url,'Discord','discord_click')}{link(server.website_url,'Sitio web','website_click')}{link(server.map_url,'Ver mapa','map_click',<Map size={15}/>)}{link(server.support_url,'Apoyar el proyecto','support_click')}</div>
+      {(server.access_type||'direct')==='direct'&&accessVariants(server).map((variant,index)=>variant.ip&&<div key={index} className="vn-ip mt-4">{variant.label&&<span className="block text-xs mb-2">{variant.label}</span>}{variant.ip}</div>)}{notice&&<p className="vn-alert" role="status">{notice}</p>}
       {server.support_url&&<p className="vn-note">El apoyo se gestiona en una plataforma externa y llega al proyecto.</p>}
       <p className="vn-note">Información proporcionada por la administración del servidor. La ficha gratuita está disponible durante el piloto de Network.</p>
     </div>

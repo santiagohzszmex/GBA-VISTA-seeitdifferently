@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
+import { accessVariants, normalizeServerAccess } from "../src/network/serverData.js";
 const db = new PGlite();
 let checks = 0;
 const ids = {
@@ -79,6 +80,7 @@ create function public.vista_editorial_slugify(value text) returns text language
       "utf8",
     ),
   );
+  await db.exec(fs.readFileSync(root + "/supabase/migrations/" + fs.readdirSync(root + "/supabase/migrations").find(n => n.endsWith("_network_account_access.sql")), "utf8"));
   await actor(null);
   await reject(scalar("select vista_studios_workspace()"));
   await reject(scalar("select vista_studio_directory()"));
@@ -411,6 +413,51 @@ create function public.vista_editorial_slugify(value text) returns text language
       },
     ]),
   );
+  const connection = { ...previous, developer_handle: '', access_type: 'direct', ip: 'premium.example.invalid', account_access: 'both_separate', ip_non_premium: 'free.example.invalid:25566' };
+  const saveAccess = data => scalar("select to_jsonb(vista_save_network_server($1,$2))", [legacy.id, data]);
+  let savedAccess = await saveAccess(connection);
+  ok(savedAccess.ip_non_premium, connection.ip_non_premium);
+  ok(savedAccess.account_access, 'both_separate');
+  ok(savedAccess.access_url, '');
+  await reject(saveAccess({ ...connection, ip_non_premium: '' }));
+  await reject(saveAccess({ ...connection, ip_non_premium: 'https://bad.example' }));
+  await reject(saveAccess({ ...connection, ip_non_premium: 'a'.repeat(161) }));
+  await reject(saveAccess({ ...connection, account_access: 'invalid' }));
+  const packs = { ...connection, access_type: 'modpack', access_url: 'https://example.com/premium', access_url_non_premium: 'https://example.com/no-premium' };
+  savedAccess = await saveAccess(packs);
+  ok(savedAccess.ip, '');
+  ok(savedAccess.ip_non_premium, '');
+  ok(savedAccess.access_url_non_premium, packs.access_url_non_premium);
+  await reject(saveAccess({ ...packs, access_url_non_premium: '' }));
+  await reject(saveAccess({ ...packs, access_url_non_premium: 'http://example.com/pack' }));
+  await reject(saveAccess({ ...packs, access_url_non_premium: 'javascript:alert(1)' }));
+  await actor('admin');
+  await scalar("select vista_review_network_server($1,'aprobado',false,'')", [legacy.id]);
+  const publicAccess = (await scalar("select vista_network_directory()")).servers.find(s=>s.id===legacy.id);
+  ok(publicAccess.access_url_non_premium, packs.access_url_non_premium);
+  ok(publicAccess.account_access, 'both_separate');
+  await actor('stranger');
+  await reject(saveAccess(packs));
+  await actor('owner');
+  // An older open tab omits the new fields: it must preserve both modpack URLs.
+  const oldClient = { ...packs }; delete oldClient.account_access; delete oldClient.access_url_non_premium;
+  ok((await saveAccess(oldClient)).access_url_non_premium, packs.access_url_non_premium);
+  for (const mode of ['premium','non_premium','both_shared','unspecified']) {
+    savedAccess = await saveAccess({ ...packs, account_access: mode });
+    ok(savedAccess.account_access, mode);
+    ok(savedAccess.access_url_non_premium, '');
+    ok(accessVariants(savedAccess).length, 1);
+  }
+  savedAccess = await saveAccess({ ...packs, access_type: 'invitation' });
+  ok(savedAccess.account_access, 'unspecified');
+  ok(savedAccess.access_url_non_premium, '');
+  ok(normalizeServerAccess(packs).ip, '');
+  ok(normalizeServerAccess(packs).ip_non_premium, '');
+  ok(accessVariants(packs).map(v=>v.label), ['Premium','No premium']);
+  ok(normalizeServerAccess({ ...connection, account_access: 'premium' }).ip_non_premium, '');
+  await db.exec("reset role");
+  ok(await scalar("select has_function_privilege('anon','vista_save_network_server(uuid,jsonb)','execute')"), false);
+  ok(await scalar("select relrowsecurity from pg_class where oid='public.network_servers'::regclass"), true);
   await db.exec("reset role");
   for (const table of ["development_studios", "development_studio_members"]) {
     ok(
