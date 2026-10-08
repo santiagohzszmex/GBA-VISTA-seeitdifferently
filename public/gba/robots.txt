@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://gba.software/sitemap.xml

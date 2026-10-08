@@ -1,3 +1,120 @@
 {
-  "rewrites": [{ "source": "/encuesta/:path*", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/robots.txt",
+      "has": [
+        {
+          "type": "host",
+          "value": "gba.software"
+        }
+      ],
+      "destination": "/gba/robots.txt"
+    },
+    {
+      "source": "/sitemap.xml",
+      "has": [
+        {
+          "type": "host",
+          "value": "gba.software"
+        }
+      ],
+      "destination": "/gba/sitemap.xml"
+    },
+    {
+      "source": "/robots.txt",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.gba.software"
+        }
+      ],
+      "destination": "/gba/robots.txt"
+    },
+    {
+      "source": "/sitemap.xml",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.gba.software"
+        }
+      ],
+      "destination": "/gba/sitemap.xml"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "gba.software"
+        }
+      ],
+      "destination": "/gba/index.html"
+    },
+    {
+      "source": "/en",
+      "has": [
+        {
+          "type": "host",
+          "value": "gba.software"
+        }
+      ],
+      "destination": "/gba/en/index.html"
+    },
+    {
+      "source": "/privacy",
+      "has": [
+        {
+          "type": "host",
+          "value": "gba.software"
+        }
+      ],
+      "destination": "/gba/privacy/index.html"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.gba.software"
+        }
+      ],
+      "destination": "/gba/index.html"
+    },
+    {
+      "source": "/en",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.gba.software"
+        }
+      ],
+      "destination": "/gba/en/index.html"
+    },
+    {
+      "source": "/privacy",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.gba.software"
+        }
+      ],
+      "destination": "/gba/privacy/index.html"
+    },
+    {
+      "source": "/gba",
+      "destination": "/gba/index.html"
+    },
+    {
+      "source": "/gba/en",
+      "destination": "/gba/en/index.html"
+    },
+    {
+      "source": "/gba/privacy",
+      "destination": "/gba/privacy/index.html"
+    },
+    {
+      "source": "/encuesta/:path*",
+      "destination": "/index.html"
+    }
+  ]
 }
