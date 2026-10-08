@@ -19,13 +19,13 @@ Las rutas corporativas solo afectan a esos dos hosts y se resuelven antes del si
 - Investigación: visión de ANIMA del 9 de septiembre y revisión de arquitectura conversacional del 4 de octubre de 2026, proporcionadas por Santiago.
 - Contacto y México: confirmados por Santiago el 7 de octubre de 2026.
 - La antigüedad se describe como proyecto joven; no se inventa una fecha de constitución, financiación ni registro empresarial.
-- Los objetivos 2 MiB/8 MiB/un hilo/sin offload están identificados como objetivos experimentales, no logros acreditados.
+- Actualización del 7 de octubre: la presentación pública omite temporalmente VISTA y Minecraft, incluidos enlaces y metadatos. La accesibilidad de ANIMA se explica como comprensión, interacción natural y autonomía personal; el perfil experimental de hardware permanece en la documentación de investigación.
 
 Se publica una síntesis del propósito y estado, no los documentos originales, conversaciones, corpus, resultados internos ni rutas del laboratorio. La ilustración es conceptual, no una visualización de resultados.
 
 ## Validación
 
-Revisar español e inglés, navegación móvil, acordeón de investigación, correo, enlaces a VISTA y página de privacidad. Verificar que las páginas pueden leerse sin JavaScript y sin cuenta. Compilar VISTA y comprobar que la encuesta conserva su reescritura.
+Revisar español e inglés, navegación móvil, acordeón de investigación, correo y página de privacidad. Verificar que las páginas pueden leerse sin JavaScript y sin cuenta. Compilar VISTA y comprobar que la encuesta conserva su reescritura.
 
 ## Privacidad
 

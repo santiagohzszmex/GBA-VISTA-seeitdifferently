@@ -7,7 +7,7 @@ menuButton?.addEventListener('click', () => {
 });
 menu?.addEventListener('click',event=>{if(event.target.closest('a'))closeMenu();});
 document.addEventListener('keydown',event=>{if(event.key==='Escape' && menu?.classList.contains('is-open')){closeMenu();menuButton.focus();}});
-// Keep the same public pages working on the company domain and on the VISTA fallback URL.
+// Keep the same public pages working on the company domain and on the fallback URL.
 const prefix = location.hostname === 'gba.software' || location.hostname === 'www.gba.software' ? '' : '/gba';
 document.querySelectorAll('[data-page]').forEach(link=>{link.href = `${prefix}/${link.dataset.page}`;});
 const sectionLinks = [...document.querySelectorAll('[data-section]')];
