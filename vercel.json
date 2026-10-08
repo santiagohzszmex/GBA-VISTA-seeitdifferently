@@ -1,120 +1,123 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/robots.txt",
+      "src": "^/robots\\.txt/?$",
+      "dest": "/gba/robots.txt",
       "has": [
         {
           "type": "host",
           "value": "gba.software"
         }
-      ],
-      "destination": "/gba/robots.txt"
+      ]
     },
     {
-      "source": "/sitemap.xml",
+      "src": "^/sitemap\\.xml/?$",
+      "dest": "/gba/sitemap.xml",
       "has": [
         {
           "type": "host",
           "value": "gba.software"
         }
-      ],
-      "destination": "/gba/sitemap.xml"
+      ]
     },
     {
-      "source": "/robots.txt",
+      "src": "^/robots\\.txt/?$",
+      "dest": "/gba/robots.txt",
       "has": [
         {
           "type": "host",
           "value": "www.gba.software"
         }
-      ],
-      "destination": "/gba/robots.txt"
+      ]
     },
     {
-      "source": "/sitemap.xml",
+      "src": "^/sitemap\\.xml/?$",
+      "dest": "/gba/sitemap.xml",
       "has": [
         {
           "type": "host",
           "value": "www.gba.software"
         }
-      ],
-      "destination": "/gba/sitemap.xml"
+      ]
     },
     {
-      "source": "/",
+      "src": "^/$",
+      "dest": "/gba/index.html",
       "has": [
         {
           "type": "host",
           "value": "gba.software"
         }
-      ],
-      "destination": "/gba/index.html"
+      ]
     },
     {
-      "source": "/en",
+      "src": "^/en/?$",
+      "dest": "/gba/en/index.html",
       "has": [
         {
           "type": "host",
           "value": "gba.software"
         }
-      ],
-      "destination": "/gba/en/index.html"
+      ]
     },
     {
-      "source": "/privacy",
+      "src": "^/privacy/?$",
+      "dest": "/gba/privacy/index.html",
       "has": [
         {
           "type": "host",
           "value": "gba.software"
         }
-      ],
-      "destination": "/gba/privacy/index.html"
+      ]
     },
     {
-      "source": "/",
+      "src": "^/$",
+      "dest": "/gba/index.html",
       "has": [
         {
           "type": "host",
           "value": "www.gba.software"
         }
-      ],
-      "destination": "/gba/index.html"
+      ]
     },
     {
-      "source": "/en",
+      "src": "^/en/?$",
+      "dest": "/gba/en/index.html",
       "has": [
         {
           "type": "host",
           "value": "www.gba.software"
         }
-      ],
-      "destination": "/gba/en/index.html"
+      ]
     },
     {
-      "source": "/privacy",
+      "src": "^/privacy/?$",
+      "dest": "/gba/privacy/index.html",
       "has": [
         {
           "type": "host",
           "value": "www.gba.software"
         }
-      ],
-      "destination": "/gba/privacy/index.html"
+      ]
     },
     {
-      "source": "/gba",
-      "destination": "/gba/index.html"
+      "src": "^/gba/?$",
+      "dest": "/gba/index.html"
     },
     {
-      "source": "/gba/en",
-      "destination": "/gba/en/index.html"
+      "src": "^/gba/en/?$",
+      "dest": "/gba/en/index.html"
     },
     {
-      "source": "/gba/privacy",
-      "destination": "/gba/privacy/index.html"
+      "src": "^/gba/privacy/?$",
+      "dest": "/gba/privacy/index.html"
     },
     {
-      "source": "/encuesta/:path*",
-      "destination": "/index.html"
+      "handle": "filesystem"
+    },
+    {
+      "src": "^/encuesta(?:/.*)?$",
+      "dest": "/index.html"
     }
   ]
 }

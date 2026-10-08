@@ -4,12 +4,14 @@ Portada pública y bilingüe, sin autenticación ni consultas a Supabase. Vive e
 
 ## Rutas
 
-- `https://gba.software/`: español, cuando se retire la redirección de dominio en Vercel.
+- `https://gba.software/`: español.
 - `https://gba.software/en`: inglés.
 - `https://gba.software/privacy`: privacidad de esta página central.
 - Alternativas públicas: `https://vista.gba.software/gba/`, `/gba/en/` y `/gba/privacy/`.
 
-Las reescrituras corporativas solo afectan a los hosts `gba.software` y `www.gba.software`. La configuración del dominio actualmente redirige a VISTA antes de resolver las rutas: es necesario desactivar esa redirección, manteniendo el dominio asignado al proyecto actual. No se deben modificar DNS de `vista`, MX ni correo.
+Los dominios `gba.software` y `www.gba.software` están conectados a producción desde el 7 de octubre de 2026. Se retiraron sus redirecciones hacia VISTA, manteniendo el proyecto existente y sin cambiar DNS ni correo.
+
+Las rutas corporativas solo afectan a esos dos hosts y se resuelven antes del sistema de archivos para que el `index.html` de VISTA no tenga prioridad en `/`. Inglés y privacidad admiten URLs con y sin barra final. Tras las rutas explícitas, `handle: filesystem` sirve los archivos y API habituales; la encuesta conserva su destino `/index.html` después de esa fase.
 
 ## Información y procedencia
 
