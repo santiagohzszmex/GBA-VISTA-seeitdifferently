@@ -14,7 +14,12 @@
     "test:studios": "node tests/studios.test.mjs",
     "test:session": "node tests/session.test.mjs",
     "test:home": "node tests/home.test.mjs",
-    "test:recruitment": "node tests/recruitment.test.mjs"
+    "test:recruitment": "node tests/recruitment.test.mjs",
+    "test:workspace": "node tests/workspace.test.mjs && node tests/identity-gateway.test.mjs",
+    "workspace:dev": "vite --config vite.workspace.config.js",
+    "workspace:build": "vite build --config vite.workspace.config.js",
+    "desktop:dev": "npx --yes @tauri-apps/cli@2 dev",
+    "desktop:build": "npx --yes @tauri-apps/cli@2 build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

@@ -23,7 +23,7 @@ Muestras opcionales PDF/PNG/JPG/WEBP hasta 10 MB en bucket privado `gimg-recruit
 
 ## Revisión y resultados
 
-Panel con conteos y distribución por área, filtros, CSV protegido frente a fórmulas, evaluación humana y notas internas. Actualiza por Realtime y cada 30 segundos. Dirección publica un resultado; guardar notas posteriores no cambia la copia que ve la persona hasta publicarla otra vez. Hasta 16 selecciones y 5 reservas publicadas; objetivo normal 15 colaboradores. Los permisos de Dirección/evaluador se gestionan por GBA ID sin cambiar roles globales. Dueño/Admin existentes tienen Dirección.
+Panel con conteos y distribución por área, filtros, CSV protegido frente a fórmulas, evaluación humana y notas internas. Actualiza por Realtime y cada 30 segundos. Dirección publica un resultado; guardar notas posteriores no cambia la copia que ve la persona hasta publicarla otra vez. Hasta 16 selecciones y 5 reservas publicadas; objetivo normal 15 colaboradores. Los permisos de Dirección/evaluador se gestionan por GBA ID sin cambiar roles globales. Dirección y evaluación requieren una asignación explícita en GIMG. Dueño/Admin generales no heredan estos permisos. La corrección se aplica en la migración gimg_role_isolation.
 
 El botón de contacto prepara un borrador en el cliente de correo del coordinador usando el resultado publicado. El humano elige su cuenta @gba.software y lo envía. No se envían emails automáticos, no hay proveedor SMTP nuevo ni promesa de entrega integrada. La confirmación del puesto se registra para el futuro Workspace, sin conceder acceso prematuramente.
 
@@ -44,3 +44,9 @@ Migración `20261009034327_gimg_pin_signup_fix.sql`: los logs mostraron `functio
 ## Contacto y Mothership
 
 Migración `20261009040818_gimg_contact_and_mothership.sql`: agrega teléfono opcional, restricción de un solo medio, validación del servidor y lectura del equipo de selección de contactos de solicitudes enviadas. El RPC anterior de correo sigue funcionando para pestañas abiertas; el formulario nuevo usa gimg_save_application_contact. 108 pruebas locales y 24 comprobaciones reales con dos cuentas QA autorizadas verificaron correo, teléfono, aislamiento y recuperación; ambas cuentas y sus datos se eliminaron. Los ejemplos de vista DEV de Mothership son ficticios y no guardan ni publican resultados.
+
+La revisión de Supabase del 9 de octubre confirmó 1 Dueño, 8 Editor y 118 rangos NULL; la restricción desplegada permite Dueño, Admin, Ciudadano y Editor. No hay Dirección explícita en gimg_recruitment_reviewers. La separación local cubre también vista_approve_editorial_request: crear GIMG conserva el rango personal, incluido NULL. Las editoriales externas mantienen su comportamiento previo. Ninguna consulta de esta revisión modificó producción.
+
+La separación se divide en dos migraciones: 20261009123356_gimg_identity_role_isolation.sql cubre convocatoria, rango general e invitaciones/creación de GIMG en Studio y funciona sobre el esquema actual; 20261009112023_gimg_role_isolation.sql instala las restricciones de alcance del nuevo Workspace. La cuenta autorizada para Dirección explícita es @Santiago, conservando Dueño en GBA. La migración de Workspace inicial incorpora las Direcciones ya asignadas en convocatoria sin heredar rangos globales.
+
+Aplicada en Supabase la migración gimg_identity_role_isolation (versión remota 20261009123356). @Santiago mantiene Dueño y tiene director explícito en gimg_recruitment_reviewers. Comprobados permisos con sesión real activa y rechazo sin sesión; no se cambiaron otros rangos ni Keynotes. Los alcances del nuevo Workspace siguen pendientes con su esquema.

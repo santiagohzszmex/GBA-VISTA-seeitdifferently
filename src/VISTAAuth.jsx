@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, ChevronLeft, ArrowRight, Loader2, AlertCircle, KeyRound, LogIn, UserPlus } from 'lucide-react';
 import { supabase } from './supabaseClient';
+import { authenticateGbaId } from './auth/identityGateway';
 
 const gbaIdExists = async handle => {
   const { data, error } = await supabase.rpc('vista_gba_id_exists', { p_handle: handle });
@@ -12,14 +13,7 @@ const gbaIdExists = async handle => {
     || error.message?.toLowerCase().includes('could not find the function');
   if (!missingFunction) throw error;
 
-  // Compatibilidad temporal mientras la migración de seguridad llega a producción.
-  const { data: legacyMatch, error: legacyError } = await supabase
-    .from('usuarios')
-    .select('nombre')
-    .ilike('nombre', handle.trim())
-    .maybeSingle();
-  if (legacyError) throw legacyError;
-  return Boolean(legacyMatch);
+  throw error;
 };
 
 function AllianceLogo() {
@@ -175,74 +169,18 @@ export default function VISTAAuth({ onLogin }) {
   // PROCESAMIENTO FINAL
   // ==========================================
   // Dirección técnica usada exclusivamente por Supabase Auth. Nunca se muestra como identidad del usuario.
-  const getAuthAddress = (id) => `${id.toLowerCase().replace(/\s+/g, '')}@gba.com`;
-  const getSecurePassword = (codigo) => `GBA-${codigo}-SecureVault`;
 
   const procesarPIN = async () => {
     setLoading(true);
     setError('');
 
-    const authAddress = getAuthAddress(nombre);
-    const password = getSecurePassword(pin);
-
     try {
-      if (flow === 'login') {
-        const { data, error: authError } = await supabase.auth.signInWithPassword({ email: authAddress, password });
-        if (authError) {
-          setError('GBA ID o clave incorrectos.');
-          setPin('');
-          setLoading(false);
-          return;
-        }
-        const { data: userData } = await supabase.from('usuarios').select('*').eq('id', data.user.id).single();
-        onLogin(userData || data.user);
-      } 
-      
-      else if (flow === 'register') {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email: authAddress, password, options: { data: { nombre: nombre.trim() } }
-        });
-
-        if (signUpError) throw signUpError;
-        const profilePayload = {
-          frase_seguridad: frase.trim().toLowerCase(),
-          nombre_publico: nombre.trim(),
-          onboarding_completado: false
-        };
-        const { error: profileError } = await supabase.from('usuarios').update(profilePayload).eq('id', data.user.id);
-        if (profileError) {
-          await supabase.from('usuarios').update({
-            frase_seguridad: profilePayload.frase_seguridad
-          }).eq('id', data.user.id);
-        }
-
-        const { data: newUserData } = await supabase.from('usuarios').select('*').eq('id', data.user.id).single();
-        onLogin(newUserData || data.user);
-      } 
-      
-      else if (flow === 'recover') {
-        const { data: exito, error: rpcError } = await supabase.rpc('reset_pin_seguro', {
-          p_nombre: nombre.trim(),
-          p_frase: frase.trim().toLowerCase(),
-          p_nuevo_pin: pin
-        });
-
-        if (rpcError || !exito) {
-          setError('La frase de seguridad es incorrecta.');
-          setPin('');
-          setStep('phrase'); 
-          setLoading(false);
-          return;
-        }
-
-        const { data: authData } = await supabase.auth.signInWithPassword({ email: authAddress, password });
-        const { data: userData } = await supabase.from('usuarios').select('*').eq('id', authData.user.id).single();
-        onLogin(userData || authData.user);
-      }
+      const session = await authenticateGbaId(flow, nombre.trim(), pin, frase.trim());
+      const { data: profile } = await supabase.from('usuarios').select('*').eq('id', session.user.id).single();
+      onLogin(profile || session.user);
 
     } catch (err) {
-      console.error(err);
-      setError('Error de conexión con la base de datos.');
+      setError(err.message || 'No pudimos completar el acceso.');
       setPin('');
       setLoading(false);
     }

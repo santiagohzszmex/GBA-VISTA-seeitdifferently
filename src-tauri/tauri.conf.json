@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "GBA Workspace",
+  "version": "0.1.0",
+  "identifier": "software.gba.workspace",
+  "build": {
+    "beforeDevCommand": "npm run workspace:dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run workspace:build",
+    "frontendDist": "../workspace-dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "GBA Workspace",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 720,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://gba.software https://www.gba.software https://vista.gba.software; frame-src 'none'; object-src 'none'; base-uri 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ]
+  }
+}
