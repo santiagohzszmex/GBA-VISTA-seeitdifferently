@@ -1,0 +1,135 @@
+name: Workspace native candidates
+on:
+  push:
+    branches: [codex/workspace-cloud-release-20261009]
+    paths: ['.github/workflows/workspace-desktop.yml']
+  workflow_dispatch:
+    inputs:
+      notarize_macos:
+        description: Build with authorized Developer ID and notarization secrets
+        type: boolean
+        default: false
+      retain_draft_release:
+        description: Preserve candidates in a durable draft GitHub Release
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: workspace-native-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:workspace && npm run test:desktop && npm run test:session && npm run test:recruitment
+  build:
+    needs: validate
+    environment: workspace-candidates
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            platform: macos
+            architecture: aarch64
+            target: aarch64-apple-darwin
+            bundles: dmg
+          - os: macos-15-intel
+            platform: macos
+            architecture: x86_64
+            target: x86_64-apple-darwin
+            bundles: dmg
+          - os: windows-2022
+            platform: windows
+            architecture: x86_64
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+        with:
+          targets: ${{ matrix.target }}
+      - run: npm ci
+      - name: Check public client configuration
+        shell: bash
+        run: node scripts/workspace-client-config.mjs
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_GBA_ID_API_URL: https://gba.software/api/gba-id
+      - name: Build unsigned candidate
+        if: matrix.platform == 'windows' || !inputs.notarize_macos
+        run: npm run desktop:build -- --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_GBA_ID_API_URL: https://gba.software/api/gba-id
+      - name: Build signed and notarized macOS candidate
+        if: matrix.platform == 'macos' && inputs.notarize_macos
+        shell: bash
+        run: |
+          for key in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!key}" ]; then echo "Missing authorized signing secret: $key"; exit 1; fi
+          done
+          keychain="$RUNNER_TEMP/workspace-signing.keychain-db"
+          certificate="$RUNNER_TEMP/workspace-signing.p12"
+          keychain_password="$(openssl rand -hex 24)"
+          echo "::add-mask::$keychain_password"
+          export WORKSPACE_CERTIFICATE_PATH="$certificate"
+          node -e 'require("fs").writeFileSync(process.env.WORKSPACE_CERTIFICATE_PATH,Buffer.from(process.env.APPLE_CERTIFICATE,"base64"),{mode:0o600})'
+          trap 'rm -f "$certificate"; security delete-keychain "$keychain" >/dev/null 2>&1 || true' EXIT
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -k "$keychain" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign >/dev/null
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain"
+          npm run desktop:build -- --target ${{ matrix.target }} --bundles dmg
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_GBA_ID_API_URL: https://gba.software/api/gba-id
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Verify packages and generate SHA-256 evidence
+        run: node scripts/workspace-packages.mjs ${{ matrix.platform }} ${{ matrix.architecture }} ${{ matrix.target }}
+        env:
+          REQUIRE_APPLE_NOTARIZATION: ${{ matrix.platform == 'macos' && inputs.notarize_macos }}
+      - name: Check native process startup
+        run: node scripts/workspace-native-smoke.mjs ${{ matrix.platform }} ${{ matrix.target }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: workspace-${{ matrix.platform }}-${{ matrix.architecture }}
+          path: release-candidates/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Preserve candidate in draft release
+        if: github.event_name == 'push' || inputs.retain_draft_release
+        shell: bash
+        run: |
+          tag="workspace-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.platform }}-${{ matrix.architecture }}"
+          gh release create "$tag" release-candidates/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --prerelease --title "$tag" --notes "Native candidate for $GITHUB_SHA. See packages.json for signature and SHA-256 evidence. Live authentication, staging and installed-app acceptance remain required before public distribution."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
