@@ -204,6 +204,19 @@ export const wordCount = (value) =>
       .trim()
       .match(/\S+/gu) || []
   ).length;
+export const normalizePhone = (value = "") => {
+  const input = String(value).trim();
+  if (!/^[+0-9() .-]+$/.test(input)) return "";
+  const stripped = input.replace(/[() .-]/g, "");
+  const phone = stripped.startsWith("+")
+    ? stripped
+    : /^\d{10}$/.test(stripped)
+      ? `+52${stripped}`
+      : /^52\d{10}$/.test(stripped)
+        ? `+${stripped}`
+        : "";
+  return /^\+[1-9][0-9]{7,14}$/.test(phone) ? phone : "";
+};
 export const validEmail = (value) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "")) &&
   String(value).length <= 254;
@@ -235,7 +248,13 @@ export const sectionsFor = (a) => [
     ],
   ],
   ["voice", ["motivation", "scenario"]],
-  ["sample", ["sample", "contact_email"]],
+  [
+    "sample",
+    [
+      "sample",
+      ...(a.contact_method === "phone" ? ["contact_phone"] : ["contact_email"]),
+    ],
+  ],
   ["review", []],
 ];
 export function cleanAnswers(input = {}) {
@@ -249,6 +268,8 @@ export function cleanAnswers(input = {}) {
     "sample_path",
     "sample_name",
     "contact_email",
+    "contact_phone",
+    "contact_method",
     ...Object.keys(QUESTIONS),
   ]);
   const result = Object.fromEntries(
@@ -264,6 +285,11 @@ export function cleanAnswers(input = {}) {
     if (!sectionsFor(result)[2][1].includes(key)) delete result[key];
   }
   if (result.secondary === result.area) delete result.secondary;
+  if (result.contact_method === "phone") delete result.contact_email;
+  else {
+    result.contact_method = "email";
+    delete result.contact_phone;
+  }
   if (result.sample !== "link") delete result.sample_url;
   if (result.sample !== "file") {
     delete result.sample_path;
@@ -301,6 +327,8 @@ export function validateSection(section, input) {
       return "Responde la mini-situación en un máximo de 100 palabras.";
     if (key === "contact_email" && !validEmail(a[key]))
       return "Escribe un correo de contacto válido.";
+    if (key === "contact_phone" && !normalizePhone(a[key]))
+      return "Escribe un teléfono válido: 10 dígitos para México, o incluye + y el código de otro país.";
     if (key === "sample") {
       if (!["none", "link", "file"].includes(a.sample))
         return "Elige cómo presentar tu muestra o continúa sin una.";

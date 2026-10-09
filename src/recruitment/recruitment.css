@@ -1,4 +1,5 @@
-:root {
+.rg-root,
+.rg-review-host {
   font-family: Arial, Helvetica, sans-serif;
   color: #172739;
   background: #fff;
@@ -9,80 +10,74 @@
   --rg-gold: #e99b20;
   --rg-line: #dce5eb;
 }
-* {
+:where(.rg-root, .rg-review-host) * {
   box-sizing: border-box;
 }
-html {
-  scroll-behavior: smooth;
-}
-body {
-  margin: 0;
-}
-button,
-input,
-textarea,
-select {
+:where(.rg-root, .rg-review-host) button,
+:where(.rg-root, .rg-review-host) input,
+:where(.rg-root, .rg-review-host) textarea,
+:where(.rg-root, .rg-review-host) select {
   font: inherit;
 }
-button,
-a,
-input,
-select,
-textarea {
+:where(.rg-root, .rg-review-host) button,
+:where(.rg-root, .rg-review-host) a,
+:where(.rg-root, .rg-review-host) input,
+:where(.rg-root, .rg-review-host) select,
+:where(.rg-root, .rg-review-host) textarea {
   -webkit-tap-highlight-color: transparent;
 }
-button {
+:where(.rg-root, .rg-review-host) button {
   cursor: pointer;
 }
-button:disabled {
+:where(.rg-root, .rg-review-host) button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
-a {
+:where(.rg-root, .rg-review-host) a {
   color: var(--rg-blue);
   text-decoration: none;
 }
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
+:where(.rg-root, .rg-review-host) button:focus-visible,
+:where(.rg-root, .rg-review-host) a:focus-visible,
+:where(.rg-root, .rg-review-host) input:focus-visible,
+:where(.rg-root, .rg-review-host) select:focus-visible,
+:where(.rg-root, .rg-review-host) textarea:focus-visible {
   outline: 3px solid #2563eb;
   outline-offset: 4px;
 }
-h1,
-h2,
-h3,
-p {
+:where(.rg-root, .rg-review-host) h1,
+:where(.rg-root, .rg-review-host) h2,
+:where(.rg-root, .rg-review-host) h3,
+:where(.rg-root, .rg-review-host) p {
   margin-top: 0;
 }
-h1,
-h2 {
+:where(.rg-root, .rg-review-host) h1,
+:where(.rg-root, .rg-review-host) h2 {
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 400;
   letter-spacing: -0.055em;
   line-height: 1.07;
 }
-h1 {
+:where(.rg-root, .rg-review-host) h1 {
   font-size: clamp(40px, 5.8vw, 86px);
 }
-h2 {
+:where(.rg-root, .rg-review-host) h2 {
   font-size: clamp(30px, 4vw, 56px);
 }
-h3 {
+:where(.rg-root, .rg-review-host) h3 {
   font-size: 20px;
   line-height: 1.35;
   letter-spacing: -0.02em;
 }
-p {
+:where(.rg-root, .rg-review-host) p {
   line-height: 1.75;
   color: var(--rg-muted);
 }
-em {
+:where(.rg-root, .rg-review-host) em {
   color: var(--rg-green);
   font-weight: 400;
 }
-small {
+:where(.rg-root, .rg-review-host) small {
   line-height: 1.5;
 }
 .rg-root {
@@ -1191,9 +1186,6 @@ small {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
   .rg-flower {
     animation: none;
   }
@@ -1201,4 +1193,78 @@ small {
   .rg-meter > i {
     transition: none;
   }
+}
+
+.rg-contact-choice {
+  border: 0;
+  padding: 0;
+  margin: 25px 0;
+  min-width: 0;
+}
+.rg-contact-choice legend {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--rg-ink);
+}
+.rg-contact-box {
+  margin-block: 25px;
+  overflow-wrap: anywhere;
+}
+.rg-contact-value {
+  font-size: 18px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 18px;
+}
+.rg-review-host {
+  --rg-ink: #e6edf6;
+  --rg-muted: #a7b1c0;
+  --rg-line: #30343b;
+  --rg-green: #43d3a1;
+  --rg-blue: #85adff;
+  background: transparent;
+  color: var(--rg-ink);
+}
+.rg-review-host .rg-wrap {
+  width: 100%;
+}
+.rg-review-host .rg-admin {
+  padding-top: 0;
+}
+.rg-review-host .rg-section-title h1 {
+  font-size: 42px;
+}
+.rg-review-host .rg-panel,
+.rg-review-host .rg-stat-grid > div,
+.rg-review-host .rg-app-list > button {
+  background: #121417;
+  border-color: var(--rg-line);
+}
+.rg-review-host .rg-app-list > button {
+  color: var(--rg-ink);
+  overflow-wrap: anywhere;
+}
+.rg-review-host .rg-app-list > button.active {
+  background: #142849;
+}
+.rg-review-host .rg-field input,
+.rg-review-host .rg-field select,
+.rg-review-host .rg-field textarea,
+.rg-review-host .rg-filters input,
+.rg-review-host .rg-filters select {
+  background: #0a0c0f;
+  border-color: var(--rg-line);
+  color: var(--rg-ink);
+}
+.rg-review-host .rg-button {
+  background: #2563eb;
+  color: #fff;
+}
+.rg-review-host .rg-button.secondary {
+  background: transparent;
+  color: var(--rg-ink);
+  border-color: var(--rg-line);
+}
+.rg-review-host .rg-contact-box {
+  background: #102c26;
 }

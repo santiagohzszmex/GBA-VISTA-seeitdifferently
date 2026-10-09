@@ -19,6 +19,7 @@ import {
   validateSection,
   validateAnswers,
   validEmail,
+  normalizePhone,
   wordCount,
   areaName,
   label,
@@ -26,6 +27,7 @@ import {
 } from "./model";
 import { TERMS } from "./terms";
 import "./recruitment.css";
+import "./recruitment-page.css";
 const copy = {
   profile: [
     "Primero, tu perspectiva.",
@@ -50,7 +52,7 @@ const copy = {
   sample: [
     "Algo tuyo, si quieres.",
     "Lo que ya has creado.",
-    "Una muestra es opcional. Tu correo será un dato privado de contacto para la coordinación si resultas seleccionado.",
+    "Una muestra es opcional. Tu correo o teléfono será un dato privado de contacto para la coordinación si resultas seleccionado.",
   ],
   review: [
     "Una última mirada.",
@@ -263,13 +265,15 @@ function Questionnaire({ session, user, definition, onBack }) {
         revision.current = data.revision;
         const { data: contact } = await supabase
           .from("gimg_recruitment_contacts")
-          .select("email")
+          .select("email,phone")
           .eq("application_id", data.id)
           .maybeSingle();
         if (!active) return;
         const restored = {
           ...data.answers,
           contact_email: contact?.email || "",
+          contact_phone: contact?.phone || "",
+          contact_method: contact?.phone ? "phone" : "email",
         };
         latest.current = restored;
         setAnswers(restored);
@@ -309,16 +313,24 @@ function Questionnaire({ session, user, definition, onBack }) {
           Error("Espera a que se abra tu borrador antes de continuar."),
         );
       const payload = cleanAnswers(a),
-        email = payload.contact_email;
+        email =
+          payload.contact_method === "email" ? payload.contact_email : null,
+        phone =
+          payload.contact_method === "phone"
+            ? normalizePhone(payload.contact_phone)
+            : null;
       delete payload.contact_email;
+      delete payload.contact_phone;
+      delete payload.contact_method;
       const run = async () => {
         setSaving("saving");
         const { data, error: failed } = await supabase.rpc(
-          "gimg_save_application",
+          "gimg_save_application_contact",
           {
             p_cycle: CYCLE,
             p_answers: payload,
             p_email: email && validEmail(email) ? email : null,
+            p_phone: phone || null,
             p_complete: complete,
             p_terms: complete && terms ? TERMS_VERSION : null,
             p_truth: complete && truth,
@@ -820,21 +832,73 @@ function Questionnaire({ session, user, definition, onBack }) {
                     <small>Hasta 10 MB. La muestra será privada.</small>
                   </label>
                 )}
-                <label className="rg-field">
-                  Correo para contacto si eres seleccionado
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    maxLength={254}
-                    value={answers.contact_email || ""}
-                    onChange={(e) => change("contact_email", e.target.value)}
-                    placeholder="tu.correo@ejemplo.com"
-                  />
-                  <small>
-                    Lo conservamos por separado de tus respuestas para la
-                    coordinación de personas seleccionadas.
-                  </small>
-                </label>
+                <fieldset className="rg-contact-choice">
+                  <legend>¿Cómo te contactamos si eres seleccionado?</legend>
+                  <div
+                    className="rg-tabs"
+                    role="group"
+                    aria-label="Medio de contacto"
+                  >
+                    <button
+                      type="button"
+                      aria-pressed={answers.contact_method !== "phone"}
+                      className={
+                        answers.contact_method !== "phone" ? "active" : ""
+                      }
+                      onClick={() => change("contact_method", "email")}
+                    >
+                      Correo electrónico
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={answers.contact_method === "phone"}
+                      className={
+                        answers.contact_method === "phone" ? "active" : ""
+                      }
+                      onClick={() => change("contact_method", "phone")}
+                    >
+                      Teléfono
+                    </button>
+                  </div>
+                  {answers.contact_method === "phone" ? (
+                    <label className="rg-field">
+                      Número de teléfono
+                      <input
+                        type="tel"
+                        autoComplete="tel"
+                        maxLength={30}
+                        value={answers.contact_phone || ""}
+                        onChange={(e) =>
+                          change("contact_phone", e.target.value)
+                        }
+                        placeholder="55 1234 5678"
+                      />
+                      <small>
+                        Para México, escribe 10 dígitos. Para otro país, incluye
+                        + y su código de país.
+                      </small>
+                    </label>
+                  ) : (
+                    <label className="rg-field">
+                      Correo electrónico
+                      <input
+                        type="email"
+                        autoComplete="email"
+                        maxLength={254}
+                        value={answers.contact_email || ""}
+                        onChange={(e) =>
+                          change("contact_email", e.target.value)
+                        }
+                        placeholder="tu.correo@ejemplo.com"
+                      />
+                    </label>
+                  )}
+                  <p className="rg-muted">
+                    El dato es privado: solo tú y el equipo autorizado pueden
+                    verlo. Se utilizará para coordinar contigo si eres
+                    seleccionado.
+                  </p>
+                </fieldset>
                 <p className="rg-note">
                   No tener portafolio no elimina tu postulación.
                 </p>
@@ -952,6 +1016,7 @@ function Summary({ answers, onEdit }) {
                         scenario: "Mini-situación",
                         sample: "Muestra",
                         contact_email: "Correo de contacto",
+                        contact_phone: "Teléfono de contacto",
                       }[key]}
                     :{" "}
                   </strong>

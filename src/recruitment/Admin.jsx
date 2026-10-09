@@ -11,7 +11,7 @@ import {
   csvCell,
   decisionMessage,
 } from "./model";
-export default function ReviewPanel({ director, user }) {
+export default function ReviewPanel({ director, user, previewMode = false }) {
   const [rows, setRows] = useState([]),
     [reviews, setReviews] = useState({}),
     [contacts, setContacts] = useState({}),
@@ -28,6 +28,59 @@ export default function ReviewPanel({ director, user }) {
     [notice, setNotice] = useState("");
   const load = useCallback(async () => {
     try {
+      if (previewMode) {
+        const defaults = {
+          decision: "submitted",
+          published: false,
+          public_decision: "submitted",
+          result_message: "",
+          assigned_role: "",
+          internal_notes: "",
+          availability_score: 0,
+          motivation_score: 0,
+          scenario_score: 0,
+          evidence_score: 0,
+          revision: 0,
+        };
+        setRows([
+          {
+            id: "preview-mail",
+            handle: "ejemplo.correo",
+            display_name: "Solicitud de ejemplo · correo",
+            submitted_at: new Date().toISOString(),
+            answers: {
+              area: "writing",
+              motivation:
+                "Solicitud ficticia para comprobar el panel. No corresponde a una persona real.",
+              scenario: "Revisaría fuentes y créditos antes de entregar.",
+              sample: "none",
+            },
+          },
+          {
+            id: "preview-phone",
+            handle: "ejemplo.telefono",
+            display_name: "Solicitud de ejemplo · teléfono",
+            submitted_at: new Date().toISOString(),
+            answers: {
+              area: "design",
+              motivation:
+                "Datos de demostración para revisar el contacto por teléfono.",
+              scenario: "Prepararía una retícula sencilla.",
+              sample: "none",
+            },
+          },
+        ]);
+        setReviews({
+          "preview-mail": { ...defaults },
+          "preview-phone": { ...defaults },
+        });
+        setContacts({
+          "preview-mail": { email: "postulante@example.test" },
+          "preview-phone": { phone: "+525500000000" },
+        });
+        setUpdated(new Date());
+        return;
+      }
       const all = [];
       for (let from = 0; ; from += 500) {
         const { data, error: failed } = await supabase
@@ -72,9 +125,10 @@ export default function ReviewPanel({ director, user }) {
     } catch {
       setError("No pudimos actualizar las postulaciones. Vuelve a intentar.");
     }
-  }, []);
+  }, [previewMode]);
   useEffect(() => {
     load();
+    if (previewMode) return;
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") load();
     }, 30000);
@@ -104,7 +158,7 @@ export default function ReviewPanel({ director, user }) {
       supabase.removeChannel(channel);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [load]);
+  }, [load, previewMode]);
   const filtered = rows.filter(
     (x) =>
       (!area || x.answers.area === area) &&
@@ -122,6 +176,10 @@ export default function ReviewPanel({ director, user }) {
     setError("");
   }
   async function save(publish) {
+    if (previewMode) {
+      setNotice("Vista de desarrollo: no se guardan ni publican resultados.");
+      return;
+    }
     setBusy(true);
     setError("");
     setNotice("");
@@ -216,6 +274,10 @@ export default function ReviewPanel({ director, user }) {
     else window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
   async function addReviewer() {
+    if (previewMode) {
+      setNotice("Vista de desarrollo: los permisos no se modifican.");
+      return;
+    }
     setBusy(true);
     const { error: failed } = await supabase.rpc("gimg_set_reviewer", {
       p_handle: member,
@@ -235,13 +297,19 @@ export default function ReviewPanel({ director, user }) {
           <p className="rg-kicker">GIMG · REVISIÓN PRIVADA</p>
           <h1>El equipo empieza aquí.</h1>
           <p>
-            Decisiones humanas, respuestas privadas y un registro del proceso.
+            Respuestas privadas, evaluación humana y contacto de cada
+            postulación enviada.
           </p>
         </div>
         <button className="rg-button secondary" onClick={load}>
           Actualizar
         </button>
       </div>
+      {previewMode && (
+        <p className="rg-muted">
+          Vista de desarrollo · Datos ficticios · No se guardan cambios.
+        </p>
+      )}
       <div className="rg-stat-grid">
         <div>
           <strong>{rows.length}</strong>
@@ -364,6 +432,11 @@ export default function ReviewPanel({ director, user }) {
               <strong>@{x.handle}</strong>
               <span>{areaName(x.answers.area)}</span>
               <small>
+                {contacts[x.id]?.email ||
+                  contacts[x.id]?.phone ||
+                  "Sin contacto disponible"}
+              </small>
+              <small>
                 {LABELS[reviews[x.id]?.decision || "submitted"]}{" "}
                 {reviews[x.id]?.published ? "· Publicado" : "· Privado"}
               </small>
@@ -386,6 +459,42 @@ export default function ReviewPanel({ director, user }) {
                 {w}
               </p>
             ))}
+            <div className="rg-contact-box">
+              <h3>Contacto de la postulación</h3>
+              {contacts[chosen.id] ? (
+                <>
+                  <a
+                    className="rg-contact-value"
+                    href={
+                      contacts[chosen.id].email
+                        ? `mailto:${contacts[chosen.id].email}`
+                        : `tel:${contacts[chosen.id].phone}`
+                    }
+                  >
+                    {contacts[chosen.id].email || contacts[chosen.id].phone}
+                  </a>
+                  <a
+                    className="rg-button secondary"
+                    href={
+                      contacts[chosen.id].email
+                        ? `mailto:${contacts[chosen.id].email}?subject=${encodeURIComponent(values.published && values.public_decision === "accepted" ? "Tu selección para el equipo de GIMG" : "Convocatoria GIMG")}&body=${encodeURIComponent(values.published && values.public_decision === "accepted" ? values.public_message || decisionMessage("accepted", chosen.handle, values.public_role) : `Hola ${chosen.display_name},\n\nTe contactamos sobre tu postulación a GIMG.`)}`
+                        : `tel:${contacts[chosen.id].phone}`
+                    }
+                  >
+                    {contacts[chosen.id].email
+                      ? "Preparar correo de contacto ↗"
+                      : "Abrir contacto telefónico ↗"}
+                  </a>
+                  <p className="rg-muted">
+                    Dato privado del proceso. El correo se prepara en tu
+                    aplicación para enviarlo desde tu cuenta @gba.software; nada
+                    se envía automáticamente.
+                  </p>
+                </>
+              ) : (
+                <p>No hay un contacto disponible para esta postulación.</p>
+              )}
+            </div>
             <dl className="rg-answer-summary">
               {Object.entries(chosen.answers)
                 .filter(
@@ -542,25 +651,6 @@ export default function ReviewPanel({ director, user }) {
                 </button>
               )}
             </div>
-            {values.published &&
-              values.public_decision === "accepted" &&
-              contacts[chosen.id] && (
-                <div className="rg-contact-box">
-                  <h3>Contacto de la persona seleccionada</h3>
-                  <p>{contacts[chosen.id].email}</p>
-                  <a
-                    className="rg-button secondary"
-                    href={`mailto:${contacts[chosen.id].email}?subject=${encodeURIComponent("Tu selección para el equipo de GIMG")}&body=${encodeURIComponent(values.public_message || decisionMessage("accepted", chosen.handle, values.public_role))}`}
-                  >
-                    Preparar correo de coordinación ↗
-                  </a>
-                  <p className="rg-muted">
-                    Se abrirá tu correo. Envía desde tu cuenta @gba.software;
-                    esta acción prepara el mensaje y no lo envía
-                    automáticamente.
-                  </p>
-                </div>
-              )}
           </section>
         ) : (
           <section className="rg-panel">

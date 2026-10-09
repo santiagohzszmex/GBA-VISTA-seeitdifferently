@@ -25,7 +25,7 @@ export const TERMS = [
   ],
   [
     "Datos y privacidad",
-    "GBA guarda tu identificador de cuenta, respuestas, muestra opcional, constancia de aceptación de esta versión de las condiciones y fechas del proceso. El correo de contacto se conserva por separado y se utilizará para coordinación si resultas seleccionado. Las respuestas y los archivos no son públicos: los consultan la persona postulante y el equipo de selección autorizado; las notas internas de revisión son privadas del equipo. El alojamiento y la autenticación se apoyan en Supabase y Vercel, que procesan datos técnicos para prestar el servicio. No se añaden herramientas de seguimiento publicitario.",
+    "GBA guarda tu identificador de cuenta, respuestas, muestra opcional, constancia de aceptación de esta versión de las condiciones y fechas del proceso. El correo o número de teléfono que elijas para contacto se conserva por separado y se utilizará para coordinación si resultas seleccionado. Las respuestas y los archivos no son públicos: los consultan la persona postulante y el equipo de selección autorizado, incluido el contacto de postulaciones enviadas; las notas internas de revisión son privadas del equipo. El alojamiento y la autenticación se apoyan en Supabase y Vercel, que procesan datos técnicos para prestar el servicio. No se añaden herramientas de seguimiento publicitario.",
   ],
   [
     "Revisión de tus datos",

@@ -149,8 +149,8 @@ export default function Identity({ onSession }) {
       </h2>
       <p>
         GBA ID es la cuenta desarrollada por GBA para guardar tu postulación y
-        consultar su estado. Tu correo de contacto se pide en el cuestionario,
-        para coordinar contigo si resultas seleccionado.
+        consultar su estado. Tu correo o teléfono de contacto se pide en el
+        cuestionario, para coordinar contigo si resultas seleccionado.
       </p>
       {recovery ? (
         <div className="rg-recovery">

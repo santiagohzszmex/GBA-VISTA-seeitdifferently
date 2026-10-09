@@ -8,6 +8,7 @@ import {
   wordCount,
   csvCell,
   validEmail,
+  normalizePhone,
 } from "../src/recruitment/model.js";
 import {
   displayName,
@@ -93,6 +94,28 @@ try {
     null,
   );
   ok(validEmail("x@bad"), false);
+  ok(normalizePhone("55 1234 5678"), "+525512345678");
+  ok(normalizePhone("+1 (202) 555-0123"), "+12025550123");
+  ok(normalizePhone("telefono"), "");
+  ok(normalizePhone("123"), "");
+  ok(
+    validateAnswers({
+      ...base,
+      contact_method: "phone",
+      contact_phone: "55 1234 5678",
+    }),
+    null,
+  );
+  ok(
+    Boolean(
+      validateAnswers({
+        ...base,
+        contact_method: "phone",
+        contact_phone: "no válido",
+      }),
+    ),
+    true,
+  );
   ok(validEmail("x@example.test"), true);
   ok(
     Boolean(
@@ -199,6 +222,12 @@ $function$
     /es_staff/,
   );
   await db.exec(fs.readFileSync(`supabase/migrations/${fix}`, "utf8"));
+  const contactMigration = fs
+    .readdirSync("supabase/migrations")
+    .find((p) => p.endsWith("_gimg_contact_and_mothership.sql"));
+  await db.exec(
+    fs.readFileSync(`supabase/migrations/${contactMigration}`, "utf8"),
+  );
   await db.query(
     "insert into auth.users(id,email,raw_user_meta_data) values($1,'mariaruiz@gba.com',$2)",
     [pinUser, { nombre: "María Ruiz", gimg_candidate: true }],
@@ -422,7 +451,7 @@ $function$
   );
   ok(
     await scalar("select count(*)::int from public.gimg_recruitment_contacts"),
-    0,
+    1,
   );
   ok(
     await scalar("select public.gimg_set_reviewer('evaluador','reviewer')"),
@@ -452,6 +481,13 @@ $function$
     /No hay una plaza/,
   );
   await actor(reviewer);
+  ok(
+    await scalar(
+      "select email from public.gimg_recruitment_contacts where application_id=$1",
+      [receipt.id],
+    ),
+    "candidata@example.test",
+  );
   ok(
     await scalar(
       "select count(*)::int from public.gimg_recruitment_applications",
@@ -546,6 +582,75 @@ $function$
   );
   await db.exec(
     "update public.gimg_recruitment_cycles set closes_at=now()-interval '1 hour',opens_at=now()-interval '1 day'",
+  );
+  await actor(second);
+  const savePhone = (email, phone, revision = 0, complete = false) =>
+    scalar(
+      "select public.gimg_save_application_contact($1,$2,$3,$4,$5,$6,$7,$8)",
+      [
+        "gimg-otono-2026",
+        base,
+        email,
+        phone,
+        complete,
+        complete ? "2026-10-08" : null,
+        complete,
+        revision,
+      ],
+    );
+  // Reopen temporarily in this isolated local fixture to test phone submission.
+  await db.exec("reset role");
+  await db.exec(
+    "update public.gimg_recruitment_cycles set closes_at=now()+interval '1 day'",
+  );
+  await actor(second);
+  const pd = await savePhone(null, "+525512345678");
+  ok(
+    await scalar(
+      "select phone from public.gimg_recruitment_contacts where application_id=$1",
+      [pd.id],
+    ),
+    "+525512345678",
+  );
+  ok(
+    await scalar(
+      "select email from public.gimg_recruitment_contacts where application_id=$1",
+      [pd.id],
+    ),
+    null,
+  );
+  await actor(reviewer);
+  ok(
+    await scalar(
+      "select count(*)::int from public.gimg_recruitment_contacts where application_id=$1",
+      [pd.id],
+    ),
+    0,
+  );
+  await actor(second);
+  await no(savePhone("x@example.test", "+525512345678", 1), /no ambos/);
+  await no(savePhone(null, "malformado", 1), /Teléfono/);
+  await no(savePhone(null, null, 1, true), /contacto/);
+  ok((await savePhone(null, "+525512345678", 1, true)).submitted, true);
+  await actor(first);
+  ok(
+    await scalar(
+      "select count(*)::int from public.gimg_recruitment_contacts where application_id=$1",
+      [pd.id],
+    ),
+    0,
+  );
+  await actor(reviewer);
+  ok(
+    await scalar(
+      "select phone from public.gimg_recruitment_contacts where application_id=$1",
+      [pd.id],
+    ),
+    "+525512345678",
+  );
+  await db.exec("reset role");
+  await db.exec(
+    "update public.gimg_recruitment_cycles set closes_at=now()-interval '1 hour'",
   );
   await actor(second);
   await no(save(), /cerrada/);
