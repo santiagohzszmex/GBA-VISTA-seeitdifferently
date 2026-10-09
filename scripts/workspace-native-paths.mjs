@@ -1,8 +1,12 @@
 import path from 'node:path';
+import { accessSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
-export function nativePaths(platform, target, config, readExecutable = app =>
-  execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Print :CFBundleExecutable', path.join(app, 'Contents/Info.plist')], { encoding: 'utf8' }).trim()) {
+export function nativePaths(platform, target, config, readExecutable = app => {
+  const metadata=path.join(app, 'Contents/Info.plist');
+  accessSync(metadata);
+  return execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Print :CFBundleExecutable', metadata], { encoding: 'utf8' }).trim();
+}) {
   if (!['macos', 'windows'].includes(platform) || !/^[a-z0-9_-]+$/.test(target || '')) throw Error('Invalid native platform/target');
   const release = path.join('src-tauri/target', target, 'release');
   if (platform === 'windows') return { release, executable: path.join(release, 'gba-workspace.exe') };

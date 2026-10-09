@@ -19,8 +19,8 @@
     "workspace:dev": "vite --config vite.workspace.config.js",
     "workspace:build": "vite build --config vite.workspace.config.js",
     "desktop:dev": "tauri dev",
-    "desktop:build": "tauri build",
-    "test:desktop": "node tests/license-clock.test.mjs && node tests/desktop-config.test.mjs && node tests/native-paths.test.mjs"
+    "desktop:build": "node scripts/workspace-build.mjs",
+    "test:desktop": "node tests/license-clock.test.mjs && node tests/desktop-config.test.mjs && node tests/native-paths.test.mjs && node tests/native-build.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
