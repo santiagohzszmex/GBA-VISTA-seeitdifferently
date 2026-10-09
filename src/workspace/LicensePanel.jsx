@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { dateLabel } from './gimgModel';
+import { scheduleLicenseExpiry } from './licenseClock';
 
 export function LicenseGate({ children }) {
   const [license,setLicense]=useState(null),[error,setError]=useState(''),[code,setCode]=useState(''),[busy,setBusy]=useState(false);
@@ -10,7 +11,7 @@ export function LicenseGate({ children }) {
     void check();const timer=setInterval(check,30000);const visible=()=>{if(document.visibilityState==='visible')void check();};document.addEventListener('visibilitychange',visible);
     return()=>{active=false;clearInterval(timer);document.removeEventListener('visibilitychange',visible);};
   },[]);
-  useEffect(()=>{if(!license?.expires_at)return;const ms=new Date(license.expires_at).getTime()-Date.now();if(ms<=0){setLicense({...license,active:false});return;}const timer=setTimeout(()=>setLicense(current=>({...current,active:false})),Math.min(ms,2147483647));return()=>clearTimeout(timer);},[license?.expires_at]);
+  useEffect(()=>{if(!license?.expires_at)return;return scheduleLicenseExpiry(license.expires_at,()=>setLicense(current=>({...current,active:false})));},[license?.expires_at]);
   async function activate(e){e.preventDefault();setBusy(true);setError('');try{const {data,error:e}=await supabase.rpc('workspace_activate_license',{p_code:code});if(e||data?.error)throw Error(data?.error||'No pudimos activar el código');setCode('');const status=await supabase.rpc('workspace_license_status');if(status.error)throw Error('No pudimos verificar la activación');setLicense(status.data);}catch(e){setError(e.message);}finally{setBusy(false);}}
   if(license===null)return <main className="gw-license"><p role="status">Verificando licencia…</p></main>;
   if(license.active && new Date(license.expires_at)>new Date())return children;
