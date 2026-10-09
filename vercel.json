@@ -1,6 +1,26 @@
 {
   "routes": [
     {
+      "src": "^/convocatoria/gimg(?:/gestion)?/?$",
+      "dest": "/convocatoria/index.html",
+      "has": [
+        {
+          "type": "host",
+          "value": "gba.software"
+        }
+      ]
+    },
+    {
+      "src": "^/convocatoria/gimg(?:/gestion)?/?$",
+      "dest": "/convocatoria/index.html",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.gba.software"
+        }
+      ]
+    },
+    {
       "src": "^/robots\\.txt/?$",
       "dest": "/gba/robots.txt",
       "has": [

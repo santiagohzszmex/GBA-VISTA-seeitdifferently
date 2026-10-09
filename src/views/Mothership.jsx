@@ -45,6 +45,8 @@ export default function Mothership({ previewMode = false }) {
         return <CommunicationsTab />;
       case 'network':
         return <NetworkAdminTab previewMode={previewMode} />;
+      case 'recruitment':
+        return <section className="max-w-3xl py-10"><p className="text-emerald-400 text-xs uppercase tracking-widest mb-5">GIMG · Convocatoria editorial</p><h2 className="text-4xl font-serif mb-6">El primer equipo de GIMG.</h2><p className="text-neutral-400 leading-relaxed mb-8">Las postulaciones se revisan en un panel independiente de GBA: estadísticas por área, evaluación privada, publicación de resultados y contacto de personas seleccionadas.</p><a href="https://gba.software/convocatoria/gimg/gestion/" target="_blank" rel="noopener noreferrer" className="inline-flex px-6 py-4 rounded-xl bg-emerald-400 text-black font-semibold text-sm">Abrir gestión de postulaciones ↗</a><p className="text-neutral-500 text-xs mt-6">Accede con tu GBA ID. Dirección puede incorporar evaluadores sin darles acceso a Mothership.</p></section>;
       case 'surveys':
         return <SurveysTab previewMode={previewMode} />;
       case 'audience':
@@ -138,6 +140,8 @@ export default function Mothership({ previewMode = false }) {
           >
             <Users size={16} /> Audiencia
           </button>
+
+          <button onClick={() => setActiveSection('recruitment')} className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 whitespace-nowrap ${activeSection === 'recruitment' ? 'bg-emerald-400 text-black' : 'text-neutral-500 hover:text-white'}`}><Users size={16} /> Convocatoria GIMG</button>
 
           <button onClick={() => setActiveSection('surveys')} className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 whitespace-nowrap ${activeSection === 'surveys' ? 'bg-emerald-400 text-black' : 'text-neutral-500 hover:text-white'}`}><Users size={16} /> Encuestas</button>
 

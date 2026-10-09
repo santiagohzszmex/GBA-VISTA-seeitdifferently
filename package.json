@@ -13,7 +13,8 @@
     "test:social": "node tests/social.test.mjs",
     "test:studios": "node tests/studios.test.mjs",
     "test:session": "node tests/session.test.mjs",
-    "test:home": "node tests/home.test.mjs"
+    "test:home": "node tests/home.test.mjs",
+    "test:recruitment": "node tests/recruitment.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
