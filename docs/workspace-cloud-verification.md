@@ -32,3 +32,11 @@ Antes de usar firma: proteger el environment workspace-candidates para ejecutar 
 ## Evidencia local cloud
 
 Pasaron 97 comprobaciones SQL/RLS Workspace, 43 gateway (incluye orígenes), 47 sesiones, 108 convocatoria y pruebas de reloj/CSP/configuración de claves. Web y frontend desktop compilan; existe advertencia de chunks grandes. PostgreSQL embebido no prueba triggers/Auth reales de Supabase. No declarar instaladores, staging, firma o producción a partir de esta evidencia local.
+
+## Continuación local verificada
+
+El commit db07debf6279c982618d3804428051727db9b269 pasó la [ejecución nativa 37981457217](https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/actions/runs/37981457217): las tres arquitecturas compilaron y pasaron verificación de paquetes y arranque del proceso. Los artefactos descargados coinciden con SHA-256 y tamaño registrados. macOS usa firma ad hoc, sin notarización; Windows está sin firma. Apple Silicon también abrió localmente la pantalla de GBA ID. La aceptación de acceso y licencias desde los instaladores sigue pendiente.
+
+Workspace, licencias y aislamiento de roles pasaron un ensayo transaccional autorizado contra Supabase real con ROLLBACK completo. Se comprobaron Dirección explícita y propietario, rechazo de sesiones inexistentes, activación desde el primer uso, repetición con las mismas fechas y revocación. Las Keynotes y contraseñas conservaron sus huellas dentro de la transacción. Después del rollback permanecen 127 cuentas y dos Keynotes y no existe workspace_private. El ensayo excluyó la migración de identidad; no acredita todavía la emisión real de sesiones por la API.
+
+El secreto del servidor está configurado en Production de Vercel. Los archivos .env, credenciales locales, compilaciones nativas y candidatos se excluyen explícitamente de la subida del CLI con .vercelignore. La entrega coordinada y el manifiesto público siguen pendientes.
