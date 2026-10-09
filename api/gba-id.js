@@ -7,6 +7,8 @@ export function createIdentityHandler({ env = process.env, makeClient = createCl
   return async function handler(request, response) {
     response.setHeader('Cache-Control', 'no-store');
     const allowed = new Set((env.GBA_ID_ALLOWED_ORIGINS || 'https://gba.software,https://www.gba.software,https://vista.gba.software,tauri://localhost,http://tauri.localhost,https://tauri.localhost').split(',').map(x => x.trim()));
+    // The platform supplies this deployment's host. Request headers never add origins.
+    if (env.VERCEL === '1' && /^[a-z0-9-]+\.vercel\.app$/i.test(env.VERCEL_URL || '')) allowed.add(`https://${env.VERCEL_URL}`);
     const origin = request.headers.origin;
     if (origin && !allowed.has(origin)) return response.status(403).json({ error: 'Origen no autorizado' });
     if (origin) { response.setHeader('Access-Control-Allow-Origin', origin); response.setHeader('Vary', 'Origin'); }
