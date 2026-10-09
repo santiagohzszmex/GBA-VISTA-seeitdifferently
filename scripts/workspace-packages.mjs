@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { nativePaths } from './workspace-native-paths.mjs';
 
 // Run on the native runner after Tauri has finished. This records package
 // evidence, not a claim that live Auth/RLS or an installed app has been tested.
@@ -21,8 +22,7 @@ async function files(dir) {
 }
 let signing='unsigned';
 if(platform==='macos') {
-  const app=path.join(root,'macos/GBA Workspace.app');
-  const binary=path.join(app,'Contents/MacOS/gba-workspace');
+  const {app,executable:binary}=nativePaths(platform,target,config);
   const arch=run('lipo',['-archs',binary]).trim();
   if(arch!==(architecture==='aarch64'?'arm64':'x86_64')) throw Error(`Wrong Mach-O architecture: ${arch}`);
   const details=spawnSync('codesign',['-dv','--verbose=4',app],{encoding:'utf8'});
@@ -49,7 +49,7 @@ for(const file of packages) {
   if(platform==='macos') run('hdiutil',['verify',file]);
   let packageSigning=signing;
   if(platform==='windows') {
-    const status=run('powershell.exe',['-NoProfile','-NonInteractive','-Command',`(Get-AuthenticodeSignature -LiteralPath '${file.replaceAll("'","''")}').Status.ToString()`]).trim();
+    const status=run('pwsh.exe',['-NoProfile','-NonInteractive','-Command',`$ErrorActionPreference='Stop'; Import-Module Microsoft.PowerShell.Security -ErrorAction Stop; (Get-AuthenticodeSignature -LiteralPath '${file.replaceAll("'","''")}').Status.ToString()`]).trim();
     if(!['Valid','NotSigned'].includes(status)) throw Error(`Invalid installer signature: ${status}`);
     packageSigning=status==='Valid'?'authenticode':'unsigned';
   }

@@ -1,11 +1,11 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { nativePaths } from './workspace-native-paths.mjs';
 const [platform,target]=process.argv.slice(2);
 if(!['macos','windows'].includes(platform)||!/^[a-z0-9_-]+$/.test(target||'')) throw Error('Invalid native smoke target');
-const executable=platform==='macos'
- ?path.join('src-tauri/target',target,'release/bundle/macos/GBA Workspace.app/Contents/MacOS/gba-workspace')
- :path.join('src-tauri/target',target,'release/gba-workspace.exe');
+const config=JSON.parse(await fs.readFile('src-tauri/tauri.conf.json','utf8'));
+const {executable}=nativePaths(platform,target,config);
 await fs.access(executable);
 const child=spawn(path.resolve(executable),[],{stdio:'ignore'});
 let error=null,exited=false;
