@@ -44,3 +44,7 @@ Thumbs.db
 workspace-dist/
 src-tauri/target/
 src-tauri/gen/
+
+# Native candidate evidence stays in release artifacts, not source commits.
+release-candidates/
+.vercel/
