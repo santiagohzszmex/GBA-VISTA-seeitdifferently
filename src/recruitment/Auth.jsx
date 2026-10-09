@@ -1,16 +1,17 @@
 import React, { useState } from "react";
 import { supabase } from "../supabaseClient";
-const normalize = (v) =>
-  v
-    .toLowerCase()
-    .replace(/^@/, "")
-    .replace(/\s+/g, ".")
-    .replace(/[^a-z0-9._-]/g, "")
-    .slice(0, 24);
+import {
+  displayName,
+  authName,
+  validName,
+  normalizePin,
+  validPin,
+  securePin,
+} from "./identity.js";
 export default function Identity({ onSession }) {
   const [mode, setMode] = useState("register"),
     [handle, setHandle] = useState(""),
-    [password, setPassword] = useState(""),
+    [pin, setPin] = useState(""),
     [confirmation, setConfirmation] = useState(""),
     [code, setCode] = useState(""),
     [recovery, setRecovery] = useState(""),
@@ -21,7 +22,7 @@ export default function Identity({ onSession }) {
   const switchMode = (m) => {
     setMode(m);
     setError("");
-    setPassword("");
+    setPin("");
     setConfirmation("");
     setCode("");
   };
@@ -30,18 +31,20 @@ export default function Identity({ onSession }) {
     setBusy(true);
     setError("");
     try {
-      const id = normalize(handle);
-      if (id.length < 3)
-        throw Error("El identificador debe tener entre 3 y 24 caracteres.");
+      const id = displayName(handle);
+      if (!validName(id))
+        throw Error(
+          "Escribe tu nombre: de 3 a 64 caracteres, con letras, números o espacios.",
+        );
       if (mode === "recover") {
-        if (password.length < 10 || password !== confirmation)
-          throw Error("Confirma una nueva clave de al menos 10 caracteres.");
+        if (!validPin(pin) || pin !== confirmation)
+          throw Error("Confirma tu nuevo PIN de 4 dígitos.");
         const { data, error: failed } = await supabase.rpc(
           "gimg_recover_identity",
           {
             p_handle: id,
             p_code: code.trim().replaceAll("-", "").toLowerCase(),
-            p_password: password,
+            p_password: securePin(pin),
           },
         );
         if (failed || !data)
@@ -49,18 +52,14 @@ export default function Identity({ onSession }) {
             "No pudimos recuperar el acceso. Revisa tu GBA ID y el código, o vuelve a intentar más tarde.",
           );
         switchMode("login");
-        setError("Tu clave se actualizó. Ahora puedes iniciar sesión.");
+        setError("Tu PIN se actualizó. Ahora puedes iniciar sesión.");
         return;
       }
       if (mode === "register") {
         if (!terms)
           throw Error("Confirma que has leído la información de tu cuenta.");
-        if (
-          password.length < 10 ||
-          password.length > 128 ||
-          password !== confirmation
-        )
-          throw Error("Elige y confirma una clave de 10 a 128 caracteres.");
+        if (!validPin(pin) || pin !== confirmation)
+          throw Error("Elige y confirma un PIN de 4 dígitos.");
         const { data: available, error: lookupError } = await supabase.rpc(
           "gimg_id_available",
           { p_handle: id },
@@ -70,14 +69,16 @@ export default function Identity({ onSession }) {
             "No pudimos comprobar el identificador. Inténtalo de nuevo.",
           );
         if (!available)
-          throw Error("Ese GBA ID ya está en uso. Elige otro o inicia sesión.");
+          throw Error(
+            "Ese nombre ya tiene un GBA ID. Inicia sesión o añade un apellido para distinguirte.",
+          );
         const secret = Array.from(
           crypto.getRandomValues(new Uint8Array(24)),
           (x) => x.toString(16).padStart(2, "0"),
         ).join("");
         const { data, error: failed } = await supabase.auth.signUp({
-          email: `${id}@id.gba.software`,
-          password,
+          email: `${authName(id)}@gba.com`,
+          password: securePin(pin),
           options: { data: { nombre: id, gimg_candidate: true } },
         });
         if (failed)
@@ -108,19 +109,24 @@ export default function Identity({ onSession }) {
           );
         }
         setRecovery(secret);
-        setPassword("");
+        setPin("");
         setConfirmation("");
         return;
       }
-      const legacy = /^\d{4}$/.test(password);
-      const { data, error: failed } = await supabase.auth.signInWithPassword({
-        email: `${id}@${legacy ? "gba.com" : "id.gba.software"}`,
-        password: legacy ? `GBA-${password}-SecureVault` : password,
+      if (!validPin(pin)) throw Error("Escribe tu PIN de 4 dígitos.");
+      let { data, error: failed } = await supabase.auth.signInWithPassword({
+        email: `${authName(id)}@gba.com`,
+        password: securePin(pin),
       });
-      if (failed || !data.session)
-        throw Error(
-          "GBA ID o clave incorrectos. Para una cuenta anterior, usa su clave de cuatro dígitos.",
-        );
+      // Earlier accounts may retain accents in their technical address.
+      const earlierName = id.toLowerCase().replace(/\s+/g, "");
+      if (failed && earlierName !== authName(id)) {
+        ({ data, error: failed } = await supabase.auth.signInWithPassword({
+          email: `${earlierName}@gba.com`,
+          password: securePin(pin),
+        }));
+      }
+      if (failed || !data.session) throw Error("Nombre o PIN incorrectos.");
       onSession(data.session);
     } catch (failed) {
       setError(failed.message);
@@ -150,7 +156,7 @@ export default function Identity({ onSession }) {
         <div className="rg-recovery">
           <h3>Guarda tu código de recuperación.</h3>
           <p>
-            Es la forma de recuperar tu cuenta si olvidas la clave. Solo se
+            Es la forma de recuperar tu cuenta si olvidas el PIN. Solo se
             muestra ahora. Consérvalo en un lugar privado.
           </p>
           <code>{recovery.match(/.{1,8}/g).join("-")}</code>
@@ -160,7 +166,7 @@ export default function Identity({ onSession }) {
             onClick={() => {
               const blob = new Blob(
                 [
-                  `GBA ID: ${handle}\nCódigo de recuperación: ${recovery}\nGuarda este archivo en privado.\n`,
+                  `Tu nombre: ${displayName(handle)}\nCódigo de recuperación: ${recovery}\nGuarda este archivo en privado.\n`,
                 ],
                 { type: "text/plain" },
               );
@@ -191,6 +197,7 @@ export default function Identity({ onSession }) {
           <div className="rg-tabs" role="group" aria-label="Acceso GBA ID">
             <button
               type="button"
+              disabled={busy}
               className={mode === "register" ? "active" : ""}
               onClick={() => switchMode("register")}
             >
@@ -198,6 +205,7 @@ export default function Identity({ onSession }) {
             </button>
             <button
               type="button"
+              disabled={busy}
               className={mode === "login" ? "active" : ""}
               onClick={() => switchMode("login")}
             >
@@ -206,18 +214,18 @@ export default function Identity({ onSession }) {
           </div>
           <form onSubmit={submit}>
             <label className="rg-field">
-              Tu GBA ID
+              Tu nombre
               <input
                 autoComplete="username"
                 value={handle}
                 minLength={3}
-                maxLength={24}
-                onChange={(e) => setHandle(normalize(e.target.value))}
+                maxLength={64}
+                onChange={(e) => setHandle(e.target.value)}
                 required
-                placeholder="por.ejemplo.luna"
+                placeholder="Por ejemplo, Luna García"
               />
               <small>
-                Un identificador de presentación. Puedes elegir un alias.
+                Usa este mismo nombre para volver a entrar a tu GBA ID.
               </small>
             </label>
             {mode === "recover" && (
@@ -232,31 +240,36 @@ export default function Identity({ onSession }) {
               </label>
             )}
             <label className="rg-field">
-              {mode === "recover" ? "Nueva clave" : "Tu clave"}
+              {mode === "recover" ? "Nuevo PIN" : "Tu PIN"}
               <input
                 type="password"
                 autoComplete={
                   mode === "login" ? "current-password" : "new-password"
                 }
-                value={password}
-                maxLength={128}
-                onChange={(e) => setPassword(e.target.value)}
+                value={pin}
+                maxLength={4}
+                minLength={4}
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                onChange={(e) => setPin(normalizePin(e.target.value))}
                 required
               />
-              <small>
-                {mode === "login"
-                  ? "Las cuentas anteriores pueden usar su clave de cuatro dígitos."
-                  : "Al menos 10 caracteres. Combina varias palabras que recuerdes."}
-              </small>
+              <small>Un PIN de 4 dígitos, como el que ya usas en GBA ID.</small>
             </label>
             {mode !== "login" && (
               <label className="rg-field">
-                Confirma tu clave
+                Confirma tu PIN
                 <input
                   type="password"
                   autoComplete="new-password"
+                  inputMode="numeric"
+                  pattern="[0-9]{4}"
+                  minLength={4}
+                  maxLength={4}
                   value={confirmation}
-                  onChange={(e) => setConfirmation(e.target.value)}
+                  onChange={(e) =>
+                    setConfirmation(normalizePin(e.target.value))
+                  }
                   required
                 />
               </label>
@@ -269,9 +282,8 @@ export default function Identity({ onSession }) {
                   onChange={(e) => setTerms(e.target.checked)}
                   required
                 />
-                Entiendo que GBA guardará mi identificador y credenciales de
-                acceso para gestionar mi postulación. Conservaré mi código de
-                recuperación.
+                Entiendo que GBA guardará mi nombre y datos de acceso para
+                gestionar mi postulación. Conservaré mi código de recuperación.
               </label>
             )}
             {error && (

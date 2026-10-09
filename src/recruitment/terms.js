@@ -21,7 +21,7 @@ export const TERMS = [
   ],
   [
     "Tu GBA ID",
-    "GBA ID es una cuenta desarrollada por GBA para identificar tu postulación, guardar las respuestas y permitirte consultar su estado. Tu identificador y nombre de presentación se obtienen de la sesión. Crear una cuenta no equivale a ser seleccionado ni da acceso inmediato a Workspace. Conserva tu clave y tu código de recuperación; no los compartas con el equipo evaluador.",
+    "GBA ID es una cuenta desarrollada por GBA para identificar tu postulación, guardar las respuestas y permitirte consultar su estado. Tu identificador y nombre de presentación se obtienen de la sesión. Crear una cuenta no equivale a ser seleccionado ni da acceso inmediato a Workspace. Conserva tu PIN y tu código de recuperación; no los compartas con el equipo evaluador.",
   ],
   [
     "Datos y privacidad",
@@ -29,6 +29,6 @@ export const TERMS = [
   ],
   [
     "Revisión de tus datos",
-    "Puedes revisar y corregir el borrador hasta enviarlo. Después del envío, consulta el estado desde tu GBA ID. Los datos se utilizan para este proceso y su coordinación; una participación en otros ciclos requerirá una decisión posterior. Para solicitar corrección, retiro de la postulación, información sobre conservación o eliminación de tus datos, escribe a contacto@gba.software indicando tu GBA ID, sin enviar tu clave ni código de recuperación. Las muestras no se publicarán por el solo hecho de postularte; cualquier uso editorial se acordará posteriormente.",
+    "Puedes revisar y corregir el borrador hasta enviarlo. Después del envío, consulta el estado desde tu GBA ID. Los datos se utilizan para este proceso y su coordinación; una participación en otros ciclos requerirá una decisión posterior. Para solicitar corrección, retiro de la postulación, información sobre conservación o eliminación de tus datos, escribe a contacto@gba.software indicando tu GBA ID, sin enviar tu PIN ni código de recuperación. Las muestras no se publicarán por el solo hecho de postularte; cualquier uso editorial se acordará posteriormente.",
   ],
 ];

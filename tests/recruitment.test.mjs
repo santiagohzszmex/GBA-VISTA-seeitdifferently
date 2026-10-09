@@ -9,6 +9,14 @@ import {
   csvCell,
   validEmail,
 } from "../src/recruitment/model.js";
+import {
+  displayName,
+  authName,
+  validName,
+  normalizePin,
+  validPin,
+  securePin,
+} from "../src/recruitment/identity.js";
 const db = new PGlite();
 let count = 0;
 const ok = (actual, expected) => {
@@ -114,7 +122,7 @@ try {
  create table auth.sessions(id uuid primary key,user_id uuid references auth.users(id) on delete cascade);
  create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
  create function auth.jwt() returns jsonb language sql as $$select jsonb_build_object('session_id',current_setting('test.session',true))$$;
- create table public.usuarios(id uuid primary key references auth.users(id),nombre text not null unique,nombre_publico text,perfil_publico boolean default true);
+ create table public.usuarios(id uuid primary key references auth.users(id),nombre text not null unique,nombre_publico text,perfil_publico boolean default true,rol text default 'Usuario',saldo numeric default 0,credito_usado numeric default 0,credito_limite numeric default 0,credito_activo boolean default false,care_level text,care_status text,care_expire timestamptz);
  create function public.vista_is_platform_admin() returns boolean language sql stable security definer set search_path=pg_catalog,pg_temp as $$select auth.uid()='${director}'::uuid$$;
  create function public.vista_gba_id_exists(p_handle text) returns boolean language sql stable security definer set search_path=pg_catalog,pg_temp as $$select exists(select 1 from public.usuarios where lower(nombre)=lower(p_handle))$$;
  create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
@@ -147,6 +155,118 @@ try {
     .readdirSync("supabase/migrations")
     .find((p) => p.endsWith("_gimg_recruitment.sql"));
   await db.exec(fs.readFileSync(`supabase/migrations/${migration}`, "utf8"));
+  const fix = fs
+    .readdirSync("supabase/migrations")
+    .find((p) => p.endsWith("_gimg_pin_signup_fix.sql"));
+  await db.exec(`create function public.auth_rol() returns text language sql stable security definer as $$select rol from usuarios where id=auth.uid()$$;
+create function public.es_staff() returns boolean language sql stable security definer as $$select auth_rol() in ('Dueño','Admin')$$;
+CREATE OR REPLACE FUNCTION public.proteger_campos_usuarios()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+begin
+  if not es_staff() then
+    if new.saldo            is distinct from old.saldo
+       or new.rol           is distinct from old.rol
+       or new.credito_usado is distinct from old.credito_usado
+       or new.credito_limite is distinct from old.credito_limite
+       or new.credito_activo is distinct from old.credito_activo
+       or new.care_level    is distinct from old.care_level
+       or new.care_status   is distinct from old.care_status
+       or new.care_expire   is distinct from old.care_expire
+    then
+      raise exception 'No tienes permiso para modificar esos campos';
+    end if;
+  end if;
+  return new;
+end;
+$function$
+;
+
+`);
+  // Match the production trigger chain, including the existing profile guard.
+  await db.exec(`create function public.handle_new_user() returns trigger language plpgsql security definer set search_path=public as $$begin insert into public.usuarios(id,nombre) values(new.id,new.raw_user_meta_data->>'nombre');return new;end;$$;
+  create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
+  create trigger trg_proteger_usuarios before update on public.usuarios for each row execute function public.proteger_campos_usuarios();
+  grant select,update on public.usuarios to authenticated;`);
+  const pinUser = "00000000-0000-0000-0000-000000000005";
+  await no(
+    db.query(
+      "insert into auth.users(id,email,raw_user_meta_data) values($1,'mariaruiz@gba.com',$2)",
+      [pinUser, { nombre: "María Ruiz", gimg_candidate: true }],
+    ),
+    /es_staff/,
+  );
+  await db.exec(fs.readFileSync(`supabase/migrations/${fix}`, "utf8"));
+  await db.query(
+    "insert into auth.users(id,email,raw_user_meta_data) values($1,'mariaruiz@gba.com',$2)",
+    [pinUser, { nombre: "María Ruiz", gimg_candidate: true }],
+  );
+  ok(
+    await scalar("select perfil_publico from public.usuarios where id=$1", [
+      pinUser,
+    ]),
+    false,
+  );
+  ok(
+    await scalar("select nombre_publico from public.usuarios where id=$1", [
+      pinUser,
+    ]),
+    "María Ruiz",
+  );
+  await db.query("insert into auth.sessions(id,user_id) values($1,$2)", [
+    sid(pinUser),
+    pinUser,
+  ]);
+  await actor(pinUser);
+  await no(
+    db.query("update public.usuarios set rol='Admin' where id=$1", [pinUser]),
+    /No tienes permiso/,
+  );
+  await no(
+    db.query("update public.usuarios set saldo=100 where id=$1", [pinUser]),
+    /No tienes permiso/,
+  );
+  const pinCode = "ab".repeat(24),
+    pinHash = await scalar(
+      "select encode(sha256(convert_to($1,'UTF8')),'hex')",
+      [pinCode],
+    );
+  ok(await scalar("select public.gimg_init_identity($1)", [pinHash]), true);
+  await actor("", "anon");
+  ok(await scalar("select public.gimg_id_available('maria ruiz')"), false);
+  ok(await scalar("select public.gimg_id_available('Otra Persona')"), true);
+  ok(
+    await scalar("select public.gimg_recover_identity($1,$2,$3)", [
+      " MARÍA   RUIZ ",
+      pinCode,
+      "not-a-pin-password",
+    ]),
+    false,
+  );
+  ok(
+    await scalar("select public.gimg_recover_identity($1,$2,$3)", [
+      " MARÍA   RUIZ ",
+      pinCode,
+      securePin("0456"),
+    ]),
+    true,
+  );
+  await db.exec("reset role");
+  ok(
+    await scalar("select encrypted_password from auth.users where id=$1", [
+      pinUser,
+    ]),
+    "test-hash:GBA-0456-SecureVault",
+  );
+  ok(displayName("  María    Ruiz "), "María Ruiz");
+  ok(authName("  María    Ruiz "), "mariaruiz");
+  ok(validName("María Ruiz"), true);
+  ok(validName("<script>"), false);
+  ok(normalizePin("a01-23x"), "0123");
+  ok(validPin("0123"), true);
+  ok(validPin("12345"), false);
   await db.exec(
     "update public.gimg_recruitment_cycles set opens_at=now()-interval '1 day',closes_at=now()+interval '1 day'",
   );

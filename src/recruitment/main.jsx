@@ -1279,8 +1279,8 @@ function App() {
                 <h3>Tu GBA ID</h3>
                 <p>
                   Una cuenta desarrollada por GBA para guardar tu postulación y
-                  consultar su estado. Puedes elegir un alias; conserva tu clave
-                  y tu código de recuperación.
+                  consultar su estado. Entra con tu nombre y un PIN de 4
+                  dígitos; conserva tu código de recuperación.
                 </p>
               </article>
               <article>
