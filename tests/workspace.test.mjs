@@ -17,6 +17,10 @@ await db.exec(`create role anon;create role authenticated;create role service_ro
  create schema auth;create schema extensions;create extension pgcrypto with schema extensions;
  create table auth.users(id uuid primary key,email text,encrypted_password text,updated_at timestamptz);
  create table auth.sessions(id uuid primary key,user_id uuid references auth.users(id));
+ create schema vault;
+ create table vault.secrets(id uuid primary key default gen_random_uuid(),secret text not null,name text,key_id uuid);
+ create view vault.decrypted_secrets as select id,key_id,secret as decrypted_secret from vault.secrets;
+ create function vault.create_secret(new_secret text,new_name text default null,new_description text default '',new_key_id uuid default null) returns uuid language sql as $$insert into vault.secrets(secret,name) values(new_secret,new_name) returning id$$;
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
  create function auth.jwt() returns jsonb language sql stable as $$select jsonb_build_object('session_id',current_setting('test.session',true))$$;
  grant usage on schema auth to authenticated;
@@ -39,6 +43,10 @@ await db.exec(`create role anon;create role authenticated;create role service_ro
 for(let n=1;n<=12;n++) { await db.query("insert into auth.users values($1,$2,extensions.crypt('GBA-1234-SecureVault',extensions.gen_salt('bf',4)),now())",[id(n),`person${n}@gba.com`]);await db.query('insert into auth.sessions values($1,$2)',[session(n),id(n)]);await db.query('insert into public.usuarios values($1,$2,$3,$3,$4)',[id(n),n===1?'Dueño':'Usuario',`person${n}`,'old secret']); }
 await db.query("insert into public.gimg_recruitment_reviewers values($1,'director')",[id(2)]);
 for(const file of ['202608010001_gba_workspace_phase1.sql','202608140001_public_keynotes.sql','20261009050000_workspace_gimg.sql','20261009051000_workspace_licenses.sql','20261009052000_gba_id_secure_gateway.sql','20261009112023_gimg_role_isolation.sql','20261009123356_gimg_identity_role_isolation.sql']) await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+const restoredCheckpoint=await scalar('select extensions.pgp_sym_decrypt(b.encrypted_payload,k.decrypted_secret)::jsonb from workspace_private.identity_rollout_backups b join vault.decrypted_secrets k on k.id=b.key_id');
+eq(restoredCheckpoint.length,12);eq(restoredCheckpoint[0].frase_seguridad,'old secret');
+eq(restoredCheckpoint[0].encrypted_password,await scalar('select pin_hash from workspace_private.id_secrets where user_id=$1',[id(1)]));
+await actor(1);await denied(db.query('select * from workspace_private.identity_rollout_backups'));await admin('select 1');
 const unit=await scalar("select id from public.workspace_units where slug='gimg'");
 await actor(1);const keynoteCollection=await scalar("select id from public.gba_workspace_collections where slug='keynotes'");const oldKeynote=(await db.query("insert into public.gba_workspace_documents(collection_id,title,content_markdown,status,owner_id,created_by,updated_by) values($1,'Keynote conservada','Contenido aprobado de Keynote','approved',$2,$2,$2) returning id",[keynoteCollection,id(1)])).rows[0].id;const keynote=await scalar('select to_jsonb(public.gba_workspace_publish_keynote($1,$2,$3))',[oldKeynote,'Esta Keynote conserva su publicación y su contenido.', '2026-10-08']);eq(keynote.content_markdown,'Contenido aprobado de Keynote');eq(keynote.is_published,true);
 await actor(1);eq((await scalar('select public.workspace_context()')).platform_owner,true);eq((await scalar('select public.workspace_context()')).units.length,0);await denied(cmd('project.create',{unit_id:unit,title:'Not editorial'}));

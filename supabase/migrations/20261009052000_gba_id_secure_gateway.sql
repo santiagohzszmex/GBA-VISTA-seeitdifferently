@@ -1,6 +1,32 @@
 -- Deploy the gateway with this migration as one coordinated release.
 -- The PIN is now verified only by a service-side endpoint. Auth passwords are random.
 begin;
+set local lock_timeout='5s';
+set local statement_timeout='5min';
+-- Keep the snapshot and converted verifiers consistent with registrations and
+-- recovery operations. Auth inserts its row before creating the public profile.
+lock table auth.users in share row exclusive mode;
+lock table public.usuarios in share row exclusive mode;
+-- An encrypted checkpoint makes the credential conversion reversible by an
+-- administrator. The encryption key stays in Vault; clients cannot read it.
+create table workspace_private.identity_rollout_backups(
+ id uuid primary key,key_id uuid not null references vault.secrets(id),encrypted_payload bytea not null,
+ profile_count integer not null,created_at timestamptz not null default now());
+alter table workspace_private.identity_rollout_backups enable row level security;
+revoke all on workspace_private.identity_rollout_backups from public,anon,authenticated,service_role;
+do $$
+declare v_backup_id uuid:=gen_random_uuid(); v_key_id uuid; v_encryption_key text; v_payload jsonb; v_encrypted bytea;
+begin
+ select coalesce(jsonb_agg(jsonb_build_object('user_id',a.id,'encrypted_password',a.encrypted_password,'auth_updated_at',a.updated_at,'frase_seguridad',u.frase_seguridad) order by a.id),'[]'::jsonb)
+ into v_payload from public.usuarios u join auth.users a on a.id=u.id;
+ v_key_id:=vault.create_secret(encode(extensions.gen_random_bytes(32),'hex'),'workspace-identity-rollout-'||v_backup_id,'Encryption key for the restricted identity rollback checkpoint');
+ select decrypted_secret into v_encryption_key from vault.decrypted_secrets where id=v_key_id;
+ if v_encryption_key is null then raise exception 'No se pudo preparar el respaldo cifrado';end if;
+ v_encrypted:=extensions.pgp_sym_encrypt(v_payload::text,v_encryption_key,'cipher-algo=aes256,compress-algo=1');
+ if extensions.pgp_sym_decrypt(v_encrypted,v_encryption_key)::jsonb is distinct from v_payload then raise exception 'El respaldo cifrado no superó su verificación';end if;
+ insert into workspace_private.identity_rollout_backups(id,key_id,encrypted_payload,profile_count) values(v_backup_id,v_key_id,v_encrypted,jsonb_array_length(v_payload));
+end;
+$$;
 create table workspace_private.id_secrets(user_id uuid primary key references auth.users(id),pin_hash text not null,recovery_hash text,legacy_pin boolean not null default false);
 create table workspace_private.id_attempts(key text primary key,attempts integer not null default 0,started_at timestamptz not null default now(),blocked_until timestamptz);
 create table workspace_private.id_audit(id bigint generated always as identity primary key,user_id uuid references auth.users(id),action text not null,created_at timestamptz not null default now());
