@@ -28,3 +28,10 @@ function setup({answer={user_id:'user-1',email:'person@gba.com'},rpcError=null,s
  const t=setup({answer:{error:'Initialization failed'}});eq((await t.run({action:'register',handle:'person',pin:'1234',device:'12345678-1234-1234',recovery:'private phrase'})).status,401);eq(t.deleted,['user-1']);
 }
 console.log(`PASS: ${checks} identity gateway assertions: server IP, origin, validation, throttling, tokens, correct account and registration cleanup.`);
+for(const origin of ['https://vista.gba.software','tauri://localhost','http://tauri.localhost','https://tauri.localhost']) {
+ const t=setup();const preflight=await t.run(undefined,{origin},'OPTIONS');
+ eq(preflight.status,204);eq(preflight.headers['Access-Control-Allow-Origin'],origin);eq(t.calls.length,0);
+ const login=await t.run(undefined,{origin});eq(login.status,200);eq(login.headers['Access-Control-Allow-Origin'],origin);
+}
+for(const origin of ['null','https://tauri.localhost.evil.example','http://localhost:1420']) eq((await setup().run(undefined,{origin})).status,403);
+console.log(`PASS: ${checks} total gateway assertions including VISTA and native CORS preflights.`);
