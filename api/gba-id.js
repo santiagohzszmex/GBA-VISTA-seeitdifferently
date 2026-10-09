@@ -6,7 +6,7 @@ import { randomBytes, createHash } from 'node:crypto';
 export function createIdentityHandler({ env = process.env, makeClient = createClient, random = randomBytes } = {}) {
   return async function handler(request, response) {
     response.setHeader('Cache-Control', 'no-store');
-    const allowed = new Set((env.GBA_ID_ALLOWED_ORIGINS || 'https://gba.software,https://www.gba.software,tauri://localhost,http://tauri.localhost,https://tauri.localhost').split(',').map(x => x.trim()));
+    const allowed = new Set((env.GBA_ID_ALLOWED_ORIGINS || 'https://gba.software,https://www.gba.software,https://vista.gba.software,tauri://localhost,http://tauri.localhost,https://tauri.localhost').split(',').map(x => x.trim()));
     const origin = request.headers.origin;
     if (origin && !allowed.has(origin)) return response.status(403).json({ error: 'Origen no autorizado' });
     if (origin) { response.setHeader('Access-Control-Allow-Origin', origin); response.setHeader('Vary', 'Origin'); }
