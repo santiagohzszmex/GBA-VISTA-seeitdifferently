@@ -1,0 +1,26 @@
+.download-notice {
+  width: min(540px, calc(100% - 32px));
+  max-height: calc(100vh - 40px);
+  margin: auto;
+  padding: 32px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 24px 80px #0003;
+}
+.download-notice::backdrop { background: #15191db3; }
+.download-notice h2 { margin: 0 0 20px; font-size: 40px; line-height: 1.1; }
+.download-notice h2:focus { outline: none; }
+.download-notice p { margin: 16px 0; line-height: 1.6; }
+.download-notice .label { margin: 0 0 12px; color: var(--muted); }
+.download-notice .download-trust { padding-top: 16px; border-top: 1px solid var(--line); }
+.download-notice .download-trust strong { display: block; margin-bottom: 6px; }
+.download-notice-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.download-notice-actions .button { cursor: pointer; }
+@media (max-width: 520px) {
+  .download-notice { padding: 24px; }
+  .download-notice-actions { flex-direction: column-reverse; }
+  .download-notice-actions .button { justify-content: center; width: 100%; }
+}
