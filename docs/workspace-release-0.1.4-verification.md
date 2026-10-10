@@ -17,3 +17,11 @@ Las tres tablas privadas nuevas tienen RLS y no otorgan lectura directa a authen
 La publicación exige aceptación explícita del cambio de base de datos, con el commit y proyecto exactos, todas las condiciones verificadas, fecha de comprobación de menos de un día y SHA-256 del archivo de migración. Se conserva el rechazo de cualquier cambio de identidad sin una nueva aceptación completa. Las pruebas anteriores de gateway, licencias y recuperación se reutilizan porque su código no cambió.
 
 Los instaladores deberán provenir del mismo commit revisado, pasar instalación y arranque en los tres corredores nativos y coincidir en tamaño y SHA-256. Los paquetes del actualizador se firman localmente y se verifican con la clave pública que ya tienen las aplicaciones. macOS mantiene sello ad hoc sin notarización de Apple; Windows permanece sin Authenticode. La prueba interactiva de actualización de Windows queda pendiente de un equipo real.
+
+## Instaladores publicados
+
+La ejecución nativa 38076793783 terminó correctamente para Apple Silicon, Mac Intel y Windows x64. Los tres paquetes se instalaron en sus corredores nativos, arrancaron y conservaron un ejecutable idéntico al compilado. El origen es el commit 1e421c436bc24758a2a6ba5ed48c62f824af41b3.
+
+Publicación permanente: https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/tag/workspace-v0.1.4-beta.1. Los archivos públicos se descargaron y compararon en tamaño y SHA-256. Los tres paquetes del actualizador fueron firmados localmente y verificados con la identidad pública que ya usa Workspace. El canal workspace-updates apunta ahora a 0.1.4 y sólo se actualizó su JSON de descubrimiento.
+
+La configuración de subida a Vercel conserva los iconos públicos que requiere el frontend, excluye la caché de Vite y mantiene fuera variables de entorno, claves, código nativo, compilaciones y artefactos de aceptación. Este ajuste y el manifiesto público no cambian el código de los instaladores aceptados.
