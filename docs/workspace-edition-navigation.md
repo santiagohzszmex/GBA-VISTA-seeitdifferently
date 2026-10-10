@@ -1,39 +1,40 @@
-# Workspace: documentos por edición y administración en Configuración
+# Workspace GIMG: flujo de trabajo por edición
 
-La pantalla de trabajo abre los documentos de la edición seleccionada. El menú superior contiene Ediciones y Keynotes; Configuración queda junto a la cuenta. Licencias, integrantes, permisos, administración de ediciones y auditoría ya no ocupan la navegación del trabajo cotidiano.
+La aplicación abre **Mi trabajo**, el espacio personal para preparar los documentos asignados. La navegación de una edición distingue Mi trabajo, Asignaciones, Revisión, Documentos y Calendario. Asignaciones y Revisión sólo aparecen cuando hay permisos aplicables. Licencias, integrantes, permisos y administración de ediciones permanecen en Configuración; las Keynotes mantienen su espacio y sus permisos de GBA.
 
-## Organización
+## Recorrido real
 
-- Las pestañas superiores representan los proyectos o microediciones que el servidor permite consultar. No se crean ediciones de producción a partir de los ejemplos locales.
-- Cada edición tiene Documentos, Entregables, Calendario y Mi jornada. Los archivos, fechas y recuentos se filtran por el proyecto seleccionado.
-- Documentos recupera la disposición de lista de archivos y documento abierto. El concepto corresponde al `brief` existente; los demás documentos muestran la última versión de los entregables de esa edición. «Abrir trabajo» lleva al entregable para escribir, entregar o revisar según los permisos existentes.
-- Configuración muestra sus controles según las respuestas del servidor. Licencias exige `platform_owner`; el directorio utiliza los permisos del contexto de proyecto/área/entregable. El rango general de GBA sigue separado de la asignación en GIMG.
-- Cambiar de edición limpia la selección anterior y desactiva acciones durante la carga. Las respuestas antiguas no reemplazan el contexto seleccionado.
-- El contenido, los créditos, el enlace al activo y el resumen de una versión sin entregar generan un aviso al navegar. «Seguir escribiendo» conserva el texto; «Descartar y salir» permite continuar. Esto no es autoguardado ni cubre todavía los borradores de todos los formularios administrativos.
-- Las pestañas admiten flechas, Home y End. El aviso tiene foco inicial, Escape, recorrido de foco y etiquetas accesibles. En ventanas estrechas la lista se coloca sobre el documento.
+1. **El responsable del área asigna trabajo.** En Asignaciones crea un encargo, elige área y persona e indica qué debe realizar y entregar. El servidor comprueba el permiso para esa área. Producción y las personas con delegación válida gestionan fechas según la matriz RBAC.
+2. **La persona escribe en Mi trabajo.** Su lista contiene lo asignado a su GBA ID y las colaboraciones. Al abrir una asignación tiene el documento, las indicaciones y los controles de formato. Guardar borrador mantiene una copia privada; no crea una entrega ni la muestra al equipo.
+3. **La persona envía una versión.** Enviar a revisión guarda el borrador, crea una versión inmutable y coloca el trabajo en revisión. El texto y su formato quedan vinculados a esa versión. Una entrega vacía se rechaza. El editor queda en consulta mientras se revisa.
+4. **El área revisa la entrega.** En Revisión se lee la versión enviada, no el borrador privado. El responsable puede aceptar o devolver indicaciones. Las correcciones regresan a Mi trabajo; al reenviarlas se crea otra versión sin borrar las anteriores. Las rondas adicionales siguen requiriendo la autorización definida en la matriz.
+5. **La versión aceptada aparece en Documentos.** La biblioteca reúne referencias de la edición y documentos aceptados por área, utilizables por sus participantes autorizados. El artista puede consultar la investigación aceptada sin acceder al borrador o a otras entregas privadas del investigador.
+6. **QA y publicación continúan por separado.** Aceptar una investigación para uso del equipo no equivale a publicarla en VISTA. Se conservan las comprobaciones de QA, aprobación final, delegación y autoría del servidor existente.
 
-## Alcance de esta revisión
+## Documentos y borradores
 
-Se reutilizan las tablas y RPC existentes; no hay migraciones, nuevos permisos, cargas de archivos ni cambios de autenticación. Las Keynotes conservan su editor, historial y publicación propios. Los ejemplos de Halloween, Día de Muertos y Leyendas sólo aparecen en la demostración local de desarrollo.
+- El concepto de la edición sigue en el brief existente. El editor de trabajo tiene títulos, negrita, cursiva, listas, tipografía, tamaño, color con muestra y código HEX, deshacer y rehacer.
+- Las referencias se pueden consultar en un panel sin cerrar el editor. Cambiar de pantalla con modificaciones sin guardar requiere conservarlas o descartarlas explícitamente.
+- Los borradores se identifican por trabajo y autor. Dirección puede gestionar el trabajo, pero no obtiene el borrador privado de otra persona. El guardado comprueba revisión y versión base para evitar sobrescrituras entre ventanas.
+- Los documentos aceptados se registran como instantáneas de las versiones aprobadas. Reabrir un trabajo conserva la última referencia aceptada hasta que se acepta otra versión. Un bloqueo crítico de QA retira su consulta mientras permanezca activo.
+- La lectura de referencias aprobadas utiliza el acceso autorizado a esa edición. La capacidad `reference.read` permite a colaboradores asignados consultar referencias aceptadas del proyecto; un permiso más reducido puede restringir un documento concreto. No modifica `content.read` para borradores o entregas ajenas, ni concede autoridad editorial desde los rangos generales de GBA.
+- El documento enriquecido es la fuente del Markdown conservado para compatibilidad. El servidor lo genera; no permite mostrar al revisor un texto y guardar otro distinto como contenido para publicación.
+- Los adjuntos externos mantienen el modelo previo de enlaces al repositorio controlado. La carga directa de archivos, imágenes y previsualizaciones privadas queda pendiente de la etapa de almacenamiento; Cloudflare continúa sin configurarse.
 
-Queda para la siguiente revisión el editor visual para investigaciones y dirección creativa: tipografía, tamaño, color del texto, paleta con muestras y códigos, documentos independientes e imágenes subidas con acceso por edición. Esta revisión permite evaluar primero la distribución del espacio y su navegación.
+## Estado local y revisión
 
-## Trabajo local
+Rama `codex/workspace-edition-layout`, en el repositorio `work/workspace-updates`. Esta revisión sólo se guarda en commits locales. No modifica la copia original de GBA-VISTA, la aplicación instalada, los despliegues ni las descargas públicas.
 
-Rama: `codex/workspace-edition-layout`. Repositorio de trabajo: `work/workspace-updates`, dentro del espacio local de Codex. Se conserva la copia original de GBA-VISTA; este cambio no instala una nueva app ni publica una versión o despliegue.
+La migración `20261010135012_workspace_personal_drafts_and_library.sql` está preparada y probada con PostgreSQL local en PGlite. **No se aplicó al proyecto de Supabase.** Antes de desplegar el frontend de trabajo deberá revisarse contra el esquema real y aplicarse coordinadamente.
 
-```sh
-npm run dev -- --host 127.0.0.1 --port 5186 --strictPort
-```
-
-Vista de demostración: `http://127.0.0.1:5186/?workspace-preview=1`. El acceso de demostración sólo se habilita con `import.meta.env.DEV`; las acciones de escritura están desactivadas.
+La vista `http://127.0.0.1:5186/?workspace-preview=1` permite probar el recorrido con un investigador, un responsable de Investigación, un artista y una cuenta con Dirección. Los permisos de plataforma y Keynotes de esa última cuenta se especifican por separado. El selector sólo existe en la demostración de desarrollo; las cuentas y modificaciones son ficticias y se reinician al recargar.
 
 ## Validación
 
-- `npm run build`: compilación de la web.
-- `npm run workspace:build`: compilación del frontend de escritorio para Safari 14.
-- `npm run test:workspace`: 117 comprobaciones de Workspace y 78 del gateway existentes, con base local de pruebas.
-- `node tests/desktop-config.test.mjs`: CSP, capacidades mínimas y separación entre membresía web y licencia de escritorio.
-- Navegador local: cambio de edición y aislamiento de documentos/fechas, búsqueda, navegación con teclado, Configuración, Keynotes, conservar/descartar texto y distribución a 1280 y 548 píxeles. Diez comprobaciones completadas; consola sin errores.
+- Base local: 157 comprobaciones de Workspace, incluidas privacidad de borradores, permisos por área, rechazo de accesos directos, conflictos entre guardados, entrega vacía, texto canónico, revisión/correcciones, referencias aceptadas, reapertura y suspensión.
+- Conservación del gateway de identidad: suite existente de 78 comprobaciones.
+- Compatibilidad del editor con Safari 14: ocho comprobaciones ejecutadas retirando los métodos nativos nuevos que requieren las dependencias.
+- Compilaciones de la web y del frontend de escritorio. El editor se carga bajo demanda; no se construyeron nuevos instaladores.
+- Navegador: recorrido asignación → borrador → entrega → correcciones → nueva versión → aceptación → consulta por el artista; formato conservado y consulta de referencias sin perder texto.
 
-La navegación visual se comprobó con datos de demostración. No se hizo una entrega real contra producción ni se construyeron nuevos instaladores nativos. Las compilaciones conservan el aviso de Vite por tamaño de los paquetes JavaScript.
+La biblioteca de archivos todavía no sustituye al repositorio externo de originales. Esta fase corrige la separación entre preparación, revisión y consulta, y deja el almacenamiento privado listo para integrarse posteriormente.

@@ -2,19 +2,14 @@ import React, { useRef } from 'react';
 import { BookOpen, Layers, Settings, RefreshCw } from 'lucide-react';
 import workspaceIcon from '../../src-tauri/icons/64x64.png';
 
-const EDITION_SECTIONS = {
-  documents: 'Documentos',
-  tasks: 'Entregables',
-  calendar: 'Calendario',
-  home: 'Mi jornada'
-};
+const EDITION_SECTIONS = { work: 'Mi trabajo', assignments: 'Asignaciones', reviews: 'Revisión', documents: 'Documentos', calendar: 'Calendario' };
 
 export function WorkspaceNavigation({ screen, onScreenChange, context, unitName, name, loading, onRefresh, previewMode, blocked }) {
   return <header className="gw-topbar" aria-hidden={blocked || undefined}>
     <div className="gw-brand"><img src={workspaceIcon} width="32" height="32" alt="" /><strong>Workspace</strong><span>{unitName}</span></div>
     <nav className="gw-global-nav" aria-label="Menú general">
       <button type="button" aria-current={screen === 'editions' ? 'page' : undefined} onClick={() => onScreenChange('editions')}><Layers size={16} aria-hidden="true" />Ediciones</button>
-      {(previewMode || context?.keynotes_access) && <button type="button" aria-current={screen === 'keynotes' ? 'page' : undefined} onClick={() => onScreenChange('keynotes')}><BookOpen size={16} aria-hidden="true" />Keynotes</button>}
+      {context?.keynotes_access && <button type="button" aria-current={screen === 'keynotes' ? 'page' : undefined} onClick={() => onScreenChange('keynotes')}><BookOpen size={16} aria-hidden="true" />Keynotes</button>}
     </nav>
     <div className="gw-account">
       <span className="gw-account-name">{name}</span>
@@ -54,8 +49,8 @@ export function EditionTabs({ projects, selectedId, onSelect, busy }) {
   </div>;
 }
 
-export function EditionNavigation({ section, onSelect }) {
+export function EditionNavigation({ section, onSelect, canAssign, canReview }) {
   return <nav className="gw-section-nav" aria-label="Trabajo de la edición">
-    {Object.entries(EDITION_SECTIONS).map(([id, label]) => <button type="button" key={id} aria-current={section === id ? 'page' : undefined} onClick={() => onSelect(id)}>{label}</button>)}
+    {Object.entries(EDITION_SECTIONS).filter(([id]) => (id !== 'assignments' || canAssign) && (id !== 'reviews' || canReview)).map(([id, label]) => <button type="button" key={id} aria-current={section === id ? 'page' : undefined} onClick={() => onSelect(id)}>{label}</button>)}
   </nav>;
 }

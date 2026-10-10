@@ -22,8 +22,8 @@ export default function DraftExitDialog({ onStay, onDiscard }) {
 
   return <div className="gw-dialog-backdrop">
     <section className="gw-draft-dialog" role="alertdialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId} onKeyDown={keys}>
-      <h2 id={titleId}>Hay cambios sin entregar</h2>
-      <p id={descriptionId}>Puedes seguir escribiendo o salir y descartar estos cambios. La última versión entregada se conserva.</p>
+      <h2 id={titleId}>Hay cambios sin guardar</h2>
+      <p id={descriptionId}>Puedes seguir escribiendo o salir y descartar estos cambios. Lo que guardaste o enviaste antes se conserva.</p>
       <div className="gw-actions"><button type="button" ref={stay} onClick={onStay}>Seguir escribiendo</button><button type="button" ref={discard} onClick={onDiscard}>Descartar y salir</button></div>
     </section>
   </div>;

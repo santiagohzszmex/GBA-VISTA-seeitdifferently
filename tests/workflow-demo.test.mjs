@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+const bundle = await build({entryPoints:['src/workspace/workflowDemo.js'],bundle:true,platform:'node',format:'esm',write:false});
+const { createWorkflowDemo, workflowDemoData, DEMO_ACTORS, demoPermissions } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const state = createWorkflowDemo();
+const artist = workflowDemoData(state, DEMO_ACTORS.artist, 'halloween-demo');
+assert(artist.approvedDocuments.some(document => document.deliverable_id === 'accepted-research-demo'));
+assert(!artist.tasks.some(task => task.id === 'research-task-demo'));
+assert(!artist.versions.some(version => version.deliverable_id === 'research-task-demo'));
+assert.equal(demoPermissions(DEMO_ACTORS.artist, 'halloween-demo', 'research-demo', state.tasks[0])['content.edit_assigned'], false);
+assert.equal(demoPermissions(DEMO_ACTORS.lead, 'halloween-demo', 'art-demo', state.tasks[1])['task.assign'], false);
+console.log('PASS: 5 demo checks: approved references cross areas, drafts stay private, area leads remain scoped.');
