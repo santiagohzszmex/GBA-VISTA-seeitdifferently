@@ -32,7 +32,7 @@ export default function DesktopUpdates({ client }) {
       if (event.key === 'Tab') {
         const items = [...panel.current.querySelectorAll('button:not(:disabled), a[href]')];
         if (!items.length) { event.preventDefault(); return; }
-        const first = items[0], last = items.at(-1);
+        const first = items[0], last = items[items.length - 1];
         if (event.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) { event.preventDefault(); last.focus(); }
         else if (!event.shiftKey && (document.activeElement === last || document.activeElement === panel.current)) { event.preventDefault(); first.focus(); }
       }
