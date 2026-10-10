@@ -19,6 +19,8 @@ Pruebas con cuenta temporal y sesiones reales: registro, PIN válido e incorrect
 
 @Santiago conserva Dueño en GBA y Dirección explícita de GIMG. El panel de licencias corresponde a la autoridad de plataforma; el panel de Equipo administra membresías, roles, funciones y delegaciones de GIMG. No se emitieron licencias permanentes para usuarios como parte de esta comprobación.
 
+La actualización 20261010012802_workspace_owner_desktop_access permite entrar a escritorio sin código cuando la cuenta tiene el rango Dueño y una autoridad de plataforma vigente. El servidor comprueba la sesión, suspensión, rango y permiso en cada consulta; una pérdida de autoridad elimina la exención. El estado devuelve una fecha centinela compatible con las apps ya instaladas, sin generar licencias ni códigos. Los demás usuarios conservan sus licencias temporales. Esta exención no concede membresía ni cargos de GIMG.
+
 Los instaladores 12732a6 compilaron y arrancaron en macOS Apple Silicon, macOS Intel y Windows x64. Su distribución pública y aceptación instalada siguen pendientes: macOS tiene sello ad hoc sin notarización y Windows no tiene firma de distribución. El manifiesto público continúa vacío. Cloudflare sigue pendiente.
 
 Para otra entrega, no repetir estas migraciones ni restaurar el checkpoint sobre cambios legítimos posteriores de usuarios. Preparar una migración nueva y comprobar su alcance.
