@@ -178,6 +178,7 @@
     "task.read": "A"
   },
   "gimg_contributor": {
+    "reference.read": "P",
     "unit.read": "E",
     "unit.members.read": "P",
     "task.create": "E",
