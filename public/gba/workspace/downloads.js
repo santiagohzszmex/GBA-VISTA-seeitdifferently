@@ -11,7 +11,7 @@
    const card=document.createElement('article');const title=document.createElement('h3');
    title.textContent=d.platform==='macos'?(d.architecture==='aarch64'?'Mac · Apple Silicon':'Mac · Intel'):'Windows · x64';
    const link=document.createElement('a');link.className='button';link.href=d.url;link.rel='noopener noreferrer';link.textContent=`Descargar ${d.version}${beta?' beta':''}`;
-   const info=document.createElement('p');info.textContent=d.platform==='macos'?'Abre el archivo DMG y arrastra GBA Workspace a Aplicaciones.':'Abre el instalador EXE y sigue sus pasos.';
+   const info=document.createElement('p');info.textContent=d.platform==='macos'?'Abre el archivo DMG y arrastra Workspace a Aplicaciones.':'Abre el instalador EXE y sigue sus pasos.';
    card.append(title,info);
    if(beta){const warning=document.createElement('p');warning.textContent=d.platform==='macos'?'Beta sin notarización de Apple. macOS puede impedir su apertura.':'Beta sin firma digital. Windows puede mostrar un aviso de editor desconocido.';card.append(warning);}
    card.append(link);

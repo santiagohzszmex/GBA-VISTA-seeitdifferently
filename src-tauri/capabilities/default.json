@@ -1,1 +1,15 @@
-{"$schema":"../gen/schemas/desktop-schema.json","identifier":"default","description":"Ventana de Workspace sin acceso al sistema de archivos ni shell","windows":["main"],"permissions":["core:default"]}
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Workspace con comprobaci\u00f3n y actualizaci\u00f3n firmada; sin acceso general al sistema de archivos ni shell",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "updater:allow-check",
+    "updater:allow-download",
+    "updater:allow-install",
+    "process:allow-restart"
+  ]
+}

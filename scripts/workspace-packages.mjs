@@ -60,6 +60,18 @@ for(const file of packages) {
   await fs.copyFile(file,path.join(out,name));
   downloads.push({file:name,platform,architecture,version:config.version,sha256:createHash('sha256').update(bytes).digest('hex'),size:bytes.length,signing:packageSigning});
 }
-await fs.writeFile(path.join(out,'packages.json'),JSON.stringify({commit:process.env.GITHUB_SHA||null,downloads},null,2)+'\n');
+const updaters=[];
+if(platform==='macos') {
+  const {app}=nativePaths(platform,target,config);
+  const file=`workspace-${config.version}-darwin-${architecture}.app.tar.gz`;
+  execFileSync('tar',['-czf',path.resolve(out,file),'-C',path.dirname(app),path.basename(app)],{stdio:['ignore','pipe','pipe']});
+  const bytes=await fs.readFile(path.join(out,file));
+  updaters.push({file,platform:'darwin',architecture,version:config.version,sha256:createHash('sha256').update(bytes).digest('hex'),size:bytes.length});
+} else {
+  const installer=downloads.find(p=>p.file.endsWith('.exe'));
+  if(!installer) throw Error('Manual updater requires the verified NSIS installer');
+  updaters.push({...installer,platform:'windows'});
+}
+await fs.writeFile(path.join(out,'packages.json'),JSON.stringify({commit:process.env.GITHUB_SHA||null,downloads,updaters},null,2)+'\n');
 await fs.writeFile(path.join(out,'SHA256SUMS'),downloads.map(d=>`${d.sha256}  ${d.file}`).join('\n')+'\n');
 console.log(`Verified ${downloads.length} native candidate(s): ${platform}/${architecture}; signing=${signing}.`);
