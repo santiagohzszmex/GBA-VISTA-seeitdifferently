@@ -32,8 +32,7 @@ Thumbs.db
 # Optional npm cache
 .npm
 
-# Lock files
-package-lock.json
+# Dependency lockfiles are tracked for reproducible builds.
 
 # Local config
 .vite
@@ -41,3 +40,11 @@ package-lock.json
 # MacOS
 *.swp
 *~
+
+workspace-dist/
+src-tauri/target/
+src-tauri/gen/
+
+# Native candidate evidence stays in release artifacts, not source commits.
+release-candidates/
+.vercel/

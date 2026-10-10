@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { scheduleLicenseExpiry } from '../src/workspace/licenseClock.js';
+let clock=0, callback, delay, expired=0, cleared=false;
+const runtime={now:()=>clock,set:(fn,ms)=>{callback=fn;delay=ms;return 1;},clear:()=>{cleared=true;}};
+const end=3650*86400000;
+const cancel=scheduleLicenseExpiry(new Date(end).toISOString(),()=>expired++,runtime);
+assert.equal(delay,2147483647);
+clock=delay;callback();assert.equal(expired,0);assert.equal(delay,2147483647);
+clock=end-1000;callback();assert.equal(delay,1000);assert.equal(expired,0);
+clock=end;callback();assert.equal(expired,1);
+cancel();assert.equal(cleared,true);
+expired=0;clock=0;
+const stop=scheduleLicenseExpiry(new Date(1000).toISOString(),()=>expired++,runtime);
+stop();clock=1000;callback();assert.equal(expired,0);
+scheduleLicenseExpiry('invalid',()=>expired++,runtime);assert.equal(expired,1);
+console.log('PASS: long license, exact expiration, invalid date and cancellation.');

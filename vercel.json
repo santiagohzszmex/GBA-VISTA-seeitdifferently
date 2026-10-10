@@ -1,6 +1,18 @@
 {
   "routes": [
     {
+      "src": "^/workspace/web/?$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/workspace/?$",
+      "dest": "/gba/workspace/index.html"
+    },
+    {
+      "src": "^/api/gba-id/?$",
+      "dest": "/api/gba-id"
+    },
+    {
       "src": "^/convocatoria/gimg(?:/gestion)?/?$",
       "dest": "/convocatoria/index.html",
       "has": [

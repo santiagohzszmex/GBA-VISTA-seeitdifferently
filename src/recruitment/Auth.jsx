@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "../supabaseClient";
+import { authenticateGbaId } from "../auth/identityGateway";
 import {
   displayName,
   authName,
@@ -39,18 +40,8 @@ export default function Identity({ onSession }) {
       if (mode === "recover") {
         if (!validPin(pin) || pin !== confirmation)
           throw Error("Confirma tu nuevo PIN de 4 dígitos.");
-        const { data, error: failed } = await supabase.rpc(
-          "gimg_recover_identity",
-          {
-            p_handle: id,
-            p_code: code.trim().replaceAll("-", "").toLowerCase(),
-            p_password: securePin(pin),
-          },
-        );
-        if (failed || !data)
-          throw Error(
-            "No pudimos recuperar el acceso. Revisa tu GBA ID y el código, o vuelve a intentar más tarde.",
-          );
+        await authenticateGbaId('recover', id, pin, code.trim().replaceAll('-', '').toLowerCase(), true);
+        await supabase.auth.signOut();
         switchMode("login");
         setError("Tu PIN se actualizó. Ahora puedes iniciar sesión.");
         return;
@@ -76,58 +67,15 @@ export default function Identity({ onSession }) {
           crypto.getRandomValues(new Uint8Array(24)),
           (x) => x.toString(16).padStart(2, "0"),
         ).join("");
-        const { data, error: failed } = await supabase.auth.signUp({
-          email: `${authName(id)}@gba.com`,
-          password: securePin(pin),
-          options: { data: { nombre: id, gimg_candidate: true } },
-        });
-        if (failed)
-          throw Error(
-            "No pudimos crear tu GBA ID. Espera un momento y vuelve a intentar.",
-          );
-        if (!data.session)
-          throw Error(
-            "El registro no pudo iniciar la sesión. Contacta a GBA; no vuelvas a crear otra cuenta.",
-          );
-        const digest = Array.from(
-          new Uint8Array(
-            await crypto.subtle.digest(
-              "SHA-256",
-              new TextEncoder().encode(secret),
-            ),
-          ),
-          (x) => x.toString(16).padStart(2, "0"),
-        ).join("");
-        const { error: recoveryError } = await supabase.rpc(
-          "gimg_init_identity",
-          { p_hash: digest },
-        );
-        if (recoveryError) {
-          await supabase.auth.signOut();
-          throw Error(
-            "La cuenta se creó, pero falta configurar su recuperación. Contacta a GBA indicando tu identificador.",
-          );
-        }
+        await authenticateGbaId('register', id, pin, secret, true);
         setRecovery(secret);
         setPin("");
         setConfirmation("");
         return;
       }
       if (!validPin(pin)) throw Error("Escribe tu PIN de 4 dígitos.");
-      let { data, error: failed } = await supabase.auth.signInWithPassword({
-        email: `${authName(id)}@gba.com`,
-        password: securePin(pin),
-      });
-      // Earlier accounts may retain accents in their technical address.
-      const earlierName = id.toLowerCase().replace(/\s+/g, "");
-      if (failed && earlierName !== authName(id)) {
-        ({ data, error: failed } = await supabase.auth.signInWithPassword({
-          email: `${earlierName}@gba.com`,
-          password: securePin(pin),
-        }));
-      }
-      if (failed || !data.session) throw Error("Nombre o PIN incorrectos.");
-      onSession(data.session);
+      const session = await authenticateGbaId('login', id, pin);
+      onSession(session);
     } catch (failed) {
       setError(failed.message);
     } finally {

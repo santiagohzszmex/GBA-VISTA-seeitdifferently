@@ -1,329 +1,46 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  BookOpen,
-  CalendarDays,
-  Check,
-  AlertCircle,
-  Database,
-  PanelsTopLeft,
-  RefreshCw,
-  ShieldCheck,
-  Users,
-  X
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import WorkspaceDocuments from '../workspace/WorkspaceDocuments';
-import WorkspaceCalendar from '../workspace/WorkspaceCalendar';
-import WorkspaceMembers from '../workspace/WorkspaceMembers';
-import {
-  DEMO_ACCESS,
-  DEMO_COLLECTIONS,
-  DEMO_DOCUMENTS,
-  DEMO_EVENTS,
-  DEMO_MEMBERS,
-  DEMO_REVISIONS,
-  ROLE_LABELS
-} from '../workspace/workspaceData';
+import KeynotesWorkspace from '../workspace/KeynotesWorkspace';
+import LicensePanel from '../workspace/LicensePanel';
+import TaskDetail from '../workspace/TaskDetail';
+import TeamPanel from '../workspace/TeamPanel';
+import { CommandForm, TaskList, Activity, rpc, choices } from '../workspace/ui';
+import { dateLabel, summary, GIMG_ROLES as ROLES } from '../workspace/gimgModel';
+import '../workspace/workspace.css';
 
-const AREAS = [
-  { id: 'documents', label: 'Documentos', icon: BookOpen },
-  { id: 'calendar', label: 'Calendario', icon: CalendarDays },
-  { id: 'members', label: 'Equipo', icon: Users }
-];
-
-export default function Workspace({ previewMode = false }) {
-  const { user } = useAuth();
-  const [activeArea, setActiveArea] = useState('documents');
-  const [access, setAccess] = useState(previewMode ? DEMO_ACCESS : null);
-  const [collections, setCollections] = useState(previewMode ? DEMO_COLLECTIONS : []);
-  const [documents, setDocuments] = useState(previewMode ? DEMO_DOCUMENTS : []);
-  const [events, setEvents] = useState(previewMode ? DEMO_EVENTS : []);
-  const [members, setMembers] = useState(previewMode ? DEMO_MEMBERS : []);
-  const [keynotePublications, setKeynotePublications] = useState([]);
-  const [selectedDocumentId, setSelectedDocumentId] = useState(previewMode ? DEMO_DOCUMENTS[0].id : null);
-  const [loading, setLoading] = useState(!previewMode);
-  const [notice, setNotice] = useState(previewMode ? { type: 'info', message: 'Vista de demostración local. Ningún cambio afecta datos reales.' } : null);
-
-  const canAccess = Boolean(access?.can_access);
-  const currentName = previewMode ? 'Santiago Hernandez' : (user?.nombre_publico || user?.nombre || 'GBA ID');
-
-  const loadWorkspace = async (clearNotice = true) => {
-    if (previewMode) return;
-    setLoading(true);
-    if (clearNotice) setNotice(null);
-    try {
-      const { data: accessData, error: accessError } = await supabase.rpc('gba_workspace_my_access');
-      if (accessError) throw accessError;
-      setAccess(accessData);
-      if (!accessData?.can_access) {
-        setLoading(false);
-        return;
-      }
-
-      const [collectionsResult, documentsResult, eventsResult, membersResult, keynotesResult] = await Promise.all([
-        supabase.from('gba_workspace_collections').select('*').order('position'),
-        supabase.from('gba_workspace_documents').select('*').order('updated_at', { ascending: false }),
-        supabase.from('gba_workspace_events').select('*').order('starts_at'),
-        supabase.rpc('gba_workspace_member_directory'),
-        supabase.from('gba_keynotes').select('id,workspace_document_id,slug,title,summary,keynote_date,is_published,published_at,updated_at')
-      ]);
-      const error = collectionsResult.error || documentsResult.error || eventsResult.error || membersResult.error;
-      if (error) throw error;
-
-      const nextDocuments = documentsResult.data || [];
-      setCollections(collectionsResult.data || []);
-      setDocuments(nextDocuments);
-      setEvents(eventsResult.data || []);
-      setMembers(membersResult.data || []);
-      if (!keynotesResult.error) setKeynotePublications(keynotesResult.data || []);
-      setSelectedDocumentId(current => nextDocuments.some(document => document.id === current) ? current : nextDocuments[0]?.id || null);
-    } catch (error) {
-      console.error('Workspace load failed:', error);
-      setNotice({ type: 'error', message: 'GBA Workspace todavía no está activo. Ejecuta la migración 202608010001_gba_workspace_phase1.sql.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadWorkspace();
-  }, [previewMode]);
-
-  const flash = (type, message) => setNotice({ type, message });
-
-  const createDocument = async collectionId => {
-    if (previewMode) {
-      const now = new Date().toISOString();
-      const document = { id: `demo-${Date.now()}`, collection_id: collectionId, title: 'Documento sin título', content_markdown: '', status: 'draft', version: 1, updated_at: now, created_at: now };
-      setDocuments(current => [document, ...current]);
-      setSelectedDocumentId(document.id);
-      flash('success', 'Documento de demostración creado.');
-      return document;
-    }
-    const { data, error } = await supabase.from('gba_workspace_documents').insert({
-      collection_id: collectionId,
-      title: 'Documento sin título',
-      content_markdown: '',
-      status: 'draft',
-      owner_id: user.id,
-      created_by: user.id,
-      updated_by: user.id
-    }).select().single();
-    if (error) {
-      flash('error', error.message);
-      return null;
-    }
-    setDocuments(current => [data, ...current]);
-    setSelectedDocumentId(data.id);
-    flash('success', 'Documento creado.');
-    return data;
-  };
-
-  const saveDocument = async draft => {
-    const payload = {
-      title: draft.title.trim() || 'Documento sin título',
-      content_markdown: draft.content_markdown,
-      status: draft.status,
-      updated_by: previewMode ? null : user.id
-    };
-    if (draft.status === 'approved') payload.approved_by = previewMode ? null : user.id;
-
-    if (previewMode) {
-      const saved = { ...draft, ...payload, version: Number(draft.version || 0) + 1, updated_at: new Date().toISOString() };
-      setDocuments(current => current.map(document => document.id === saved.id ? saved : document));
-      flash('success', 'Revisión de demostración guardada.');
-      return saved;
-    }
-    const { data, error } = await supabase.from('gba_workspace_documents').update(payload).eq('id', draft.id).select().single();
-    if (error) {
-      flash('error', error.message);
-      return null;
-    }
-    setDocuments(current => current.map(document => document.id === data.id ? data : document));
-    flash('success', `Documento guardado como revisión ${data.version}.`);
-    return data;
-  };
-
-  const loadRevisions = async documentId => {
-    if (previewMode) return DEMO_REVISIONS[documentId] || [];
-    const { data, error } = await supabase.from('gba_workspace_document_revisions').select('*').eq('document_id', documentId).order('revision_number', { ascending: false });
-    if (error) {
-      flash('error', error.message);
-      return [];
-    }
-    return data || [];
-  };
-
-  const publishKeynote = async ({ documentId, summary, keynoteDate }) => {
-    if (previewMode) {
-      const document = documents.find(item => item.id === documentId);
-      const slugBase = document.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      const existing = keynotePublications.find(item => item.workspace_document_id === documentId);
-      const publication = {
-        id: existing?.id || `keynote-${Date.now()}`,
-        workspace_document_id: documentId,
-        slug: existing?.slug || `${slugBase}-${keynoteDate}`,
-        title: document.title,
-        summary,
-        keynote_date: keynoteDate,
-        is_published: true,
-        published_at: existing?.published_at || new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setKeynotePublications(current => [publication, ...current.filter(item => item.workspace_document_id !== documentId)]);
-      flash('success', existing ? 'Keynote de demostración actualizada.' : 'Keynote de demostración publicada.');
-      return publication;
-    }
-
-    const { data, error } = await supabase.rpc('gba_workspace_publish_keynote', {
-      p_document_id: documentId,
-      p_summary: summary,
-      p_keynote_date: keynoteDate
-    });
-    if (error) {
-      flash('error', error.message);
-      return null;
-    }
-    const publication = Array.isArray(data) ? data[0] : data;
-    setKeynotePublications(current => [publication, ...current.filter(item => item.workspace_document_id !== documentId)]);
-    flash('success', 'Keynote publicada en VISTA.');
-    return publication;
-  };
-
-  const unpublishKeynote = async documentId => {
-    if (!window.confirm('¿Retirar esta Keynote del archivo público de VISTA?')) return false;
-    if (previewMode) {
-      setKeynotePublications(current => current.map(item => item.workspace_document_id === documentId ? { ...item, is_published: false } : item));
-      flash('success', 'Keynote retirada de la demostración.');
-      return true;
-    }
-    const { error } = await supabase.rpc('gba_workspace_unpublish_keynote', { p_document_id: documentId });
-    if (error) {
-      flash('error', error.message);
-      return false;
-    }
-    setKeynotePublications(current => current.map(item => item.workspace_document_id === documentId ? { ...item, is_published: false } : item));
-    flash('success', 'Keynote retirada del archivo público.');
-    return true;
-  };
-
-  const saveEvent = async eventPayload => {
-    const { id, ...payload } = eventPayload;
-    if (previewMode) {
-      const event = { ...payload, id: id || `event-${Date.now()}` };
-      setEvents(current => (id
-        ? current.map(item => item.id === id ? event : item)
-        : [...current, event]
-      ).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at)));
-      flash('success', id ? 'Evento de demostración actualizado.' : 'Evento de demostración programado.');
-      return event;
-    }
-    const query = id
-      ? supabase.from('gba_workspace_events').update(payload).eq('id', id)
-      : supabase.from('gba_workspace_events').insert(payload);
-    const { data, error } = await query.select().single();
-    if (error) {
-      flash('error', error.message);
-      return null;
-    }
-    setEvents(current => (id
-      ? current.map(item => item.id === data.id ? data : item)
-      : [...current, data]
-    ).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at)));
-    flash('success', id ? 'Evento actualizado.' : 'Evento programado.');
-    return data;
-  };
-
-  const addMember = async (handle, role) => {
-    if (previewMode) {
-      const member = { id: `member-${Date.now()}`, user_id: `user-${Date.now()}`, workspace_role: role, status: 'active', handle: handle.replace(/^@/, ''), display_name: handle.replace(/^@/, ''), platform_role: 'GBA ID', created_at: new Date().toISOString() };
-      setMembers(current => [...current, member]);
-      flash('success', 'Miembro añadido en la demostración.');
-      return member;
-    }
-    const { error } = await supabase.rpc('gba_workspace_add_member', { p_handle: handle, p_role: role });
-    if (error) {
-      flash('error', error.message);
-      return null;
-    }
-    await loadWorkspace(false);
-    flash('success', 'GBA ID añadido a Workspace.');
-    return true;
-  };
-
-  const setMemberRole = async (memberId, role) => {
-    if (previewMode) {
-      setMembers(current => current.map(member => member.id === memberId ? { ...member, workspace_role: role } : member));
-      return;
-    }
-    const { error } = await supabase.rpc('gba_workspace_set_member_role', { p_member_id: memberId, p_role: role });
-    if (error) flash('error', error.message);
-    else await loadWorkspace(false);
-  };
-
-  const removeMember = async memberId => {
-    if (!window.confirm('¿Suspender el acceso de este miembro a GBA Workspace?')) return;
-    if (previewMode) {
-      setMembers(current => current.map(member => member.id === memberId ? { ...member, status: 'suspended' } : member));
-      return;
-    }
-    const { error } = await supabase.rpc('gba_workspace_remove_member', { p_member_id: memberId });
-    if (error) flash('error', error.message);
-    else await loadWorkspace(false);
-  };
-
-  const updateCollection = async (collection, minimumRole) => {
-    if (previewMode) {
-      setCollections(current => current.map(item => item.id === collection.id ? { ...item, minimum_role: minimumRole } : item));
-      return;
-    }
-    const { data, error } = await supabase.from('gba_workspace_collections').update({ minimum_role: minimumRole, updated_at: new Date().toISOString() }).eq('id', collection.id).select().single();
-    if (error) flash('error', error.message);
-    else setCollections(current => current.map(item => item.id === data.id ? data : item));
-  };
-
-  const summary = useMemo(() => ({
-    drafts: documents.filter(document => document.status === 'draft').length,
-    reviews: documents.filter(document => document.status === 'review').length,
-    upcoming: events.filter(event => new Date(event.starts_at) >= new Date()).length
-  }), [documents, events]);
-
-  if (loading) return <div className="min-h-screen bg-[#f5f6f8] flex items-center justify-center"><RefreshCw className="animate-spin text-[#2563eb]" size={24}/></div>;
-
-  return (
-    <div className="min-h-screen bg-[#f5f6f8] text-[#1f2227] pb-20">
-      <style>{`.ws-input{width:100%;min-height:40px;border:1px solid #d9dce3;border-radius:5px;background:#fff;padding:9px 11px;color:#24272c;font-size:12px;outline:none}.ws-input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.08)}.ws-select{border:1px solid #d9dce3;border-radius:5px;background:#fff;padding:0 9px;color:#4d525a;font-size:10px;font-weight:700;outline:none}.ws-label{display:block;margin-bottom:6px;color:#8b9099;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.ws-icon{width:40px;height:40px;border:1px solid #d9dce3;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;color:#6f747d;background:#fff;transition:.18s}.ws-icon:hover{color:#17191d;border-color:#b8bdc6;background:#f8f9fa}.ws-primary,.ws-secondary{height:40px;border-radius:5px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:10px;font-weight:800;white-space:nowrap}.ws-primary{background:#17191d;color:#fff}.ws-primary:disabled{opacity:.4}.ws-secondary{border:1px solid #d9dce3;background:#fff;color:#4d525a}.ws-secondary:hover{border-color:#b8bdc6}`}</style>
-
-      <header className="bg-white border-b border-[#dfe2e8]">
-        <div className="max-w-[1600px] mx-auto px-4 md:px-8 h-20 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-md bg-[#17191d] text-white flex items-center justify-center"><PanelsTopLeft size={19}/></div>
-          <div className="min-w-0"><div className="flex items-center gap-2"><h1 className="text-lg font-bold tracking-tight">GBA Workspace</h1><span className="hidden sm:inline-flex text-[8px] font-black uppercase tracking-widest px-2 py-1 bg-[#eef2f8] text-[#506078] rounded">Interno</span></div><p className="text-[10px] text-[#8b9099] mt-0.5 truncate">Memoria, decisiones y calendario de GBA</p></div>
-          <div className="hidden lg:flex items-center gap-5 ml-auto text-[10px] text-[#6f747d]"><span><strong className="text-[#24272c]">{summary.drafts}</strong> borradores</span><span><strong className="text-amber-700">{summary.reviews}</strong> en revisión</span><span><strong className="text-[#2563eb]">{summary.upcoming}</strong> próximos</span></div>
-          <div className="ml-auto lg:ml-6 pl-4 border-l border-[#e2e4e9] text-right"><p className="text-xs font-bold truncate max-w-36">{currentName}</p><p className="text-[9px] text-[#8b9099] mt-0.5">{ROLE_LABELS[access?.role] || 'Sin acceso'}</p></div>
-        </div>
-      </header>
-
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 pt-5">
-        <nav className="flex items-center gap-1 border-b border-[#dfe2e8] mb-5 overflow-x-auto" aria-label="Áreas de GBA Workspace">
-          {AREAS.map(area => { const Icon = area.icon; return <button key={area.id} type="button" onClick={() => setActiveArea(area.id)} className={`h-11 px-4 flex items-center gap-2 border-b-2 text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${activeArea === area.id ? 'border-[#17191d] text-[#17191d]' : 'border-transparent text-[#8b9099] hover:text-[#4d525a]'}`}><Icon size={14}/>{area.label}</button>; })}
-          <div className="ml-auto hidden md:flex items-center gap-2 text-[9px] text-[#8b9099]"><ShieldCheck size={13}/>Acceso mediante GBA ID</div>
-        </nav>
-
-        {notice && <div className={`mb-4 min-h-10 px-4 py-2.5 border-l-2 flex items-center gap-2 text-xs ${notice.type === 'error' ? 'border-red-500 bg-red-50 text-red-700' : notice.type === 'success' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-[#2563eb] bg-blue-50 text-blue-700'}`}>{notice.type === 'error' ? <AlertCircle size={14}/> : notice.type === 'success' ? <Check size={14}/> : <Database size={14}/>}<span className="flex-1">{notice.message}</span><button type="button" title="Cerrar aviso" onClick={() => setNotice(null)}><X size={14}/></button></div>}
-
-        {canAccess ? (
-          activeArea === 'calendar'
-            ? <WorkspaceCalendar access={access} events={events} documents={documents} onSaveEvent={saveEvent}/>
-            : activeArea === 'members'
-              ? <WorkspaceMembers access={access} members={members} collections={collections} onAddMember={addMember} onSetMemberRole={setMemberRole} onRemoveMember={removeMember} onUpdateCollection={updateCollection}/>
-              : <WorkspaceDocuments access={access} collections={collections} documents={documents} events={events} keynotePublications={keynotePublications} selectedDocumentId={selectedDocumentId} onSelectDocument={setSelectedDocumentId} onCreateDocument={createDocument} onSaveDocument={saveDocument} onLoadRevisions={loadRevisions} onPublishKeynote={publishKeynote} onUnpublishKeynote={unpublishKeynote} previewMode={previewMode}/>
-        ) : <AccessDenied/>}
-      </div>
-    </div>
-  );
-}
-
-function AccessDenied() {
-  return <div className="min-h-[70vh] flex items-center justify-center bg-[#f5f6f8] px-6"><div className="max-w-md text-center"><div className="w-12 h-12 mx-auto bg-white border border-[#d9dce3] rounded-md flex items-center justify-center text-[#6f747d]"><ShieldCheck size={21}/></div><h2 className="text-xl font-bold mt-5">Workspace restringido</h2><p className="text-sm leading-6 text-[#747982] mt-2">Tu GBA ID todavía no pertenece al equipo de Workspace. Un administrador debe añadirlo al directorio interno.</p></div></div>;
+const tabs={home:'Mi jornada',projects:'Proyectos',tasks:'Entregables',calendar:'Calendario',team:'Equipo',audit:'Actividad',keynotes:'Keynotes',licenses:'Licencias'};
+const demo={projects:[{id:'halloween-demo',unit_id:'gimg-demo',title:'Edición Halloween',brief:'Historias y arte para la edición de octubre.',status:'active',revision:1}],areas:[{id:'art-demo',project_id:'halloween-demo',name:'Ilustración',specialty:'art'}],tasks:[{id:'cover-demo',project_id:'halloween-demo',unit_id:'gimg-demo',area_id:'art-demo',title:'Portada de Halloween',description:'Preparar la portada y verificar créditos.',responsible_id:'demo-user',collaborator_ids:[],priority:'high',state:'review',due_at:'2026-10-30T18:00:00Z',current_version:1,revision:1,round:0}],members:[{user_id:'demo-user',display_name:'Integrante de demostración',membership_status:'active'}],versions:[{id:'version-demo',deliverable_id:'cover-demo',version_number:1,content_markdown:'## Propuesta de portada\n\nPrimera versión para revisión.',change_summary:'Propuesta inicial',credits:'Ilustración del equipo',created_at:'2026-10-08T18:00:00Z'}],comments:[],events:[],audit:[],assignments:[],grants:[],delegations:[]};
+const empty={projects:[],areas:[],tasks:[],members:[],events:[],audit:[],versions:[],comments:[],assignments:[],grants:[],delegations:[]};
+export default function Workspace({previewMode=false}) {
+ const {user}=useAuth();const [tab,setTab]=useState('home'),[context,setContext]=useState(null),[unitId,setUnitId]=useState(''),[projectId,setProjectId]=useState(''),[selectedId,setSelectedId]=useState(''),[data,setData]=useState(empty),[permissions,setPermissions]=useState({}),[notice,setNotice]=useState(''),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[lastVisit]=useState(()=>Number(localStorage.getItem('gba-workspace-last-visit')||0));const generation=useRef(0);
+ const userId=previewMode?'demo-user':user?.id, project=data.projects.find(p=>p.id===projectId),task=data.tasks.find(t=>t.id===selectedId),totals=summary(data.tasks,userId);
+ async function load(){const seq=++generation.current;setLoading(true);try{
+  if(previewMode){setContext({units:[{id:'gimg-demo',name:'GIMG'}],platform_owner:true});setUnitId('gimg-demo');setProjectId(demo.projects[0].id);setData(demo);setSelectedId('cover-demo');setPermissions(new Proxy({}, {get:()=>true}));return;}
+  const ctx=await rpc('workspace_context');if(seq!==generation.current)return;setContext(ctx);const u=ctx.units.find(x=>x.id===unitId)?.id||ctx.units[0]?.id||'';setUnitId(u);if(!u){setData(empty);return;}
+  const tables={projects:'workspace_projects',areas:'workspace_areas',tasks:'workspace_deliverables',events:'workspace_events',audit:'workspace_audit',assignments:'workspace_assignments',grants:'workspace_access_grants',delegations:'workspace_delegations'};
+  const results=await Promise.all(Object.entries(tables).map(async([key,table])=>{let q=supabase.from(table).select('*').eq('unit_id',u);if(key==='audit')q=q.order('created_at',{ascending:false}).limit(200);const {data,error}=await q;if(error)throw error;return [key,data||[]];}));
+  const next=Object.fromEntries(results),p=next.projects.find(x=>x.id===projectId)?.id||next.projects[0]?.id||'';const contextualTask=next.tasks.find(t=>t.id===selectedId&&t.project_id===p)||next.tasks.find(t=>t.project_id===p);
+  const contextualArea=contextualTask?.area_id||next.areas.find(a=>a.project_id===p)?.id||null;
+  const [unitPerm,projectPerm,directoryPerm]=await Promise.all([rpc('workspace_permissions',{p_unit:u}),rpc('workspace_permissions',{p_unit:u,p_project:p||null}),rpc('workspace_permissions',{p_unit:u,p_project:p||null,p_area:contextualArea,p_deliverable:contextualTask?.id||null})]);
+  const perm={...projectPerm};for(const [key,value] of Object.entries(unitPerm))if(key.startsWith('unit.')||key==='project.create')perm[key]=value;
+  next.members=directoryPerm['unit.members.read']?await rpc('workspace_directory',{p_unit:u,p_project:p||null,p_area:contextualArea,p_deliverable:contextualTask?.id||null}):[];
+  const ids=next.tasks.map(t=>t.id);for(const [key,table] of [['versions','workspace_versions'],['comments','workspace_comments']]){if(!ids.length){next[key]=[];continue;}const {data,error}=await supabase.from(table).select('*').in('deliverable_id',ids).order('created_at',{ascending:false});if(error)throw error;next[key]=data||[];}
+  if(seq!==generation.current)return;setData(next);setProjectId(p);setPermissions(perm);setSelectedId(current=>next.tasks.some(t=>t.id===current)?current:next.tasks.find(t=>t.project_id===p)?.id||'');localStorage.setItem('gba-workspace-last-visit',String(Date.now()));
+ }catch(e){if(seq===generation.current)setNotice(e.message||'No pudimos abrir Workspace. Vuelve a intentarlo.');}finally{if(seq===generation.current)setLoading(false);}}
+ useEffect(()=>{void load();return()=>{generation.current++;};},[userId,unitId,projectId,previewMode]);
+ async function command(action,payload,revision=null){if(previewMode){setNotice('Demostración local. Las acciones requieren una sesión real.');return null;}setBusy(true);setNotice('');try{const result=await rpc('workspace_command',{p_action:action,p_data:{unit_id:unitId,project_id:projectId,...payload},p_revision:revision});await load();setNotice('Cambio guardado en Workspace.');return result;}catch(e){setNotice(e.message);return null;}finally{setBusy(false);}}
+ const pick=t=>{setProjectId(t.project_id);setSelectedId(t.id);setTab('tasks');};const disabled=busy||previewMode;const role=context?.grants?.find(g=>g.unit_id===unitId)?.access_role;
+ return <div className="gw"><header><div><p className="gw-eyebrow">GBA / WORKSPACE</p><h1>El trabajo toma forma aquí.</h1><p>{previewMode?'Demostración local de GIMG':context?.units?.find(u=>u.id===unitId)?.name||'Espacio de GBA'}</p></div><div><strong>{user?.nombre_publico||user?.nombre||'GBA ID'}</strong><p>{ROLES[role]||'Acceso según asignación'}</p><button onClick={()=>void load()} disabled={loading}>Actualizar</button></div></header><main>
+ <nav aria-label="Workspace">{Object.entries(tabs).filter(([id])=>(id!=='licenses'||context?.platform_owner)&&(id!=='keynotes'||previewMode||context?.keynotes_access)).map(([id,label])=><button key={id} aria-current={tab===id?'page':undefined} onClick={()=>setTab(id)}>{label}</button>)}</nav>
+ {previewMode&&<p className="gw-alert">Vista de demostración local. No modifica cuentas, permisos ni datos reales.</p>}{notice&&<p className="gw-alert" role="alert">{notice}</p>}{loading&&<p role="status">Cargando Workspace…</p>}
+ {tab==='keynotes'?<KeynotesWorkspace previewMode={previewMode}/>:tab==='licenses'?<LicensePanel previewMode={previewMode}/>:!context?.units?.length&&!loading?<div className="gw-empty"><h2>Tu equipo está por comenzar.</h2><p>Dirección debe incorporar tu GBA ID y asignarte permisos para una unidad. Una licencia de escritorio no concede acceso editorial.</p></div>:<>
+ <div className="gw-row"><label>Unidad<select value={unitId} onChange={e=>setUnitId(e.target.value)}>{context?.units?.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></label><label>Proyecto<select value={projectId} onChange={e=>{setProjectId(e.target.value);setSelectedId('');}}><option value="">Selecciona un proyecto</option>{data.projects.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}</select></label></div>
+ {tab==='home'&&<><div className="gw-cards">{[['Mi trabajo',totals.mine.length],['Por revisar',totals.reviews.length],['Fuera de fecha',totals.late.length],['Bloqueados',totals.blocked.length]].map(([label,count])=><article key={label}><p>{label}</p><strong>{count}</strong></article>)}</div><h2>Tu próxima entrega</h2><TaskList tasks={[...totals.mine].sort((a,b)=>new Date(a.due_at||'9999')-new Date(b.due_at||'9999'))} onPick={pick}/><h2 className="gw-section">Revisiones y bloqueos</h2><TaskList tasks={[...totals.reviews,...totals.blocked]} onPick={pick}/><h2 className="gw-section">Cambios desde tu última entrada</h2><Activity rows={data.audit.filter(x=>new Date(x.created_at).getTime()>lastVisit)}/><h2 className="gw-section">Carga por persona</h2><div className="gw-list">{data.members.map(m=><article key={m.user_id}><strong>{m.display_name}</strong><p>{data.tasks.filter(t=>t.responsible_id===m.user_id&&!['published','archived'].includes(t.state)).length} entregables activos</p></article>)}</div></>}
+ {tab==='projects'&&<><h2>Productos y microediciones</h2>{permissions['project.create']&&<CommandForm busy={disabled} button="Crear proyecto" fields={{title:'Nombre del proyecto',brief:{label:'Brief principal',type:'textarea'},starts_at:{label:'Inicio',type:'datetime-local',optional:true},ends_at:{label:'Cierre',type:'datetime-local',optional:true}}} onSave={d=>command('project.create',d)}/>}<div className="gw-list">{data.projects.map(p=><article key={p.id}><div className="gw-row"><h3>{p.title}</h3><span className="gw-badge">{p.status}</span></div><p>{p.brief||'Sin brief todavía'}</p><p>{dateLabel(p.starts_at)} → {dateLabel(p.ends_at)}</p><p>{data.tasks.filter(t=>t.project_id===p.id&&['published','archived'].includes(t.state)).length}/{data.tasks.filter(t=>t.project_id===p.id).length} entregables publicados o archivados</p><button onClick={()=>{setProjectId(p.id);setTab('tasks');}}>Abrir proyecto</button></article>)}</div>{project&&permissions['project.update']&&<CommandForm key={project.id+project.revision} initial={project} busy={disabled} button="Guardar proyecto" fields={{title:'Nombre',brief:{label:'Brief',type:'textarea'},status:{label:'Estado',options:{planned:'Planeado',active:'Activo',closed:'Cerrado',...(permissions['project.archive']?{archived:'Archivado'}:{})}},starts_at:{label:'Inicio',type:'datetime-local',optional:true},ends_at:{label:'Cierre',type:'datetime-local',optional:true}}} onSave={d=>command('project.save',d,project.revision)}/>}</>}
+ {tab==='tasks'&&<><h2>{project?.title||'Entregables'}</h2>{project&&<CommandForm busy={disabled} button="Crear entregable" fields={{title:'Título',description:{label:'Descripción',type:'textarea',optional:true},area_id:{label:'Área',options:choices(data.areas.filter(a=>a.project_id===projectId),'name')},responsible_id:{label:'Responsable',options:choices(data.members,'display_name'),optional:true}}} onSave={d=>command('task.create',d)}/>}<div className="gw-grid"><TaskList tasks={data.tasks.filter(t=>t.project_id===projectId)} onPick={pick} selectedId={selectedId}/>{task?<TaskDetail key={task.id} task={task} data={data} command={command} busy={disabled} previewMode={previewMode}/>:<p className="gw-empty">Selecciona un entregable para trabajar o revisar.</p>}</div></>}
+ {tab==='calendar'&&<><h2>Fechas del proyecto</h2><p>Las entregas reflejan la fecha registrada en cada entregable.</p>{project&&permissions['task.update_schedule']&&<CommandForm busy={disabled} button="Añadir hito" fields={{title:'Título',kind:{label:'Tipo',options:{milestone:'Hito',review:'Revisión',editorial:'Fecha editorial'}},starts_at:{label:'Inicio',type:'datetime-local'},ends_at:{label:'Fin',type:'datetime-local',optional:true}}} onSave={d=>command('event.save',d)}/>}<div className="gw-list">{data.events.filter(e=>e.project_id===projectId).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)).map(e=><article key={e.id}><h3>{e.title}</h3><p>{dateLabel(e.starts_at)} · {e.kind}</p>{e.deliverable_id&&<button onClick={()=>{setSelectedId(e.deliverable_id);setTab('tasks');}}>Abrir entregable</button>}{e.kind!=='deadline'&&permissions['task.update_schedule']&&<CommandForm busy={disabled} initial={e} button="Actualizar hito" fields={{title:'Título',kind:{label:'Tipo',options:{milestone:'Hito',review:'Revisión',editorial:'Fecha editorial'}},starts_at:{label:'Inicio',type:'datetime-local'},ends_at:{label:'Fin',type:'datetime-local',optional:true}}} onSave={d=>command('event.save',{...d,id:e.id},e.revision)}/>}</article>)}</div></>}
+ {tab==='team'&&<TeamPanel data={data} permissions={permissions} command={command} busy={disabled} unitId={unitId} projectId={projectId}/>}{tab==='audit'&&<><h2>Actividad de Workspace</h2>{permissions['audit.export_full']&&<button disabled={disabled} onClick={async()=>{try{const result=await rpc('workspace_export_audit',{p_unit:unitId});const blob=new Blob([JSON.stringify(result,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const anchor=document.createElement('a');anchor.href=url;anchor.download='auditoria-workspace.json';anchor.click();URL.revokeObjectURL(url);}catch(e){setNotice(e.message);}}}>Exportar auditoría completa</button>}<p>Últimas 200 acciones visibles según tu alcance.</p><Activity rows={data.audit}/></>}
+ </>}
+ </main></div>;
 }

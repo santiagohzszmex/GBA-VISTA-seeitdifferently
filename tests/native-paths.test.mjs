@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { nativePaths } from '../scripts/workspace-native-paths.mjs';
+const config={productName:'GBA Workspace'};
+const result=nativePaths('macos','aarch64-apple-darwin',config,()=> 'GBA Workspace');
+assert.equal(result.executable,path.join(result.app,'Contents/MacOS/GBA Workspace'));
+assert.equal(nativePaths('macos','x86_64-apple-darwin',config,()=> 'renamed-binary').executable,path.join('src-tauri/target/x86_64-apple-darwin/release/bundle/macos/GBA Workspace.app/Contents/MacOS/renamed-binary'));
+for(const name of ['','../escape','/escape','a\\b','..']) assert.throws(()=>nativePaths('macos','aarch64-apple-darwin',config,()=>name),/Invalid/);
+assert.equal(nativePaths('windows','x86_64-pc-windows-msvc',config).executable,path.join('src-tauri/target/x86_64-pc-windows-msvc/release/gba-workspace.exe'));
+console.log('PASS: native bundle metadata paths, renamed executables and invalid-path rejection.');

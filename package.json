@@ -14,7 +14,13 @@
     "test:studios": "node tests/studios.test.mjs",
     "test:session": "node tests/session.test.mjs",
     "test:home": "node tests/home.test.mjs",
-    "test:recruitment": "node tests/recruitment.test.mjs"
+    "test:recruitment": "node tests/recruitment.test.mjs",
+    "test:workspace": "node tests/workspace.test.mjs && node tests/identity-gateway.test.mjs",
+    "workspace:dev": "vite --config vite.workspace.config.js",
+    "workspace:build": "vite build --config vite.workspace.config.js",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "node scripts/workspace-build.mjs",
+    "test:desktop": "node tests/license-clock.test.mjs && node tests/desktop-config.test.mjs && node tests/native-paths.test.mjs && node tests/native-build.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
@@ -27,6 +33,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
+    "@tauri-apps/cli": "2.8.4",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.35",

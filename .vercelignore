@@ -1,0 +1,12 @@
+.git/
+.env*
+.vercel/
+node_modules/
+dist/
+workspace-dist/
+release-candidates/
+src-tauri/
+.github/
+supabase/
+tests/
+docs/
