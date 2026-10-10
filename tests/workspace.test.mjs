@@ -40,13 +40,15 @@ await db.exec(`create role anon;create role authenticated;create role service_ro
  create table gimg_recruitment_private.identities(user_id uuid,recovery_hash text);
  create function public.gimg_recover_identity(text,text,text) returns boolean language sql as $$select false$$;
  create function gimg_recruitment_private.recover_identity(text,text,text) returns boolean language sql as $$select false$$;`);
-for(let n=1;n<=12;n++) { await db.query("insert into auth.users values($1,$2,extensions.crypt('GBA-1234-SecureVault',extensions.gen_salt('bf',4)),now())",[id(n),`person${n}@gba.com`]);await db.query('insert into auth.sessions values($1,$2)',[session(n),id(n)]);await db.query('insert into public.usuarios values($1,$2,$3,$3,$4)',[id(n),n===1?'Dueño':'Usuario',`person${n}`,'old secret']); }
+for(let n=1;n<=12;n++) { await db.query("insert into auth.users values($1,$2,extensions.crypt('GBA-1234-SecureVault',extensions.gen_salt('bf',4)),now())",[id(n),`person${n}@gba.com`]);await db.query('insert into auth.sessions values($1,$2)',[session(n),id(n)]);await db.query('insert into public.usuarios values($1,$2,$3,$3,$4)',[id(n),n===1?'Dueño':'Usuario',`person${n}`,n===12?'sol':'old secret']); }
 await db.query("insert into public.gimg_recruitment_reviewers values($1,'director')",[id(2)]);
 for(const file of ['202608010001_gba_workspace_phase1.sql','202608140001_public_keynotes.sql','20261009050000_workspace_gimg.sql','20261009051000_workspace_licenses.sql','20261009052000_gba_id_secure_gateway.sql','20261009112023_gimg_role_isolation.sql','20261009123356_gimg_identity_role_isolation.sql']) await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
 const restoredCheckpoint=await scalar('select extensions.pgp_sym_decrypt(b.encrypted_payload,k.decrypted_secret)::jsonb from workspace_private.identity_rollout_backups b join vault.decrypted_secrets k on k.id=b.key_id');
 eq(restoredCheckpoint.length,12);eq(restoredCheckpoint[0].frase_seguridad,'old secret');
 eq(restoredCheckpoint[0].encrypted_password,await scalar('select pin_hash from workspace_private.id_secrets where user_id=$1',[id(1)]));
 await actor(1);await denied(db.query('select * from workspace_private.identity_rollout_backups'));await admin('select 1');
+await actor(1);eq(await scalar("select public.workspace_license_recipient(' @PERSON5 ')"),id(5));await denied(scalar("select public.workspace_license_recipient('missingperson')"),/GBA ID único/i);
+await actor(2);await denied(scalar("select public.workspace_license_recipient('person5')"));await admin('select 1');
 const unit=await scalar("select id from public.workspace_units where slug='gimg'");
 await actor(1);const keynoteCollection=await scalar("select id from public.gba_workspace_collections where slug='keynotes'");const oldKeynote=(await db.query("insert into public.gba_workspace_documents(collection_id,title,content_markdown,status,owner_id,created_by,updated_by) values($1,'Keynote conservada','Contenido aprobado de Keynote','approved',$2,$2,$2) returning id",[keynoteCollection,id(1)])).rows[0].id;const keynote=await scalar('select to_jsonb(public.gba_workspace_publish_keynote($1,$2,$3))',[oldKeynote,'Esta Keynote conserva su publicación y su contenido.', '2026-10-08']);eq(keynote.content_markdown,'Contenido aprobado de Keynote');eq(keynote.is_published,true);
 await actor(1);eq((await scalar('select public.workspace_context()')).platform_owner,true);eq((await scalar('select public.workspace_context()')).units.length,0);await denied(cmd('project.create',{unit_id:unit,title:'Not editorial'}));
@@ -106,5 +108,9 @@ await db.exec('reset role');let login=await scalar("select public.gba_id_gateway
 await db.query("insert into gimg_recruitment_private.identities values($1,encode(sha256(convert_to($2,'UTF8')),'hex'))",[id(6),'a'.repeat(48)]);eq((await scalar("select public.gba_id_gateway('recover','person6','9876',$1,'origin','device',null)",['a'.repeat(48)])).user_id,id(6));
 for(let n=0;n<5;n++)eq(Boolean((await scalar("select public.gba_id_gateway('login','person7','0000','','origin','device',null)")).error),true);eq(Boolean((await scalar("select public.gba_id_gateway('login','person7','1234','','origin','device',null)")).retry_after),true);
 const reset=await scalar("select public.gba_id_gateway('recover','person5','5678','old secret','origin','device',null)");eq(reset.user_id,id(5));await actor(5);eq((await scalar('select public.workspace_context()')).units.length,0);eq((await db.query('select * from public.workspace_deliverables')).rows.length,0);
+await db.exec('reset role');
+const shortPhraseRecovery=await scalar("select public.gba_id_gateway('recover','person12','9999',' Sol ','origin','device',null)");eq(shortPhraseRecovery.user_id,id(12));
+eq((await scalar("select public.gba_id_gateway('login','person12','9999','','origin','device',null)")).user_id,id(12));
+eq(Boolean((await scalar("select public.gba_id_gateway('prepare','newperson','1234','sol','origin','device',null)")).error),true);
 console.log(`PASS: ${checks} Workspace assertions: direct API denial, scopes, full editorial cycle, suspension, delegation expiry, immutable versions, self approval, licenses, recovery and session revocation.`);
 }catch(error){console.error(error.message,error.where||'',error.params||'');process.exitCode=1;}finally{await db.close();}

@@ -44,7 +44,7 @@ create function public.gba_id_gateway(p_action text,p_handle text,p_pin text,p_r
 declare target uuid; secret workspace_private.id_secrets; x text; n integer; blocked timestamptz; h text; code_hash text; valid boolean; v_email text; limit_at integer;
 begin
  h:=lower(regexp_replace(trim(p_handle),'[[:space:]]+',' ','g'));
- if length(coalesce(h,'')) not between 3 and 64 or p_pin !~ '^[0-9]{4}$' or length(coalesce(p_recovery,''))>256 or length(coalesce(p_origin,''))>128 or length(coalesce(p_device,''))>128 or p_action not in('login','recover','prepare','register') then return jsonb_build_object('error','Datos inválidos');end if;
+ if length(coalesce(h,'')) not between 3 and 64 or p_pin !~ '^[0-9]{4}$' or length(coalesce(p_recovery,''))>256 or length(coalesce(p_origin,''))>128 or length(coalesce(p_device,''))>128 or p_action not in('login','recover','prepare','register') or (p_action in('prepare','register') and length(trim(coalesce(p_recovery,'')))<8) or (p_action='recover' and length(trim(coalesce(p_recovery,'')))<1) then return jsonb_build_object('error','Datos inválidos');end if;
  select u.id,a.email into target,v_email from public.usuarios u join auth.users a on a.id=u.id where lower(regexp_replace(trim(u.nombre),'[[:space:]]+',' ','g'))=h;
  -- Acquire all limiter keys in a fixed order to avoid concurrent bypass/deadlocks.
  foreach x in array array['origin:'||coalesce(p_origin,'unknown'),'device:'||coalesce(p_device,'unknown'),'account:'||h] loop

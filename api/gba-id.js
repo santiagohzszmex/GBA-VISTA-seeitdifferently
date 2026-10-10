@@ -17,7 +17,7 @@ export function createIdentityHandler({ env = process.env, makeClient = createCl
     if (request.method === 'OPTIONS') return response.status(204).end();
     if (request.method !== 'POST') return response.status(405).json({ error: 'Método no permitido' });
     const body = request.body;
-    if (!body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > 2048 || !['login','register','recover'].includes(body.action) || typeof body.handle !== 'string' || !/^[a-z0-9áéíóúüñ ._-]{3,64}$/i.test(body.handle.trim()) || !/^\d{4}$/.test(body.pin) || (body.action !== 'login' && (typeof body.recovery !== 'string' || body.recovery.length < 8 || body.recovery.length > 256)) || typeof body.device !== 'string' || !/^[a-z0-9-]{16,64}$/i.test(body.device)) return response.status(400).json({ error: 'Datos inválidos' });
+    if (!body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > 2048 || !['login','register','recover'].includes(body.action) || typeof body.handle !== 'string' || !/^[a-z0-9áéíóúüñ ._-]{3,64}$/i.test(body.handle.trim()) || !/^\d{4}$/.test(body.pin) || (body.action !== 'login' && (typeof body.recovery !== 'string' || body.recovery.trim().length < (body.action === 'register' ? 8 : 1) || body.recovery.length > 256)) || typeof body.device !== 'string' || !/^[a-z0-9-]{16,64}$/i.test(body.device)) return response.status(400).json({ error: 'Datos inválidos' });
     const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
     const key = env.SUPABASE_SERVICE_ROLE_KEY;
     const anon = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;

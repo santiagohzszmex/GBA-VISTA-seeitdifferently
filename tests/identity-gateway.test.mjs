@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { createIdentityHandler } from '../api/gba-id.js';
+import { createHealthHandler } from '../api/gba-id-health.js';
+import { webcrypto } from 'node:crypto';
+import { requestIdentity } from '../src/auth/identityRequest.mjs';
 let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++;};
 const env={SUPABASE_URL:'https://project.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'service',SUPABASE_ANON_KEY:'anon',VERCEL:'1'};
 function setup({answer={user_id:'user-1',email:'person@gba.com'},rpcError=null,sessionError=null,linkUser='user-1',createError=null,environment=env}={}){
@@ -45,4 +48,33 @@ for(const origin of ['null','https://tauri.localhost.evil.example','http://local
  eq((await setup({environment:{...env,VERCEL:'0',VERCEL_URL:deployment}}).run(undefined,{origin:`https://${deployment}`})).status,403);
  eq((await setup({environment:{...env,VERCEL_URL:'https://evil.example'}}).run(undefined,{origin:'https://evil.example'})).status,403);
 }
-console.log(`PASS: ${checks} total gateway assertions including VISTA, native CORS and the trusted deployment origin.`);
+{
+ const body={action:'recover',handle:'person',pin:'1234',device:'12345678-1234-1234',recovery:'sol'};
+ const legacy=setup();eq((await legacy.run(body)).status,200);eq(legacy.calls[0].p_action,'recover');
+ for(const recovery of ['sol','        ',' 1234567 ']) {
+  const fresh=setup();eq((await fresh.run({...body,action:'register',recovery})).status,400);eq(fresh.calls.length,0);
+ }
+ const blank=setup();eq((await blank.run({...body,recovery:'   '})).status,400);eq(blank.calls.length,0);
+}
+{
+ let probes=0;const client={auth:{admin:{listUsers:async()=>{probes++;return {data:{users:[{id:'private-account',email:'private@example.com'}]},error:null};}}}};
+ const handler=createHealthHandler({env,makeClient:()=>client});
+ async function probe(h,method='GET') {const result={headers:{}};const response={setHeader(k,v){result.headers[k]=v;},status(s){result.status=s;return response;},json(b){result.body=b;return response;}};await h({method},response);return result;}
+ const success=await probe(handler);eq(success.status,200);eq(success.body,{server_connection:'verified'});eq(success.headers['Cache-Control'],'no-store');eq(probes,1);
+ await probe(handler);eq(probes,1);eq((await probe(handler,'POST')).status,405);eq(probes,1);
+ const missing=createHealthHandler({env:{},makeClient:()=>{throw Error('Unexpected client');}});eq((await probe(missing)).status,503);
+ const denied=createHealthHandler({env,makeClient:()=>({auth:{admin:{listUsers:async()=>({error:{message:'secret provider data'}})}}})});eq((await probe(denied)).body,{server_connection:'unavailable'});
+}
+{
+ const body={action:'login',handle:'person',pin:'1234'};const session={access_token:'access',refresh_token:'refresh'};
+ let saved=null;const requests=[];const storage={getItem:()=>saved,setItem:(_,value)=>{saved=value;}};
+ const secureRandom={getRandomValues:array=>webcrypto.getRandomValues(array)};
+ const options={storage,secureRandom,fetchRequest:async(url,request)=>{requests.push({url,body:JSON.parse(request.body),signal:request.signal});return {ok:true,json:async()=>({session})};}};
+ eq(await requestIdentity('/api/gba-id',body,options),session);eq(/^[a-f0-9]{32}$/.test(saved),true);eq(requests[0].body.pin,'1234');eq(requests[0].signal.aborted,false);
+ await requestIdentity('/api/gba-id',body,options);eq(requests[1].body.device,saved);
+ const blocked={getItem:()=>{throw Error('Storage disabled');},setItem:()=>{throw Error('Storage disabled');}};
+ eq(await requestIdentity('/api/gba-id',body,{...options,storage:blocked}),session);eq(requests.length,3);
+ await assert.rejects(requestIdentity('/api/gba-id',body,{...options,fetchRequest:async()=>({ok:false,json:async()=>({error:'Cuenta no válida'})})}),/Cuenta no válida/);checks++;
+ await assert.rejects(requestIdentity('/api/gba-id',body,{...options,timeoutMs:1,fetchRequest:async(_,request)=>new Promise((_,reject)=>request.signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')),{once:true}))}),{name:'AbortError'});checks++;
+}
+console.log(`PASS: ${checks} total gateway assertions including CORS, legacy recovery, private server connection and WebKit requests.`);

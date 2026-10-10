@@ -143,8 +143,8 @@ export default function VISTAAuth({ onLogin }) {
         }
       } 
       else if (step === 'profile') {
-        if (!frase.trim()) {
-          setError('La frase de recuperación es obligatoria.');
+        if (frase.trim().length < 8 || frase.length > 256) {
+          setError('Usa una frase de recuperación de entre 8 y 256 caracteres.');
           setLoading(false);
           return;
         }

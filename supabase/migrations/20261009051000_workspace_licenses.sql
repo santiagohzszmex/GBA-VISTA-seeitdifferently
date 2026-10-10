@@ -11,6 +11,18 @@ alter table public.workspace_licenses enable row level security;
 revoke all on public.workspace_licenses from public,anon,authenticated;
 grant select on public.workspace_licenses to authenticated;
 create policy license_read on public.workspace_licenses for select to authenticated using(workspace_private.session_active() and (user_id=auth.uid() or workspace_private.allowed('platform.manage',null)));
+create function public.workspace_license_recipient(p_handle text) returns uuid language plpgsql stable security definer set search_path=pg_catalog,pg_temp as $$
+declare h text; ids uuid[];
+begin
+ perform workspace_private.require('platform.manage',null);
+ h:=lower(regexp_replace(trim(regexp_replace(trim(coalesce(p_handle,'')),'^@+','','g')),'[[:space:]]+',' ','g'));
+ if length(h) not between 3 and 64 then raise exception 'Escribe un GBA ID válido';end if;
+ select array_agg(id) into ids from public.usuarios where lower(regexp_replace(trim(nombre),'[[:space:]]+',' ','g'))=h;
+ if coalesce(array_length(ids,1),0)<>1 then raise exception 'No encontramos un GBA ID único con ese nombre';end if;
+ return ids[1];
+end;$$;
+revoke all on function public.workspace_license_recipient(text) from public,anon;
+grant execute on function public.workspace_license_recipient(text) to authenticated;
 create function public.workspace_issue_license(p_duration_seconds bigint,p_label text,p_user_id uuid default null,p_redeem_before timestamptz default null) returns jsonb language plpgsql security definer set search_path=pg_catalog,pg_temp as $$
 declare secret text; i uuid;
 begin
