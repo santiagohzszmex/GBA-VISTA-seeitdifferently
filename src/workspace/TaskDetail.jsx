@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { CommandForm, choices, rpc } from './ui';
 import { STATES, PRIORITIES, dateLabel } from './gimgModel';
-export default function TaskDetail({task:t,data,command,busy,previewMode}){
+export default function TaskDetail({task:t,data,command,busy,previewMode,onDirtyChange}){
  const [permissions,setPermissions]=useState({}),[content,setContent]=useState(''),[asset,setAsset]=useState(''),[credits,setCredits]=useState(''),[change,setChange]=useState(''),[error,setError]=useState('');
  const versions=data.versions.filter(v=>v.deliverable_id===t.id).sort((a,b)=>b.version_number-a.version_number),comments=data.comments.filter(c=>c.deliverable_id===t.id),area=data.areas.find(a=>a.id===t.area_id);
  useEffect(()=>{let live=true;if(previewMode){setPermissions(new Proxy({}, {get:()=>true}));return;}rpc('workspace_permissions',{p_unit:t.unit_id,p_project:t.project_id,p_area:t.area_id,p_deliverable:t.id}).then(p=>{if(live)setPermissions(p);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[t.id,t.revision,previewMode]);
  useEffect(()=>{setContent(versions[0]?.content_markdown||'');setCredits(versions[0]?.credits||'');setAsset('');setChange('');},[t.id,t.current_version]);
+ const dirty=Boolean(content!==(versions[0]?.content_markdown||'')||credits!==(versions[0]?.credits||'')||asset||change);
+ useEffect(()=>{onDirtyChange?.(dirty);},[dirty,onDirtyChange]);
+ useEffect(()=>()=>onDirtyChange?.(false),[onDirtyChange]);
+ useEffect(()=>{if(!dirty)return;const warn=e=>{e.preventDefault();e.returnValue='';};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty]);
  const run=(a,d={})=>command(a,{project_id:t.project_id,deliverable_id:t.id,...d},t.revision);
  const reasonAction=async(a)=>{const reason=window.prompt('Motivo o verificación (mínimo 10 caracteres)');if(reason)await run(a,{reason});};
  const transitions=[...(t.state==='assigned'?[['in_progress','task.update_status']]:[]),...(t.state==='review'?[['area_approved',`review.approve_${area?.specialty}`]]:[]),...(t.state==='area_approved'?[['in_qa','review.queue_qa']]:[]),...(t.state==='in_qa'?[['qa_approved','qa.approve']]:[]),...(t.state==='qa_approved'&&t.final_approved_by?[['published','publication.execute']]:[]),...(t.state==='published'?[['archived','asset.archive']]:[])];
