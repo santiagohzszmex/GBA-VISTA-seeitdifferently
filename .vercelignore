@@ -3,9 +3,16 @@
 .vercel/
 node_modules/
 dist/
+.vite/
 workspace-dist/
 release-candidates/
-src-tauri/
+src-tauri/target/
+src-tauri/src/
+src-tauri/gen/
+src-tauri/capabilities/
+src-tauri/Cargo*
+src-tauri/*.rs
+src-tauri/tauri*.json
 .github/
 supabase/
 tests/

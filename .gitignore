@@ -48,3 +48,8 @@ src-tauri/gen/
 # Native candidate evidence stays in release artifacts, not source commits.
 release-candidates/
 .vercel/
+
+# Local Supabase CLI cache.
+supabase/.temp/
+.vercel
+.env*
