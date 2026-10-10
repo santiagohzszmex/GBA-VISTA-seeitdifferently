@@ -2,6 +2,7 @@ import React from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import VISTAHome from './VISTAHome';
 import VISTAAuth from './VISTAAuth';
+import WorkspaceAuth from './workspace/WorkspaceAuth';
 import PerfilUsuario from './views/PerfilUsuario';
 import PerfilEditorial from './views/news/PerfilEditorial';
 import WorkspaceView from './views/Workspace';
@@ -14,13 +15,15 @@ const WorkspacePublications = React.lazy(() => import('./workspace/WorkspacePubl
 const SurveyPage = React.lazy(() => import('./views/SurveyPage'));
 const isSurveyRoute = window.location.pathname.replace(/\/$/, '') === '/encuesta/partners'
   || new URLSearchParams(window.location.search).get('encuesta') === 'partners';
+const isWorkspaceRoute = window.location.pathname.replace(/\/$/, '') === '/workspace/web'
+  || new URLSearchParams(window.location.search).get('workspace') === '1';
 
 // Creamos un sub-componente para poder "sintonizar" el contexto
 function MainApp() {
   const { user } = useAuth();
   const searchParams = new URLSearchParams(window.location.search);
   if (isSurveyRoute) return <React.Suspense fallback={<div className="min-h-screen bg-[#0a0a0a] text-white p-12">Abriendo VISTA…</div>}><SurveyPage previewMode={import.meta.env.DEV && searchParams.get('survey-preview') === '1'} /></React.Suspense>;
-  if (searchParams.get('workspace') === '1' || window.location.pathname.replace(/\/$/, '') === '/workspace/web') return user ? <WorkspaceView /> : <VISTAAuth onLogin={() => {}} />;
+  if (isWorkspaceRoute) return user ? <WorkspaceView /> : <WorkspaceAuth />;
   if (searchParams.get('gimg-publications') === '1') return <React.Suspense fallback={<p>Cargando publicaciones…</p>}><WorkspacePublications /></React.Suspense>;
   const publicStudio = searchParams.get('studio');
   if (publicStudio) return user ? <React.Suspense fallback={<div className="p-12">Abriendo estudio…</div>}><StudioProfile slug={publicStudio}/></React.Suspense> : <VISTAAuth onLogin={() => {}}/>;
@@ -48,12 +51,22 @@ function MainApp() {
 }
 
 function App() {
+  React.useEffect(() => {
+    if (!isWorkspaceRoute) return;
+    document.title = 'Workspace · GIMG';
+    const icon = document.createElement('link');
+    icon.rel = 'icon';
+    icon.type = 'image/png';
+    icon.href = '/gba/workspace/workspace-icon.png';
+    document.head.append(icon);
+    return () => icon.remove();
+  }, []);
   return (
     <RadioProvider>
       {/* AuthProvider envuelve todo el edificio */}
-      <AuthProvider>
+      <AuthProvider productName={isWorkspaceRoute ? 'Workspace' : 'VISTA'}>
         <MainApp />
-        {!isSurveyRoute && <GlobalRadioPlayer />}
+        {!isSurveyRoute && !isWorkspaceRoute && <GlobalRadioPlayer />}
       </AuthProvider>
     </RadioProvider>
   );

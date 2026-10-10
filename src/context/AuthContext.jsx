@@ -4,7 +4,7 @@ import { createSessionLoader } from '../auth/sessionLoader';
 
 const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = ({ children, productName = 'VISTA' }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sessionError, setSessionError] = useState('');
@@ -68,11 +68,11 @@ export const AuthProvider = ({ children }) => {
   return <AuthContext.Provider value={value}>
     {loading || sessionError ? <main className="min-h-screen bg-[#fbfbfd] text-[#1d1d1f] flex items-center justify-center px-6 font-sans" aria-busy={loading}>
       <div className="max-w-md text-center">
-        <p className="font-serif italic text-5xl mb-7">VISTA.</p>
+        <p className={productName === 'Workspace' ? 'text-3xl font-semibold tracking-tight mb-7' : 'font-serif italic text-5xl mb-7'}>{productName === 'Workspace' ? productName : 'VISTA.'}</p>
         {sessionError ? <>
           <p className="text-sm leading-7 text-[#6e6e73]" role="alert">{sessionError}</p>
           <button type="button" onClick={() => void loader.current?.restore()} className="mt-7 px-7 py-3 rounded-full bg-[#0066ff] text-white font-bold text-sm">Reintentar</button>
-        </> : <p className="text-xs tracking-widest uppercase text-[#6e6e73]" role="status">Abriendo VISTA…</p>}
+        </> : <p className="text-xs tracking-widest uppercase text-[#6e6e73]" role="status">Abriendo {productName}…</p>}
       </div>
     </main> : children}
   </AuthContext.Provider>;
