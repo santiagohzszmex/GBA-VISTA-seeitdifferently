@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
+import { toNativeVersion } from '../src/workspace/releaseVersion.mjs';
 
 export async function buildReleaseManifest(packages, proof, fetchAsset=fetch) {
  const channel=proof.channel||'stable';
@@ -17,6 +18,7 @@ export async function buildReleaseManifest(packages, proof, fetchAsset=fetch) {
   const url=new URL(p.url);
   if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash) throw Error('Require permanent public HTTPS asset URL');
   if(!['macos','windows'].includes(p.platform)||!['aarch64','x86_64'].includes(p.architecture)||p.platform==='windows'&&p.architecture!=='x86_64'||!/^\d+\.\d+\.\d+$/.test(p.version)||!/^[a-f0-9]{64}$/.test(p.sha256)||!Number.isSafeInteger(p.size)||p.size<100000) throw Error('Invalid package metadata');
+  if(p.displayVersion && p.displayVersion!==p.version && toNativeVersion(p.displayVersion)!==p.version)throw Error('Public package version differs');
   const signed=p.platform==='macos'?'notarized':'authenticode';
   const beta=p.platform==='macos'?'ad-hoc':'unsigned';
   if(p.signing!==signed&&(channel!=='beta'||p.signing!==beta)) throw Error('Public stable distribution requires verified native signing');
@@ -26,7 +28,7 @@ export async function buildReleaseManifest(packages, proof, fetchAsset=fetch) {
   if(!response.ok||new URL(response.url).protocol!=='https:') throw Error('Public asset is unavailable');
   const bytes=Buffer.from(await response.arrayBuffer());
   if(bytes.length!==p.size||createHash('sha256').update(bytes).digest('hex')!==p.sha256) throw Error('Public asset differs from verified native package');
-  downloads.push({platform:p.platform,architecture:p.architecture,version:p.version,url:p.url,sha256:p.sha256,size:p.size,signing:p.signing});
+  downloads.push({platform:p.platform,architecture:p.architecture,version:p.displayVersion||p.version,nativeVersion:p.version,url:p.url,sha256:p.sha256,size:p.size,signing:p.signing});
  }
  if(!downloads.some(p=>p.platform==='macos')||!downloads.some(p=>p.platform==='windows')) throw Error('Both native platforms are required');
  if(new Set(downloads.map(p=>p.version)).size!==1) throw Error('Mixed release versions');

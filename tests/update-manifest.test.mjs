@@ -19,3 +19,11 @@ assert.throws(()=>verifyCandidate(metadata,{...startup,commit:'c'.repeat(40)},by
 assert.throws(()=>verifyCandidate(metadata,{...startup,installedAppTest:false},bytes,{commit,version,target:'darwin-aarch64'}),/acceptance/);
 assert.throws(()=>verifyCandidate(metadata,startup,Buffer.alloc(1000,8),{commit,version,target:'darwin-aarch64'}),/bytes/);
 console.log('PASS: increasing versions, complete native matrix, permanent URLs, signatures, installed acceptance and CI byte integrity.');
+const minorArtifacts=artifacts.map(a=>({...a,version:'0.1.401',file:a.file.replaceAll('0.1.2','0.1.4.1'),url:a.url.replaceAll('0.1.2','0.1.4.1')}));
+const minor={...input,version:'0.1.401',displayVersion:'0.1.4.1',mandatory:true,minimumNativeVersion:'0.1.401',artifacts:minorArtifacts,previous:{version:'0.1.4'}};
+assert.equal(buildUpdateManifest(minor).displayVersion,'0.1.4.1');
+assert.equal(buildUpdateManifest(minor).minimumNativeVersion,'0.1.401');
+assert.throws(()=>buildUpdateManifest({...minor,minimumNativeVersion:'0.1.402'}),/exceeds/);
+assert.throws(()=>buildUpdateManifest({...minor,displayVersion:'0.1.4.2'}),/differ/);
+assert.throws(()=>buildUpdateManifest({...minor,minimumNativeVersion:'0.1.4'}),/Mandatory/);
+console.log('PASS: public maintenance releases match native SemVer and mandatory minimums.');

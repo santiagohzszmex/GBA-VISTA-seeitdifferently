@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { toNativeVersion } from '../src/workspace/releaseVersion.mjs';
 export const UPDATE_TARGETS=['darwin-aarch64','darwin-x86_64','windows-x86_64'];
 export const REPOSITORY='santiagohzszmex/GBA-VISTA-seeitdifferently';
 export function versionParts(version) {
@@ -12,7 +13,7 @@ export function newerThan(version,previous) {
   for(let i=0;i<3;i++)if(a[i]!==b[i])return a[i]>b[i];
   return false;
 }
-export function verifyCandidate(metadata,startup,bytes,{commit,version,target}) {
+export function verifyCandidate(metadata,startup,bytes,{commit,version,displayVersion=version,target}) {
   if(!/^[a-f0-9]{40}$/.test(commit)||!UPDATE_TARGETS.includes(target)) throw Error('Invalid release identity');
   if(metadata.commit!==commit||startup.commit!==commit) throw Error('Mixed candidate commits');
   if(startup.installedAppTest!==true||startup.processStartup!==true||startup.installedExecutableMatches!==true) throw Error('Installed candidate acceptance required');
@@ -22,12 +23,16 @@ export function verifyCandidate(metadata,startup,bytes,{commit,version,target}) 
   const nativeTarget=`${installer.platform==='macos'?'darwin':installer.platform}-${installer.architecture}`;
   if(nativeTarget!==target||startup.platform!==installer.platform) throw Error('Acceptance platform mismatch');
   if(artifact.size!==bytes.length||!/^([a-f0-9]{64})$/.test(artifact.sha256)||createHash('sha256').update(bytes).digest('hex')!==artifact.sha256) throw Error('Candidate bytes differ from CI');
-  const expected=target.startsWith('darwin-')?`workspace-${version}-${target}.app.tar.gz`:`gba-workspace-${version}-windows-x86_64.exe`;
+  if(displayVersion!==version && (artifact.displayVersion!==displayVersion||installer.displayVersion!==displayVersion||toNativeVersion(displayVersion)!==version)) throw Error('Public candidate version differs');
+  const expected=target.startsWith('darwin-')?`workspace-${displayVersion}-${target}.app.tar.gz`:`gba-workspace-${displayVersion}-windows-x86_64.exe`;
   if(artifact.file!==expected) throw Error('Unexpected updater filename');
   return artifact;
 }
-export function buildUpdateManifest({version,commit,notes,pubDate,artifacts,previous}) {
+export function buildUpdateManifest({version,displayVersion=version,mandatory=false,minimumNativeVersion=null,commit,notes,pubDate,artifacts,previous}) {
   versionParts(version);
+  if(displayVersion!==version && toNativeVersion(displayVersion)!==version)throw Error('Public and native versions differ');
+  if(minimumNativeVersion) { versionParts(minimumNativeVersion); if(newerThan(minimumNativeVersion,version))throw Error('Minimum version exceeds release'); }
+  if(mandatory && minimumNativeVersion!==version)throw Error('Mandatory release must require its version');
   if(previous&&!newerThan(version,previous.version))throw Error('Update publication must increase the version');
   if(!/^[a-f0-9]{40}$/.test(commit)||!Number.isFinite(Date.parse(pubDate))||typeof notes!=='string'||notes.length>10000)throw Error('Invalid update metadata');
   const platforms={};
@@ -35,11 +40,11 @@ export function buildUpdateManifest({version,commit,notes,pubDate,artifacts,prev
     const target=`${artifact.platform}-${artifact.architecture}`;
     if(!UPDATE_TARGETS.includes(target)||platforms[target]||artifact.version!==version)throw Error('Duplicate or mismatched update target');
     const url=new URL(artifact.url);
-    const prefix=`https://github.com/${REPOSITORY}/releases/download/workspace-v${version}-beta.1/`;
+    const prefix=`https://github.com/${REPOSITORY}/releases/download/workspace-v${displayVersion}-beta.1/`;
     if(!artifact.url.startsWith(prefix)||url.search||url.hash||url.username||url.password||decodeURIComponent(url.pathname.split('/').at(-1))!==artifact.file)throw Error('Updater must use the permanent release asset');
     if(!/^[A-Za-z0-9+/]+={0,2}$/.test(artifact.signature||'')||Buffer.from(artifact.signature,'base64').length<100)throw Error('Missing native updater signature');
     platforms[target]={url:artifact.url,signature:artifact.signature};
   }
   if(UPDATE_TARGETS.some(target=>!platforms[target]))throw Error('All three desktop targets are required');
-  return {version,notes,pub_date:pubDate,commit,platforms};
+  return {version,displayVersion,mandatory,...(minimumNativeVersion?{minimumNativeVersion}:{}),notes,pub_date:pubDate,commit,platforms};
 }

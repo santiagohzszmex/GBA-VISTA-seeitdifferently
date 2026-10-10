@@ -1,0 +1,7 @@
+{
+  "version": "0.1.4.1",
+  "nativeVersion": "0.1.401",
+  "minimumNativeVersion": "0.1.401",
+  "mandatory": true,
+  "notice": "Esta actualización incorpora el nuevo acceso de Workspace. Usa el mismo GBA ID y PIN de tu cuenta o de la convocatoria de GIMG. Puedes buscar, descargar e instalar actualizaciones antes de iniciar sesión."
+}

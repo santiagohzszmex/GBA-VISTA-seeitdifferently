@@ -3,12 +3,15 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { nativePaths } from './workspace-native-paths.mjs';
+import { toNativeVersion } from '../src/workspace/releaseVersion.mjs';
 
 // Run on the native runner after Tauri has finished. This records package
 // evidence, not a claim that live Auth/RLS or an installed app has been tested.
 const [platform, architecture, target, out='release-candidates'] = process.argv.slice(2);
 if (!['macos','windows'].includes(platform) || !['aarch64','x86_64'].includes(architecture) || !/^[a-z0-9_-]+$/.test(target||'')) throw Error('Invalid platform/architecture/target');
 const config=JSON.parse(await fs.readFile('src-tauri/tauri.conf.json','utf8'));
+const release=JSON.parse(await fs.readFile('src/workspace/releaseInfo.json','utf8'));
+if(release.nativeVersion!==config.version || toNativeVersion(release.version)!==config.version) throw Error('Public and native release versions differ');
 const root=path.join('src-tauri/target',target,'release/bundle');
 const run=(command,args)=>execFileSync(command,args,{encoding:'utf8',stdio:['ignore','pipe','pipe']});
 async function files(dir) {
@@ -55,18 +58,18 @@ for(const file of packages) {
   }
   const bytes=await fs.readFile(file);
   if(bytes.length<100000) throw Error(`Implausibly small installer: ${file}`);
-  const name=`gba-workspace-${config.version}-${platform}-${architecture}${path.extname(file)}`;
+  const name=`gba-workspace-${release.version}-${platform}-${architecture}${path.extname(file)}`;
   if(downloads.some(d=>d.file===name)) throw Error('Ambiguous installer name');
   await fs.copyFile(file,path.join(out,name));
-  downloads.push({file:name,platform,architecture,version:config.version,sha256:createHash('sha256').update(bytes).digest('hex'),size:bytes.length,signing:packageSigning});
+  downloads.push({file:name,platform,architecture,version:config.version,displayVersion:release.version,sha256:createHash('sha256').update(bytes).digest('hex'),size:bytes.length,signing:packageSigning});
 }
 const updaters=[];
 if(platform==='macos') {
   const {app}=nativePaths(platform,target,config);
-  const file=`workspace-${config.version}-darwin-${architecture}.app.tar.gz`;
+  const file=`workspace-${release.version}-darwin-${architecture}.app.tar.gz`;
   execFileSync('tar',['-czf',path.resolve(out,file),'-C',path.dirname(app),path.basename(app)],{stdio:['ignore','pipe','pipe']});
   const bytes=await fs.readFile(path.join(out,file));
-  updaters.push({file,platform:'darwin',architecture,version:config.version,sha256:createHash('sha256').update(bytes).digest('hex'),size:bytes.length});
+  updaters.push({file,platform:'darwin',architecture,version:config.version,displayVersion:release.version,sha256:createHash('sha256').update(bytes).digest('hex'),size:bytes.length});
 } else {
   const installer=downloads.find(p=>p.file.endsWith('.exe'));
   if(!installer) throw Error('Manual updater requires the verified NSIS installer');

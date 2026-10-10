@@ -18,6 +18,7 @@
   if(!downloads.length)return;
   container.replaceChildren();
   if(beta){const notice=document.createElement('p');notice.textContent='Versión beta para pruebas. Los paquetes de Mac aún no tienen notarización de Apple y el instalador de Windows no tiene firma digital de distribución. El sistema puede mostrar advertencias o bloquear la apertura.';container.append(notice);}
+  if(release.mandatory){const required=document.createElement('p');required.textContent=`Importante: actualiza a Workspace ${release.version} antes de entrar para usar el nuevo acceso de GIMG. Puedes actualizar sin iniciar sesión. Las versiones anteriores sólo muestran el icono de descarga; a partir de esta entrega, la app admite actualizaciones obligatorias al abrirse.`;container.append(required);const releaseNotice=document.getElementById('download-notice-release');releaseNotice.hidden=false;releaseNotice.textContent=`Workspace ${release.version} incorpora el nuevo inicio de sesión. Al abrir la app verás el aviso de esta actualización. Usa tu mismo GBA ID y PIN.`;}
   for(const d of downloads){
    const card=document.createElement('article');const title=document.createElement('h3');
    title.textContent=d.platform==='macos'?(d.architecture==='aarch64'?'Mac · Apple Silicon':'Mac · Intel'):'Windows · x64';
