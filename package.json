@@ -20,7 +20,7 @@
     "workspace:build": "vite build --config vite.workspace.config.js",
     "desktop:dev": "tauri dev",
     "desktop:build": "node scripts/workspace-build.mjs",
-    "test:desktop": "node tests/license-clock.test.mjs && node tests/desktop-config.test.mjs && node tests/native-paths.test.mjs && node tests/native-build.test.mjs && node tests/release-manifest.test.mjs && node tests/manual-updates.test.mjs && node tests/update-manifest.test.mjs && node tests/database-acceptance.test.mjs",
+    "test:desktop": "node tests/license-clock.test.mjs && node tests/desktop-config.test.mjs && node tests/native-paths.test.mjs && node tests/native-build.test.mjs && node tests/release-manifest.test.mjs && node tests/manual-updates.test.mjs && node tests/update-manifest.test.mjs && node tests/database-acceptance.test.mjs && node tests/maintenance-updates.test.mjs && node tests/identity-acceptance.test.mjs",
     "desktop:publish": "node scripts/workspace-publish-update.mjs"
   },
   "dependencies": {

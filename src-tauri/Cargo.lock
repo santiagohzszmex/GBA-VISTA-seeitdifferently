@@ -944,7 +944,7 @@ dependencies = [
 
 [[package]]
 name = "gba-workspace"
-version = "0.1.4"
+version = "0.1.401"
 dependencies = [
  "base64 0.23.1",
  "minisign-verify",

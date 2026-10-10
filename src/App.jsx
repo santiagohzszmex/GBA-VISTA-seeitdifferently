@@ -13,6 +13,7 @@ import { RadioProvider } from './radio/RadioContext';
 const StudioProfile = React.lazy(() => import('./views/StudioProfile'));
 const WorkspacePublications = React.lazy(() => import('./workspace/WorkspacePublications'));
 const SurveyPage = React.lazy(() => import('./views/SurveyPage'));
+const UpdatePreview = import.meta.env.DEV ? React.lazy(() => import('./workspace/UpdatePreview')) : null;
 const isSurveyRoute = window.location.pathname.replace(/\/$/, '') === '/encuesta/partners'
   || new URLSearchParams(window.location.search).get('encuesta') === 'partners';
 const isWorkspaceRoute = window.location.pathname.replace(/\/$/, '') === '/workspace/web'
@@ -61,6 +62,7 @@ function App() {
     document.head.append(icon);
     return () => icon.remove();
   }, []);
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('workspace-update-preview')) return <React.Suspense fallback={<p>Cargando prueba local…</p>}><UpdatePreview /></React.Suspense>;
   return (
     <RadioProvider>
       {/* AuthProvider envuelve todo el edificio */}

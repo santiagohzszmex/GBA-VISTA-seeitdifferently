@@ -8,4 +8,4 @@ import DesktopUpdates from './DesktopUpdates';
 import '../index.css';
 import './workspace.css';
 function WorkspaceClient(){const {user}=useAuth();if(!user)return <WorkspaceAuth/>;return <LicenseGate><Workspace/></LicenseGate>;}
-ReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><DesktopUpdates/><AuthProvider productName="Workspace"><WorkspaceClient/></AuthProvider></React.StrictMode>);
+ReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><DesktopUpdates><AuthProvider productName="Workspace"><WorkspaceClient/></AuthProvider></DesktopUpdates></React.StrictMode>);

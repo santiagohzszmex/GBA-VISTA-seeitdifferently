@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { IDENTITY_CHECKS, verifyPresentationAcceptance } from '../scripts/workspace-identity-acceptance.mjs';
+const commit='a'.repeat(40), projectRef='wgihpztgwsovhykboyru';
+const files=['src/context/AuthContext.jsx'];
+const paths=[...files,'src/workspace/WorkspaceAuth.jsx'];
+const changes=await Promise.all(paths.map(async file=>({file,sha256:createHash('sha256').update(await fs.readFile(file)).digest('hex')})));
+const proof={commit,projectRef,verifiedAt:new Date().toISOString(),changes,...Object.fromEntries(IDENTITY_CHECKS.map(check=>[check,true]))};
+const options={commit,files,projectRef,baseline:'033686bfdd8e2bcd6223d8515fcad6d5b839eaf4'};
+await verifyPresentationAcceptance(proof,options);
+await assert.rejects(verifyPresentationAcceptance(proof,{...options,files:[...files,'api/gba-id.js']}),/Full identity/);
+await assert.rejects(verifyPresentationAcceptance({...proof,gatewayRecoveryVerified:false},options),/Missing identity/);
+await assert.rejects(verifyPresentationAcceptance({...proof,commit:'b'.repeat(40)},options),/match/);
+await assert.rejects(verifyPresentationAcceptance({...proof,verifiedAt:'2020-01-01T00:00:00Z'},options),/Fresh/);
+await assert.rejects(verifyPresentationAcceptance({...proof,changes:changes.map(item=>({...item,sha256:'b'.repeat(64)}))},options),/differs/);
+console.log('PASS: fresh identity evidence, exact source hashes, unchanged protected session logic and rejection of broader identity changes.');
