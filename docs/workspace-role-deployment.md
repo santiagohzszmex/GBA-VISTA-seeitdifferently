@@ -31,6 +31,6 @@ Los avisos del asesor de seguridad antes y después tienen las mismas categoría
 
 ## Actualización de Workspace pendiente
 
-La separación del servicio actual está aplicada. Los alcances y permisos operativos del nuevo Workspace se instalarán con su esquema, mediante `20261009050000_workspace_gimg.sql` y `20261009112023_gimg_role_isolation.sql`. El esquema inicial toma las Direcciones explícitas de convocatoria: incorporará la misma cuenta @Santiago como gimg_direction, sin convertir Dueño en un permiso editorial implícito.
+La separación del servicio actual está aplicada. Los alcances y permisos operativos del nuevo Workspace se instalarán con su esquema, mediante `20261010005048_workspace_gimg.sql` y `20261010005309_gimg_role_isolation.sql`. El esquema inicial toma las Direcciones explícitas de convocatoria: incorporará la misma cuenta @Santiago como gimg_direction, sin convertir Dueño en un permiso editorial implícito.
 
 El nuevo sistema de licencias y el gateway de identidad siguen pendientes de su despliegue coordinado. Esta aplicación no cambió contraseñas ni desplegó la web o instaladores. Cloudflare permanece pendiente conforme a la instrucción inicial.

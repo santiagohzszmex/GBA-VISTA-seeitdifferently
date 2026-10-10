@@ -22,10 +22,10 @@ Estas migraciones **no se han aplicado a Supabase**. El endpoint y el frontend t
 2. Preparar `/api/gba-id` junto con las variables de servidor `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`. Nunca colocar la clave de servicio en variables `VITE_`, en el frontend o en los instaladores.
 3. Configurar `GBA_ID_ALLOWED_ORIGINS`: orígenes reales de VISTA, GBA y desarrollo autorizado, más `tauri://localhost`, `http://tauri.localhost` y `https://tauri.localhost`. El origen por sí solo no sustituye autenticación. En Vercel, el limitador utiliza `x-vercel-forwarded-for`, nunca una IP enviada en el cuerpo.
 4. Aplicar, después de las migraciones existentes, en este orden:
-   - `20261009050000_workspace_gimg.sql`
-   - `20261009051000_workspace_licenses.sql`
-   - `20261009052000_gba_id_secure_gateway.sql`
-   - `20261009112023_gimg_role_isolation.sql`
+   - `20261010005048_workspace_gimg.sql`
+   - `20261010005053_workspace_licenses.sql`
+   - `20261010005130_gba_id_secure_gateway.sql`
+   - `20261010005309_gimg_role_isolation.sql`
 5. Publicar inmediatamente el endpoint y los nuevos clientes web como una misma entrega. La última migración rota las contraseñas internas de las cuentas `@gba.com`; los clientes antiguos que usen `signInWithPassword` con el PIN dejan de funcionar. No ejecutar esa migración aislada en producción.
 6. Verificar registro, ingreso con PIN antiguo, recuperación con frase antigua y código de convocatoria, sesión revocada, suspensión y autorización mediante llamadas directas a RPC y REST. Comprobar que un colaborador no ve otro proyecto ni obtiene un enlace a originales con sólo permiso de lectura.
 
@@ -88,6 +88,6 @@ Aceptar una invitación de la editorial GIMG en VISTA Studio conserva el rango p
 
 La revisión de Supabase del 9 de octubre confirmó 1 Dueño, 8 Editor y 118 rangos NULL; la restricción desplegada permite Dueño, Admin, Ciudadano y Editor. No hay Dirección explícita en gimg_recruitment_reviewers. La separación local cubre también vista_approve_editorial_request: crear GIMG conserva el rango personal, incluido NULL. Las editoriales externas mantienen su comportamiento previo. Ninguna consulta de esta revisión modificó producción.
 
-La separación se divide en dos migraciones: 20261009123356_gimg_identity_role_isolation.sql cubre convocatoria, rango general e invitaciones/creación de GIMG en Studio y funciona sobre el esquema actual; 20261009112023_gimg_role_isolation.sql instala las restricciones de alcance del nuevo Workspace. La cuenta autorizada para Dirección explícita es @Santiago, conservando Dueño en GBA. La migración de Workspace inicial incorpora las Direcciones ya asignadas en convocatoria sin heredar rangos globales.
+La separación se divide en dos migraciones: 20261009123356_gimg_identity_role_isolation.sql cubre convocatoria, rango general e invitaciones/creación de GIMG en Studio y funciona sobre el esquema actual; 20261010005309_gimg_role_isolation.sql instala las restricciones de alcance del nuevo Workspace. La cuenta autorizada para Dirección explícita es @Santiago, conservando Dueño en GBA. La migración de Workspace inicial incorpora las Direcciones ya asignadas en convocatoria sin heredar rangos globales.
 
 Aplicada en Supabase la migración gimg_identity_role_isolation (versión remota 20261009123356). @Santiago mantiene Dueño y tiene director explícito en gimg_recruitment_reviewers. Comprobados permisos con sesión real activa y rechazo sin sesión; no se cambiaron otros rangos ni Keynotes. Los alcances del nuevo Workspace siguen pendientes con su esquema.

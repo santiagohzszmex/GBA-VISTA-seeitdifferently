@@ -22,10 +22,10 @@ Ya aplicado y verificado en producción: `20261009123356_gimg_identity_role_isol
 
 Pendientes de aplicar, revisar contra staging y desplegar coordinadamente:
 
-1. `20261009050000_workspace_gimg.sql`.
-2. `20261009051000_workspace_licenses.sql`.
-3. `20261009052000_gba_id_secure_gateway.sql`.
-4. `20261009112023_gimg_role_isolation.sql` (restricciones del nuevo Workspace).
+1. `20261010005048_workspace_gimg.sql`.
+2. `20261010005053_workspace_licenses.sql`.
+3. `20261010005130_gba_id_secure_gateway.sql`.
+4. `20261010005309_gimg_role_isolation.sql` (restricciones del nuevo Workspace).
 
 La migración de Workspace incorpora la Dirección explícita ya nombrada en convocatoria. La migración del gateway rota contraseñas internas de cuentas @gba.com: no ejecutarla aislada antes de tener API y nuevos clientes preparados. Los clientes antiguos que ingresan con signInWithPassword(PIN) dejarían de funcionar.
 
