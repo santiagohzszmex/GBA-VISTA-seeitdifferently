@@ -1,35 +1,39 @@
 {
-  "version": "0.1.4",
+  "version": "0.1.4.1",
   "channel": "beta",
-  "commit": "1e421c436bc24758a2a6ba5ed48c62f824af41b3",
-  "evidenceUrl": "https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/actions/runs/38076793783",
+  "commit": "ee1e4fa21558c6f2e32524d9e2891ae640342a9d",
+  "evidenceUrl": "https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/actions/runs/38087523604",
   "downloads": [
     {
       "platform": "macos",
       "architecture": "aarch64",
-      "version": "0.1.4",
-      "url": "https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/download/workspace-v0.1.4-beta.1/gba-workspace-0.1.4-macos-aarch64.dmg",
-      "sha256": "c0e2416ff5101276b86520c4da8c7870a88279c06c483cdab48d4a54d1be84bb",
-      "size": 6201984,
+      "version": "0.1.4.1",
+      "nativeVersion": "0.1.401",
+      "url": "https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/download/workspace-v0.1.4.1-beta.1/gba-workspace-0.1.4.1-macos-aarch64.dmg",
+      "sha256": "c099ecf1e2d6cae90fdb5d0712de9a39658ab0dcebdfa080f52dc2ef93cab0f9",
+      "size": 6167707,
       "signing": "ad-hoc"
     },
     {
       "platform": "macos",
       "architecture": "x86_64",
-      "version": "0.1.4",
-      "url": "https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/download/workspace-v0.1.4-beta.1/gba-workspace-0.1.4-macos-x86_64.dmg",
-      "sha256": "988254da30f7d6583b5237e602da4c6a9d48357162824027ebdf892d904b1422",
-      "size": 6446720,
+      "version": "0.1.4.1",
+      "nativeVersion": "0.1.401",
+      "url": "https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/download/workspace-v0.1.4.1-beta.1/gba-workspace-0.1.4.1-macos-x86_64.dmg",
+      "sha256": "1e37c60d228816c99ec3f4037687089ce7052ae21dd493be40e9651df4df691e",
+      "size": 6408668,
       "signing": "ad-hoc"
     },
     {
       "platform": "windows",
       "architecture": "x86_64",
-      "version": "0.1.4",
-      "url": "https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/download/workspace-v0.1.4-beta.1/gba-workspace-0.1.4-windows-x86_64.exe",
-      "sha256": "c71a3865b180eaa3d8953ac31c4eef0120cb77d1f86001dca3ffc24b2084a745",
-      "size": 3379298,
+      "version": "0.1.4.1",
+      "nativeVersion": "0.1.401",
+      "url": "https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/download/workspace-v0.1.4.1-beta.1/gba-workspace-0.1.4.1-windows-x86_64.exe",
+      "sha256": "a075abf80b23b47f4e69d9286bab250163d24cddd013152eab6e6dbcc0c1bbc3",
+      "size": 3344528,
       "signing": "unsigned"
     }
-  ]
+  ],
+  "mandatory": true
 }
