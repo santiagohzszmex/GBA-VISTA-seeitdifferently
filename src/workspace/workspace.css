@@ -149,3 +149,35 @@
 .gw-writing-paper{position:relative}.gw-writing-paper[data-empty=true]::before{content:'Escribe tu documento aquí…';position:absolute;left:38px;top:47px;font-size:16px;color:#a5a5b0;pointer-events:none}
 @media(max-width:720px){.gw-writing-paper[data-empty=true]::before{left:22px;top:36px}.gw-work-heading h1{font-size:21px}}
 .gw-version-file{padding:12px 18px;background:#f7f7fc;border-bottom:1px solid #e8e8ef}.gw-version-file button{font-size:11px}.gw-version-file p{font-size:11px;margin-top:7px}
+
+/* Role-specific operations stay near the work, behind explicit disclosures. */
+.gw-work-filters{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 18px}
+.gw-work-filters label{margin:0;min-width:170px}.gw-work-filters label:first-child{flex:1;max-width:420px}.gw-work-filters input,.gw-work-filters select{margin:0;font-size:12px;padding:9px 11px;background:#fff}
+.gw-work-filters>span{font-size:11px;color:#777788;margin-left:auto}
+.gw-next-step{padding:12px 14px;margin:15px 0!important;background:#f5f5fa;border-radius:6px;font-size:12px!important;line-height:1.7}
+.gw-assignment-detail>.gw-form{margin-top:18px}
+.gw-work-conversation{border-top:1px solid #e6e6ef;padding:18px 22px;font-size:12px}
+.gw-work-conversation>summary{cursor:pointer;font-weight:600;color:#575769}.gw-work-conversation>p{font-size:11px;margin:12px 0 18px}
+.gw-work-conversation .gw-form{margin:14px 0}.gw-conversation-history{max-height:400px;overflow:auto;margin-top:18px}
+.gw-conversation-history article{padding:14px 0;border-bottom:1px solid #eeeef3}.gw-conversation-history strong{font-size:11px}.gw-conversation-history p{white-space:pre-wrap;font-size:12px;margin:7px 0}.gw-conversation-history small{font-size:10px;color:#888894}
+.gw-review-controls{padding:0 22px}.gw-work-operations .gw-disclosure p{font-size:11px;margin:12px 0}.gw-work-operations>.gw-corrections{margin:12px 0;white-space:pre-wrap}.gw-work-operations>button{margin:12px 0;font-size:11px}
+.gw-work-context .gw-work-operations .gw-form{display:block;padding:12px}.gw-work-context .gw-work-operations .gw-form label{margin-bottom:12px}.gw-work-context .gw-work-operations summary{font-size:10px}
+@media(max-width:720px){.gw-work-filters{gap:8px}.gw-work-filters label{min-width:140px;flex:1}.gw-work-conversation{padding:16px}.gw-review-controls{padding:0 16px}}
+
+/* Comfortable reading sizes for everyday editorial work. */
+.gw-editions .gw-global-nav button,.gw-editions .gw-section-nav button{font-size:13px}
+.gw-editions .gw-edition-tabs button{font-size:13px}
+.gw-work-heading p,.gw-work-empty p{font-size:13px;line-height:1.7}
+.gw-personal-layout{grid-template-columns:225px minmax(0,1fr)}
+.gw-personal-list select,.gw-personal-list .gw-list strong{font-size:13px}
+.gw-personal-list .gw-list p,.gw-personal-list .gw-badge{font-size:11px}
+.gw-editor-header h2{font-size:23px}.gw-editor-header p,.gw-editor-save>span{font-size:11px}
+.gw-editor-save button{font-size:12px;padding:9px 12px}
+.gw-work-context h3,.gw-work-context p,.gw-work-context>button,.gw-work-context summary,.gw-work-context label,.gw-work-context .gw-work-operations summary{font-size:12px}
+.gw-work-context h3{margin-top:18px}.gw-work-context h3:first-child{margin-top:0}
+.gw-work-notice,.gw-corrections,.gw-review-document .gw-disclosure>summary{font-size:12px;line-height:1.7}
+.gw-format-toolbar{padding:9px 12px;gap:5px}.gw-editions .gw-format-toolbar select{font-size:12px;max-width:150px}
+.gw-file-list strong{font-size:13px}.gw-file-list small{font-size:11px}.gw-document-toolbar{font-size:12px}
+@media(max-width:1100px){.gw-personal-layout{grid-template-columns:205px minmax(0,1fr)}}
+@media(max-width:720px){.gw-personal-layout{grid-template-columns:1fr}.gw-editor-header h2{font-size:21px}}
+.gw-assignment-layout>.gw-list,.gw-review-layout>.gw-list{align-self:start;align-content:start}

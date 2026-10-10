@@ -4,10 +4,12 @@ import { DocumentContent } from './EditionDocuments';
 import StructuredDocument from './StructuredDocument';
 import ReferenceDialog from './ReferenceDialog';
 import VersionFile from './VersionFile';
-import { EDITABLE_STATES, documentText } from './documentModel';
+import WorkConversation from './WorkConversation';
+import WorkOperations from './WorkOperations';
+import { EDITABLE_STATES, documentText, nextStep } from './documentModel';
 import { STATES, dateLabel } from './gimgModel';
 
-export default function WorkEditor({ task, data, actorId, api, onDirtyChange, busy, onReference, previewMode }) {
+export default function WorkEditor({ task, data, actorId, api, command, onDirtyChange, busy, onReference, previewMode }) {
   const [referenceOpen, setReferenceOpen] = useState(false);
   const [payload, setPayload] = useState(null);
   const [saved, setSaved] = useState(null);
@@ -70,8 +72,11 @@ export default function WorkEditor({ task, data, actorId, api, onDirtyChange, bu
       {!editable && <p className="gw-work-notice">{task.state === 'review' ? 'Enviaste esta versión a revisión. Aquí verás si el responsable solicita cambios o acepta el documento.' : ['area_approved','in_qa','qa_approved','published','archived'].includes(task.state) ? 'Esta versión ya fue aceptada. Puedes consultarla en Documentos.' : 'Este trabajo no se puede editar en su estado actual.'}</p>}
       {task.state === 'changes_requested' && comments.length > 0 && <div className="gw-corrections"><strong>Cambios solicitados</strong><p>{[...comments].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0].body}</p></div>}
       {editable && payload ? <React.Suspense fallback={<p role="status">Abriendo editor…</p>}><RichDocument initialDocument={payload.content_document} initialMarkdown={payload.content_markdown} onChange={change} disabled={working || busy} /></React.Suspense> : version?.content_document ? <StructuredDocument document={version.content_document} /> : <DocumentContent content={version?.content_markdown || ''} />}
-    </div><aside className="gw-work-context"><h3>Tu asignación</h3><p>{task.description || (task.created_by === actorId ? 'Documento creado por ti para esta edición.' : 'El responsable del área todavía no ha añadido indicaciones.')}</p><button type="button" onClick={() => setReferenceOpen(true)}>Consultar documentos de la edición</button>
+    </div><aside className="gw-work-context"><h3>Siguiente paso</h3><p>{nextStep(task, true)}</p><h3>Tu asignación</h3><p>{task.description || (task.created_by === actorId ? 'Documento creado por ti para esta edición.' : 'El responsable del área todavía no ha añadido indicaciones.')}</p><button type="button" onClick={() => setReferenceOpen(true)}>Consultar documentos de la edición</button>
       {editable && payload && <details><summary>Créditos y archivo de apoyo</summary><label>Créditos<textarea value={payload.credits} disabled={working || busy} onChange={event => change({ credits: event.target.value })} /></label><label>Enlace a tu archivo<input type="url" placeholder="https://…" disabled={working || busy} value={payload.asset_url} onChange={event => change({ asset_url: event.target.value })} /></label><p>Si tu trabajo está en un repositorio externo, añade aquí su enlace.</p></details>}
+      <WorkOperations task={task} permissions={permissions} command={command} busy={working || busy || dirty} />
+      {dirty && <small>Guarda tu borrador antes de cambiar el estado del trabajo.</small>}
     </aside></div>
+    <WorkConversation task={task} data={data} command={command} busy={working || busy} />
   </section>{referenceOpen && <ReferenceDialog project={data.projects.find(item => item.id === task.project_id)} data={data} onClose={() => setReferenceOpen(false)} />}</>;
 }

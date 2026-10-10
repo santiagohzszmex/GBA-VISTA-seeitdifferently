@@ -5,8 +5,8 @@ import StructuredDocument from './StructuredDocument';
 import { dateLabel } from './gimgModel';
 import { taskIsMine } from './documentModel';
 export function DocumentContent({ content }) { return <div className="gw-document-content"><ReactMarkdown skipHtml>{content || ''}</ReactMarkdown></div>; }
-export default function EditionDocuments({ project, data, actorId, onOpenTask }) {
-  const [selectedId, setSelectedId] = useState('brief');
+export default function EditionDocuments({ project, data, actorId, onOpenTask, initialTaskId }) {
+  const [selectedId, setSelectedId] = useState(() => data.approvedDocuments?.find(document => document.deliverable_id === initialTaskId)?.version_id || 'brief');
   const [search, setSearch] = useState('');
   const documents = data.approvedDocuments || [];
   const query = search.trim().toLocaleLowerCase('es');

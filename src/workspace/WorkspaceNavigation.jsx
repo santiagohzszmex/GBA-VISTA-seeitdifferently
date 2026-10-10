@@ -49,8 +49,8 @@ export function EditionTabs({ projects, selectedId, onSelect, busy }) {
   </div>;
 }
 
-export function EditionNavigation({ section, onSelect, canAssign, canReview }) {
+export function EditionNavigation({ section, onSelect, canAssign, canReview, canWork }) {
   return <nav className="gw-section-nav" aria-label="Trabajo de la edición">
-    {Object.entries(EDITION_SECTIONS).filter(([id]) => (id !== 'assignments' || canAssign) && (id !== 'reviews' || canReview)).map(([id, label]) => <button type="button" key={id} aria-current={section === id ? 'page' : undefined} onClick={() => onSelect(id)}>{label}</button>)}
+    {Object.entries(EDITION_SECTIONS).filter(([id]) => (id !== 'work' || canWork) && (id !== 'assignments' || canAssign) && (id !== 'reviews' || canReview)).map(([id, label]) => <button type="button" key={id} aria-current={section === id ? 'page' : undefined} onClick={() => onSelect(id)}>{label}</button>)}
   </nav>;
 }
