@@ -4,12 +4,13 @@ import os from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {UPDATE_TARGETS,REPOSITORY,verifyCandidate,buildUpdateManifest} from './workspace-update-manifest.mjs';
+import {verifyDatabaseAcceptance} from './workspace-database-acceptance.mjs';
 import {buildReleaseManifest} from './workspace-release-manifest.mjs';
 
 async function main() {
 const args=process.argv.slice(2),option=name=>{const i=args.indexOf(name);return i<0?null:args[i+1];};
-const runId=option('--run'),notesPath=option('--notes'),publish=args.includes('--publish');
-if(!/^\d+$/.test(runId||'')||!notesPath)throw Error('Usage: npm run desktop:publish -- --run RUN_ID --notes NOTES_FILE [--publish]');
+const runId=option('--run'),notesPath=option('--notes'),databaseProofPath=option('--database-acceptance'),publish=args.includes('--publish');
+if(!/^\d+$/.test(runId||'')||!notesPath)throw Error('Usage: npm run desktop:publish -- --run RUN_ID --notes NOTES_FILE [--database-acceptance PROOF_FILE] [--publish]');
 const gh=args=>execFileSync('gh',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:180000});
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const config=JSON.parse(await fs.readFile('src-tauri/tauri.conf.json','utf8'));
@@ -64,8 +65,13 @@ try {
     priorIdentityAcceptance:'docs/workspace-activation.md',nativeInstalledAcceptanceRun:info.url,interactiveWindowsUpdateVerified:false};
   // Earlier identity/database acceptance is reusable only when that code is unchanged.
   const baseline='033686bfdd8e2bcd6223d8515fcad6d5b839eaf4';
-  const identityChanges=execFileSync('git',['diff','--name-only',baseline,commit,'--','api','supabase','src/auth','src/context/AuthContext.jsx'],{encoding:'utf8'}).trim();
-  if(identityChanges)throw Error('Identity/database code changed; new full acceptance is required before public distribution');
+  const identityChanges=execFileSync('git',['diff','--name-only',baseline,commit,'--','api','src/auth','src/context/AuthContext.jsx'],{encoding:'utf8'}).trim();
+  if(identityChanges)throw Error('Identity code changed; new full identity acceptance is required before public distribution');
+  const databaseChanges=execFileSync('git',['diff','--name-only',baseline,commit,'--','supabase'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
+  if(databaseChanges.length) {
+    if(!databaseProofPath) throw Error('Database code changed; explicit live database acceptance is required');
+    proof.databaseAcceptance=await verifyDatabaseAcceptance(JSON.parse(await fs.readFile(databaseProofPath,'utf8')),{commit,files:databaseChanges,projectRef:'wgihpztgwsovhykboyru'});
+  }
   await fs.writeFile(path.join(folder,'acceptance.json'),JSON.stringify(proof,null,2)+'\n');
   const releaseNotes=path.join(folder,'release-notes.md');
   await fs.writeFile(releaseNotes,`${notes}\n\nBeta para macOS Apple Silicon, macOS Intel y Windows x64. macOS sin notarización de Apple; Windows sin firma Authenticode. Los paquetes de actualización se verifican con la firma privada de Workspace.\n\nCada instalador se instaló y abrió en su corredor nativo de CI. La actualización interactiva de Windows sigue pendiente de comprobación en un equipo real.\n\nCódigo: ${commit}\nComprobaciones: ${info.url}\n`);

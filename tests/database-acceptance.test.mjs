@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import fs from 'node:fs/promises';
+import { DATABASE_CHECKS, verifyDatabaseAcceptance } from '../scripts/workspace-database-acceptance.mjs';
+const file=(await fs.readdir('supabase/migrations')).find(file=>file.endsWith('_workspace_personal_drafts_and_library.sql'));
+const target=`supabase/migrations/${file}`,commit='a'.repeat(40),projectRef='example';
+const proof={commit,projectRef,verifiedAt:new Date().toISOString(),changes:[{file:target,sha256:createHash('sha256').update(await fs.readFile(target)).digest('hex')}],...Object.fromEntries(DATABASE_CHECKS.map(key=>[key,true]))};
+const context={commit,files:[target],projectRef};
+assert.equal(await verifyDatabaseAcceptance(proof,context),proof);
+for(const key of DATABASE_CHECKS) await assert.rejects(verifyDatabaseAcceptance({...proof,[key]:false},context),/Missing/);
+await assert.rejects(verifyDatabaseAcceptance({...proof,commit:'b'.repeat(40)},context),/commit/);
+await assert.rejects(verifyDatabaseAcceptance({...proof,projectRef:'another'},context),/project/);
+await assert.rejects(verifyDatabaseAcceptance({...proof,verifiedAt:'2020-01-01'},context),/Fresh/);
+await assert.rejects(verifyDatabaseAcceptance({...proof,changes:[]},context),/list/);
+await assert.rejects(verifyDatabaseAcceptance({...proof,changes:[{file:target,sha256:'b'.repeat(64)}]},context),/bytes/);
+await assert.rejects(verifyDatabaseAcceptance(proof,{...context,files:['supabase/migrations/20261010005130_gba_id_secure_gateway.sql']}),/Full acceptance/);
+console.log('PASS: live database acceptance requires every check, exact source and project, fresh evidence and unchanged migration bytes.');
