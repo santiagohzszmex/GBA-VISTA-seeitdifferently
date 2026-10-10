@@ -57,7 +57,7 @@ export default function DesktopUpdates({ client, children }) {
   }
   return <>
     <div className="wu-toolbar"><span>Workspace {version && <small>{version}</small>}</span>
-      <button ref={trigger} className={available ? 'wu-available' : ''} onClick={() => { setOpen(true); if (!available) void controller.check(); }} aria-haspopup="dialog" aria-label={available ? `Actualización disponible: Workspace ${state.version}` : 'Buscar actualizaciones de Workspace'} title={available ? 'Actualización disponible' : 'Buscar actualizaciones'}>
+      <button ref={trigger} className={available ? 'wu-available' : ''} onClick={() => { setOpen(true); if (!available) void controller.check({ deferRequirement: !blocked }); }} aria-haspopup="dialog" aria-label={available ? `Actualización disponible: Workspace ${state.version}` : 'Buscar actualizaciones de Workspace'} title={available ? 'Actualización disponible' : 'Buscar actualizaciones'}>
         {available ? <Download size={16} aria-hidden="true"/> : <RefreshCw size={15} aria-hidden="true"/>}
         {available && <span>Actualización disponible</span>}
       </button>
@@ -82,7 +82,7 @@ export default function DesktopUpdates({ client, children }) {
         {state.phase === 'available' && <button className="wu-primary" onClick={() => void controller.download()}>Descargar actualización</button>}
         {state.phase === 'ready' && <button className="wu-primary" onClick={() => void controller.install()}>Instalar y reiniciar</button>}
         {state.phase === 'installed' && <button className="wu-primary" onClick={() => void controller.restart()}>Reiniciar Workspace</button>}
-        {!available && <button onClick={() => void controller.check()} disabled={busy}>Buscar actualizaciones</button>}
+        {!available && <button onClick={() => void controller.check({ deferRequirement: !blocked })} disabled={busy}>Buscar actualizaciones</button>}
         {!state.required && <button onClick={close}>{firstNotice ? 'Continuar a Workspace' : available ? 'Más tarde' : 'Cerrar'}</button>}
       </div>
     </section></div>}
