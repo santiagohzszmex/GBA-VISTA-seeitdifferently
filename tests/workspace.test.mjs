@@ -42,7 +42,7 @@ await db.exec(`create role anon;create role authenticated;create role service_ro
  create function gimg_recruitment_private.recover_identity(text,text,text) returns boolean language sql as $$select false$$;`);
 for(let n=1;n<=12;n++) { await db.query("insert into auth.users values($1,$2,extensions.crypt('GBA-1234-SecureVault',extensions.gen_salt('bf',4)),now())",[id(n),`person${n}@gba.com`]);await db.query('insert into auth.sessions values($1,$2)',[session(n),id(n)]);await db.query('insert into public.usuarios values($1,$2,$3,$3,$4)',[id(n),n===1?'Dueño':'Usuario',`person${n}`,n===12?'sol':'old secret']); }
 await db.query("insert into public.gimg_recruitment_reviewers values($1,'director')",[id(2)]);
-for(const file of ['202608010001_gba_workspace_phase1.sql','202608140001_public_keynotes.sql','20261010005048_workspace_gimg.sql','20261010005053_workspace_licenses.sql','20261010005130_gba_id_secure_gateway.sql','20261010005309_gimg_role_isolation.sql','20261009123356_gimg_identity_role_isolation.sql','20261010010427_workspace_scope_search_path.sql','20261010012802_workspace_owner_desktop_access.sql','20261010183926_workspace_personal_drafts_and_library.sql','20261011002134_workspace_prisma_references_and_originals.sql','20261011002843_workspace_prisma_original_completion_scope.sql','20261011010112_workspace_prisma_metered_singleton_updates.sql','20261011051823_workspace_prisma_notifications.sql','20261011051829_workspace_prisma_edition_removal.sql','20261011065113_workspace_people_access.sql','20261011070825_workspace_people_access_lock.sql']) await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+for(const file of ['202608010001_gba_workspace_phase1.sql','202608140001_public_keynotes.sql','20261010005048_workspace_gimg.sql','20261010005053_workspace_licenses.sql','20261010005130_gba_id_secure_gateway.sql','20261010005309_gimg_role_isolation.sql','20261009123356_gimg_identity_role_isolation.sql','20261010010427_workspace_scope_search_path.sql','20261010012802_workspace_owner_desktop_access.sql','20261010183926_workspace_personal_drafts_and_library.sql','20261011002134_workspace_prisma_references_and_originals.sql','20261011002843_workspace_prisma_original_completion_scope.sql','20261011010112_workspace_prisma_metered_singleton_updates.sql','20261011051823_workspace_prisma_notifications.sql','20261011051829_workspace_prisma_edition_removal.sql','20261011065113_workspace_people_access.sql','20261011070825_workspace_people_access_lock.sql','20261011143801_workspace_reference_access_and_documents.sql']) await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
 const restoredCheckpoint=await scalar('select extensions.pgp_sym_decrypt(b.encrypted_payload,k.decrypted_secret)::jsonb from workspace_private.identity_rollout_backups b join vault.decrypted_secrets k on k.id=b.key_id');
 eq(restoredCheckpoint.length,12);eq(restoredCheckpoint[0].frase_seguridad,'old secret');
 eq(restoredCheckpoint[0].encrypted_password,await scalar('select pin_hash from workspace_private.id_secrets where user_id=$1',[id(1)]));
@@ -164,7 +164,7 @@ await denied(scalar('select public.workspace_original_gate($1,$2)',[moodboard.id
 const gatewayKey='local-gateway-test-only';
 await admin("update workspace_private.original_limits set enabled=true,gateway_url='https://workspace-originals.test.workers.dev',gateway_key_hash=encode(extensions.digest($1,'sha256'),'hex')",[gatewayKey]);
 await actor(2);const originalBegin=(reference,mime,size=100)=>scalar('select public.workspace_original_begin($1,$2,$3,$4,$5,$6)',[reference.id,'Original.pdf',mime,size,'a'.repeat(64),gatewayKey]);
-await denied(originalBegin(concept,'application/pdf'),/PDF/);await denied(originalBegin(moodboard,'image/svg+xml'),/formato/);await denied(originalBegin(moodboard,'application/pdf',26214401),/25 MB/);
+const conceptPdf=await originalBegin(concept,'application/pdf');eq(conceptPdf.status,'reserved');await scalar('select public.workspace_original_finish($1,false,$2)',[conceptPdf.id,gatewayKey]);await denied(originalBegin(moodboard,'image/svg+xml'),/formato/);await denied(originalBegin(moodboard,'application/pdf',26214401),/25 MB/);
 let original=await originalBegin(moodboard,'application/pdf');eq(original.status,'reserved');await admin("update public.workspace_unit_memberships set membership_status='inactive' where unit_id=$1 and user_id=$2",[unit,id(2)]);await actor(2);await denied(scalar('select public.workspace_original_finish($1,true,$2)',[original.id,gatewayKey]));await admin("update public.workspace_unit_memberships set membership_status='active' where unit_id=$1 and user_id=$2",[unit,id(2)]);await actor(2);await scalar('select public.workspace_original_finish($1,true,$2)',[original.id,gatewayKey]);
 await denied(scalar('select public.workspace_original_finish($1,false,$2)',[original.id,gatewayKey]),/procesó/);
 await actor(5);bundle=await scalar('select public.workspace_reference_bundle($1)',[project.id]);eq(bundle.references.find(item=>item.id===moodboard.id).originals[0].sha256,'a'.repeat(64));eq(bundle.references.find(item=>item.id===moodboard.id).originals[0].object_key,undefined);
@@ -257,8 +257,30 @@ const shorter=new Date(Date.now()+5*86400000).toISOString();await people('expiry
 await admin('select 1');eq(new Date((await db.query('select expires_at from public.workspace_assignments where grant_id=$1',[coupled.id])).rows[0].expires_at).getTime(),new Date(shorter).getTime());
 await actor(2);await denied(people('assign',{userId:id(13),cargoKey:'contributor',projectId:peopleEdition.id,functionKey:'research',expiresAt:shorter}),/Ya existe/);
 await denied(people('assign',{userId:id(13),cargoKey:'contributor',projectId:peopleEdition.id,functionKey:'not-a-function'}),/función válida/);
-// Contributor project.read is E: a cargo alone does not expose an edition before work is assigned.
-await actor(13);eq((await db.query('select id from public.workspace_projects where id=$1',[peopleEdition.id])).rows.length,0);
+// A live organizational assignment opens common materials before the first task.
+await actor(13);eq((await db.query('select id from public.workspace_projects where id=$1',[peopleEdition.id])).rows.length,1);eq((await db.query('select id from public.workspace_deliverables where project_id=$1',[peopleEdition.id])).rows.length,0);eq((await db.query('select id from public.workspace_areas where project_id=$1',[peopleEdition.id])).rows.map(a=>a.id),[researchArea.id]);
+
+await actor(2);const sharedRefs=[];
+for(const kind of ['concept','creative_direction','moodboard','instructions']){
+ const ref=await scalar('select public.workspace_save_reference($1,$2,0)',[peopleEdition.id,{kind,title:`File-only ${kind}`,content_document:{type:'doc',content:[{type:'paragraph'}]}}]);
+ const asset=await originalBegin(ref,'application/pdf');await scalar('select public.workspace_original_finish($1,true,$2)',[asset.id,gatewayKey]);sharedRefs.push({ref,asset});
+}
+const ownGuide=await scalar('select public.workspace_save_reference($1,$2,0)',[peopleEdition.id,{kind:'instructions',area_id:researchArea.id,title:'Research guide',content_document:richReference}]);
+const hiddenGuide=await scalar('select public.workspace_save_reference($1,$2,0)',[peopleEdition.id,{kind:'instructions',area_id:illustrationArea.id,title:'Other area guide',content_document:richReference}]);
+let privateOther=await cmd('task.create',{project_id:peopleEdition.id,area_id:researchArea.id,title:'Private research',responsible_id:id(5)});
+await actor(5);privateOther=await cmd('version.submit',{project_id:peopleEdition.id,deliverable_id:privateOther.id,content_markdown:'Private unaccepted version',asset_url:'https://private.example/source'},privateOther.revision);
+await actor(2);const commonEvent=await cmd('event.save',{project_id:peopleEdition.id,title:'Common edition milestone',kind:'milestone',starts_at:'2026-11-01T12:00:00Z'});
+await cmd('task.schedule',{project_id:peopleEdition.id,deliverable_id:privateOther.id,due_at:'2026-11-02T12:00:00Z',priority:'normal'},privateOther.revision);
+await actor(13);const startupBundle=await scalar('select public.workspace_reference_bundle($1)',[peopleEdition.id]);
+eq(startupBundle.references.length,5);eq(startupBundle.references.some(r=>r.id===ownGuide.id),true);eq(startupBundle.references.some(r=>r.id===hiddenGuide.id),false);
+for(const {ref,asset} of sharedRefs){eq(startupBundle.references.find(r=>r.id===ref.id).originals[0].can_download,true);eq((await scalar('select public.workspace_original_access($1,true,$2)',[asset.id,gatewayKey])).id,asset.id);}
+eq((await db.query('select id from public.workspace_deliverables where project_id=$1',[peopleEdition.id])).rows.length,0);
+eq((await db.query('select id from public.workspace_versions where deliverable_id=$1',[privateOther.id])).rows.length,0);
+eq((await db.query('select id from public.workspace_events where project_id=$1',[peopleEdition.id])).rows.map(e=>e.id),[commonEvent.id]);
+await denied(scalar('select public.workspace_draft($1)',[privateOther.id]));
+await denied(cmd('task.create',{project_id:peopleEdition.id,area_id:researchArea.id,title:'Try assigning other person',responsible_id:id(5)}));
+await denied(scalar('select public.workspace_reference_bundle($1)',[second.id]));
+
 for(const action of ['invite','assign','expiry','remove','membership','delegate','revoke'])await denied(people(action,{userId:id(13),grantId:coupled.id,delegationId:id(90),status:'active',mode:'team'}));
 await denied(scalar('select public.workspace_find_profile($1,$2)',[unit,'people14']));await denied(db.query('select * from workspace_private.written_briefs'));
 await actor(2);await denied(people('delegate',{delegateId:id(13),scopeType:'project',projectId:peopleEdition.id,permissionKeys:['publication.approve_final'],expiresAt:shorter,brief:'Intento de delegar aprobación final'}),/delegar/);
@@ -306,5 +328,17 @@ await db.exec('reset role');
 const shortPhraseRecovery=await scalar("select public.gba_id_gateway('recover','person12','9999',' Sol ','origin','device',null)");eq(shortPhraseRecovery.user_id,id(12));
 eq((await scalar("select public.gba_id_gateway('login','person12','9999','','origin','device',null)")).user_id,id(12));
 eq(Boolean((await scalar("select public.gba_id_gateway('prepare','newperson','1234','sol','origin','device',null)")).error),true);
+// Run the dedicated release SQL in isolated local Postgres-compatible storage.
+await db.exec(`alter table auth.users add column aud text,add column role text,add column raw_user_meta_data jsonb,add column is_sso_user boolean,add column is_anonymous boolean,add column created_at timestamptz;
+ alter table auth.sessions add column created_at timestamptz,add column updated_at timestamptz;
+ create or replace function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub',nullif(current_setting('test.uid',true),''))::uuid$$;
+ create or replace function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,jsonb_build_object('session_id',current_setting('test.session',true)))$$;
+ create function public.test_reference_profile() returns trigger language plpgsql as $$begin insert into public.usuarios(id,rol,nombre,nombre_publico) values(new.id,'Usuario','fixture-'||new.id,'Fixture');return new;end;$$;
+ create trigger test_reference_profile after insert on auth.users for each row execute function public.test_reference_profile();
+ begin;`);
+await db.exec(fs.readFileSync(new URL('./workspace-reference-access-live-acceptance.sql',import.meta.url),'utf8'));
+const referenceAcceptance=(await db.query('select * from workspace_reference_access_test_result')).rows[0];
+eq(referenceAcceptance.checks,26);eq(referenceAcceptance.credentials_preserved,true);eq(referenceAcceptance.keynotes_preserved,true);
+await db.exec('rollback');
 console.log(`PASS: ${checks} Workspace assertions: direct API denial, scopes, full editorial cycle, suspension, delegation expiry, immutable versions, self approval, licenses, recovery and session revocation.`);
 }catch(error){console.error(error.stack,error.where||'',error.params||'');process.exitCode=1;}finally{await db.close();}

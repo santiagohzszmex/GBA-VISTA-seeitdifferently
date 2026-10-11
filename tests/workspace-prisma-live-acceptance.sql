@@ -60,7 +60,7 @@ begin
  update workspace_private.original_limits set enabled=true,gateway_url='https://disposable-prisma.workers.dev',gateway_key_hash=encode(extensions.digest(gateway_key,'sha256'),'hex');
  perform set_config('role','authenticated',true);
  denied:=false;begin perform public.workspace_original_gate((mood->>'id')::uuid,'invalid');exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Gateway secret bypassed';end if;checks:=checks+1;
- denied:=false;begin perform public.workspace_original_begin((concept->>'id')::uuid,'Not moodboard.pdf','application/pdf',100,repeat('a',64),gateway_key);exception when others then if sqlerrm not like 'PDF sólo%' then raise;end if;denied:=true;end;if not denied then raise exception 'Concept accepted PDF';end if;checks:=checks+1;
+ original:=public.workspace_original_begin((concept->>'id')::uuid,'Concept.pdf','application/pdf',100,repeat('a',64),gateway_key);perform public.workspace_original_finish((original->>'id')::uuid,false,gateway_key);checks:=checks+1;
  original:=public.workspace_original_begin((mood->>'id')::uuid,'Original.pdf','application/pdf',100,repeat('a',64),gateway_key);
  perform set_config('role','postgres',true);update public.workspace_unit_memberships set membership_status='inactive' where unit_id=u and user_id=ids[1];perform set_config('role','authenticated',true);
  denied:=false;begin perform public.workspace_original_finish((original->>'id')::uuid,true,gateway_key);exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Removed member completed upload';end if;checks:=checks+1;

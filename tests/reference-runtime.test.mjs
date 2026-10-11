@@ -8,14 +8,14 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 const directory=await fs.mkdtemp(path.join(os.tmpdir(),'workspace-r2-runtime-'));
 const reference='11111111-1111-4111-8111-111111111111';
-const originals=new Map();let sequence=0;
+const originals=new Map();let sequence=0,kind='moodboard';
 const backend=createServer(async(request,response)=>{
  try {
   let input='';for await(const chunk of request)input+=chunk;
   const data=JSON.parse(input);response.setHeader('Content-Type','application/json');
   if(request.headers.authorization!=='Bearer local-runtime-user' || data.p_gateway_key!=='local-runtime-gateway'){response.writeHead(403);response.end(JSON.stringify({message:'Sin permiso'}));return;}
   const rpc=request.url.split('/').pop();
-  if(rpc==='workspace_original_gate'){response.end(JSON.stringify({kind:'moodboard',limit:26214400}));return;}
+  if(rpc==='workspace_original_gate'){response.end(JSON.stringify({kind,limit:26214400}));return;}
   if(rpc==='workspace_original_begin'){
    const id=`22222222-2222-4222-8222-${String(++sequence).padStart(12,'0')}`;
    const row={id,object_key:`${reference}/${id}`,file_name:data.p_name,mime_type:data.p_mime,size_bytes:data.p_size,sha256:data.p_sha256,status:'reserved'};originals.set(id,row);response.end(JSON.stringify(row));return;
@@ -37,7 +37,8 @@ try {
  const host=`http://127.0.0.1:${workerPort}`;
  const png=await fs.readFile('src-tauri/icons/64x64.png');
  const pdf=Buffer.from('%PDF-1.7\nprivate runtime fixture');
- for(const [bytes,mime] of [[png,'image/png'],[pdf,'application/pdf']]){
+ for(const [bytes,mime,category] of [[png,'image/png','moodboard'],...['concept','creative_direction','moodboard','instructions'].map(k=>[pdf,'application/pdf',k])]){
+  kind=category;
   const digest=createHash('sha256').update(bytes).digest('hex');
   const response=await fetch(`${host}/references/${reference}`,{method:'POST',headers:{Authorization:'Bearer local-runtime-user','Content-Type':mime,'X-File-Name':'runtime-fixture','X-File-Size':String(bytes.length),'X-File-Sha256':digest},body:bytes});
   const result=await response.json();assert.equal(response.status,201,JSON.stringify(result));assert.equal(result.sha256,digest);

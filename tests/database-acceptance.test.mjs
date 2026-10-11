@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
-import { DATABASE_CHECKS, PRISMA_DATABASE_CHECKS, NOTIFICATION_CHECKS, PEOPLE_CHECKS, verifyDatabaseAcceptance } from '../scripts/workspace-database-acceptance.mjs';
+import { DATABASE_CHECKS, PRISMA_DATABASE_CHECKS, NOTIFICATION_CHECKS, PEOPLE_CHECKS, REFERENCE_ACCESS_CHECKS, verifyDatabaseAcceptance } from '../scripts/workspace-database-acceptance.mjs';
 const file=(await fs.readdir('supabase/migrations')).find(file=>file.endsWith('_workspace_personal_drafts_and_library.sql'));
 const target=`supabase/migrations/${file}`,commit='a'.repeat(40),projectRef='example';
 const proof={commit,projectRef,verifiedAt:new Date().toISOString(),changes:[{file:target,sha256:createHash('sha256').update(await fs.readFile(target)).digest('hex')}],...Object.fromEntries(DATABASE_CHECKS.map(key=>[key,true]))};
@@ -32,3 +32,8 @@ const peopleProof={...proof,changes:[{file:peopleTarget,sha256:createHash('sha25
 assert.equal(await verifyDatabaseAcceptance(peopleProof,peopleContext),peopleProof);
 for(const key of PEOPLE_CHECKS)await assert.rejects(verifyDatabaseAcceptance({...peopleProof,[key]:false},peopleContext),/Missing 1.5.6/);
 console.log('PASS: 1.5.6 requires live authority, atomic cargo, expiry, mandate, sharing, matrix, legacy guard and deduplication evidence.');
+
+const referenceTarget=`supabase/migrations/${(await fs.readdir('supabase/migrations')).find(file=>file.endsWith('_workspace_reference_access_and_documents.sql'))}`;
+const referenceProof={...proof,changes:[{file:referenceTarget,sha256:createHash('sha256').update(await fs.readFile(referenceTarget)).digest('hex')}],...Object.fromEntries(REFERENCE_ACCESS_CHECKS.map(key=>[key,true]))},referenceContext={...context,files:[referenceTarget]};
+assert.equal(await verifyDatabaseAcceptance(referenceProof,referenceContext),referenceProof);
+for(const key of REFERENCE_ACCESS_CHECKS)await assert.rejects(verifyDatabaseAcceptance({...referenceProof,[key]:false},referenceContext),/Missing 1.5.7/);
