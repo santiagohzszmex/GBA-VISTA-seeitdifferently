@@ -1,6 +1,6 @@
 [package]
 name = "gba-workspace"
-version = "1.5.0"
+version = "1.5.500"
 description = "Workspace"
 edition = "2021"
 

@@ -4,7 +4,7 @@ import workspaceIcon from '../../src-tauri/icons/64x64.png';
 
 const EDITION_SECTIONS = { work: 'Mi trabajo', assignments: 'Asignaciones', reviews: 'Revisión', documents: 'Documentos', calendar: 'Calendario' };
 
-export function WorkspaceNavigation({ screen, onScreenChange, context, unitName, name, loading, onRefresh, previewMode, blocked }) {
+export function WorkspaceNavigation({ screen, onScreenChange, context, unitName, name, loading, onRefresh, previewMode, blocked, notifications }) {
   return <header className="gw-topbar" aria-hidden={blocked || undefined}>
     <div className="gw-brand"><img src={workspaceIcon} width="32" height="32" alt="" /><strong>Workspace</strong><span>{unitName}</span></div>
     <nav className="gw-global-nav" aria-label="Menú general">
@@ -12,7 +12,7 @@ export function WorkspaceNavigation({ screen, onScreenChange, context, unitName,
       {context?.keynotes_access && <button type="button" aria-current={screen === 'keynotes' ? 'page' : undefined} onClick={() => onScreenChange('keynotes')}><BookOpen size={16} aria-hidden="true" />Keynotes</button>}
     </nav>
     <div className="gw-account">
-      <span className="gw-account-name">{name}</span>
+      <span className="gw-account-name">{name}</span>{notifications}
       <button type="button" className="gw-refresh" aria-label="Actualizar Workspace" title="Actualizar Workspace" disabled={loading} onClick={onRefresh}><RefreshCw size={16} aria-hidden="true" /></button>
       <button type="button" aria-label="Configuración" aria-current={screen === 'settings' ? 'page' : undefined} onClick={() => onScreenChange('settings')}><Settings size={16} aria-hidden="true" /><span>Configuración</span></button>
     </div>

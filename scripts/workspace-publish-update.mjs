@@ -16,6 +16,8 @@ if(!/^\d+$/.test(runId||'')||!notesPath)throw Error('Usage: npm run desktop:publ
 const gh=args=>execFileSync('gh',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:180000});
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const config=JSON.parse(await fs.readFile('src-tauri/tauri.conf.json','utf8'));
+const baseManifest=await fs.readFile('public/gba/workspace/releases.json','utf8');
+if(JSON.parse(baseManifest).version!=='1.5.0')throw Error('Public base must remain Workspace 1.5.0');
 const release=JSON.parse(await fs.readFile('src/workspace/releaseInfo.json','utf8'));
 if(release.nativeVersion!==config.version || toNativeVersion(release.version)!==config.version)throw Error('Native release identity differs');
 const version=config.version,displayVersion=release.version,tag=`workspace-v${displayVersion}-beta.1`,feedTag='workspace-updates';
@@ -112,8 +114,10 @@ try {
   } else {
     gh(['release','create',feedTag,manifestFile,'--repo',REPOSITORY,'--target',commit,'--prerelease','--title','Workspace · canal de actualizaciones','--notes','Canal de descubrimiento de actualizaciones manuales. Los paquetes permanecen en sus versiones y llevan firmas verificadas por la app.']);
   }
-  await fs.copyFile(path.join(folder,'releases.json'),'public/gba/workspace/releases.json');
-  console.log(`Published Workspace ${displayVersion}: immutable beta installers and signed, manually installed update feed. Web download manifest prepared for deployment.`);
+  // The public base stays pinned to 1.5.0 until an explicit major base change.
+  // Candidate installers remain available in the immutable version release.
+  if((await fs.readFile('public/gba/workspace/releases.json','utf8'))!==baseManifest)throw Error('Public base installer manifest changed during publication');
+  console.log(`Published Workspace ${displayVersion}: immutable beta installers and signed, manually installed update feed. Public 1.5.0 base preserved; newer installers are distributed through the update feed.`);
 } finally {await lock.close();await fs.unlink(path.join(folder,'publication.lock'));}
 }
 main().catch(error=>{console.error(error.message);process.exitCode=1;});

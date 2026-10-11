@@ -37,6 +37,7 @@ export function createWorkflowDemo() {
     state.tasks.push(task);
     if (task.current_version) state.versions.push({ ...state.versions[1], id: `${id}-version`, deliverable_id: id, content_markdown: `## ${title}\n\nDocumento de demostración para recorrer revisión, calidad y aprobación final.`, author_id: responsible });
   }
+  state.referenceHistory = {};
   state.references = [{ id: 'concept-demo', project_id: 'halloween-demo', kind: 'concept', title: 'Lo que permanece en la oscuridad', area_id: null, content_markdown: '## La idea de esta edición\n\nObservar las tradiciones desde sus historias y las personas que las mantienen vivas. Evitamos el terror gratuito; buscamos memoria, curiosidad y contraste.', palette: ['#342943', '#CAB8DD', '#F6F0E7'], revision: 1, updated_at: '2026-10-09T18:00:00Z', originals: [] }, { id: 'research-guide-demo', project_id: 'halloween-demo', kind: 'instructions', area_id: 'research-demo', title: 'Cómo construir la investigación', content_markdown: '## Una historia que se pueda comprobar\n\nRegistra tus fuentes, distingue los testimonios de los datos históricos y explica la relación con el concepto de la edición. Tu investigación aceptada orientará a Redacción y Arte.', palette: [], revision: 1, updated_at: '2026-10-09T18:00:00Z', originals: [] }];
   state.referenceStorage = { capacity_bytes: 10_000_000_000, used_bytes: 0, gateway_url: null };
   state.dependencies = [];
@@ -50,8 +51,9 @@ export function demoPermissions(actor, projectId, areaId = null, task = null) {
   return Object.fromEntries(Object.entries(matrix[actor.role]).map(([key, mode]) => [key, Boolean(principal && (actor.role !== 'gimg_project_director' || ['unit.read','project.read','task.read','content.read','unit.members.read','audit.read_scoped'].includes(key) || actor.delegated?.includes(key)) && (mode === 'U' || mode === 'P' || (mode === 'D' && actor.delegated?.includes(key)) || (mode === 'A' && areaId === actor.area) || (mode.startsWith('E') && own)))]));
 }
 export function workflowDemoData(state, actor, projectId) {
-  const projects = state.projects.filter(project => actor.projects.includes(project.id));
-  const tasks = state.tasks.filter(task => actor.projects.includes(task.project_id) && demoPermissions(actor, task.project_id, task.area_id, task)['task.read']);
+  const projects = state.projects.filter(project => !project.deleted_at && actor.projects.includes(project.id));
+  const visibleProjects = projects.map(project=>project.id);
+  const tasks = state.tasks.filter(task => visibleProjects.includes(task.project_id) && demoPermissions(actor, task.project_id, task.area_id, task)['task.read']);
   const taskIds = new Set(tasks.map(task => task.id));
   const areas = state.areas.filter(area => actor.projects.includes(area.project_id));
   return { ...state, projects, tasks, areas, versions: state.versions.filter(version => taskIds.has(version.deliverable_id)), comments: state.comments.filter(comment => taskIds.has(comment.deliverable_id)), events: state.events.filter(event => actor.projects.includes(event.project_id) && (!event.deliverable_id || taskIds.has(event.deliverable_id))), dependencies: (state.dependencies || []).filter(item => taskIds.has(item.deliverable_id) && taskIds.has(item.depends_on_id)),
@@ -73,8 +75,19 @@ export function runWorkflowDemo(state, actor, action, payload, revision) {
     if (old && old.revision !== revision) throw Error('La referencia cambió en otra ventana.');
     if (action === 'reference.archive') { next.references = next.references.filter(reference => reference.id !== old.id); return { state:next, result:{id:old.id} }; }
     if (old && (old.kind !== payload.kind || old.area_id !== payload.area_id)) throw Error('El tipo y alcance no se pueden cambiar.');
-    const reference = {...payload, id:old?.id || uid('reference'), content_markdown:documentMarkdown(payload.content_document), revision:(old?.revision || 0)+1, updated_at:new Date().toISOString(), originals:old?.originals || []};
+    const reference = {...payload, id:old?.id || uid('reference'), content_markdown:payload.content_document ? documentMarkdown(payload.content_document) : payload.content_markdown || '', revision:(old?.revision || 0)+1, updated_at:new Date().toISOString(), originals:old?.originals || []};
+    if(payload.from_legacy_brief){const project=next.projects.find(item=>item.id===payload.project_id);next.referenceHistory[reference.id]=[{revision:0,created_at:new Date().toISOString(),snapshot:{content_markdown:project.brief}}];}
+    next.referenceHistory[reference.id]=[{revision:reference.revision,created_at:reference.updated_at,snapshot:reference},...(next.referenceHistory[reference.id] || [])];
     next.references = [...next.references.filter(item => item.id !== reference.id), reference]; return {state:next,result:reference};
+  }
+  if(action==='project.remove' || action==='project.restore'){
+    require('project.archive');const project=next.projects.find(item=>item.id===payload.project_id);
+    if(!project || project.revision!==revision)throw Error('La edición cambió; vuelve a cargarla.');
+    if(action==='project.remove'){
+      if(payload.confirmation!==project.title || payload.reason?.trim().length<10)throw Error('Confirma el nombre exacto y registra el motivo.');
+      Object.assign(project,{deleted_at:new Date().toISOString(),deletion_reason:payload.reason,deleted_from_status:project.status,status:'archived',revision:project.revision+1});
+    }else Object.assign(project,{deleted_at:null,deletion_reason:null,status:project.deleted_from_status,deleted_from_status:null,revision:project.revision+1});
+    return {state:next,result:project};
   }
   const key = `${task?.id}:${actor.id}`;
   if (action === 'draft.get') { require('content.edit_assigned'); return { state, result: clone(next.drafts[key] || null) }; }
@@ -164,4 +177,19 @@ export function runWorkflowDemo(state, actor, action, payload, revision) {
   } else if (action === 'publication.approve') { require('publication.approve_final'); if (task.state !== 'qa_approved' || task.qa_blocked || taskIsMine(task, actor.id) || next.versions.some(version => version.deliverable_id === task.id && version.author_id === actor.id)) throw new Error('Se requiere QA aprobado y una aprobación final ajena a la autoría.'); task.final_approved_by = actor.id; task.revision++; }
   else throw new Error('Esta acción no está incluida en la demostración.');
   return { state: next, result: task };
+}
+
+export function demoNotifications(state,actor){
+ const data=workflowDemoData(state,actor,actor.projects[0]);
+ return data.tasks.flatMap(task=>{
+  const p=demoPermissions(actor,task.project_id,task.area_id,task), own=taskIsMine(task,actor.id);
+  const area=state.areas.find(item=>item.id===task.area_id);
+  let type,title;
+  if(own && ['assigned','in_progress','changes_requested'].includes(task.state)){type=task.state==='changes_requested'?'corrections.requested':'assignment.updated';title=task.state==='changes_requested'?'Hay correcciones para tu trabajo':'Tu asignación está lista';}
+  else if(task.state==='review' && (p['review.approve_'+area?.specialty] || p['task.assign'])){type='review.requested';title='Nueva entrega por revisar';}
+  else if(task.state==='in_qa' && p['qa.approve']){type='qa.requested';title='Hay un trabajo listo para QA';}
+  else if(task.state==='qa_approved' && p['publication.approve_final'] && !own){type='publication.requested';title='Falta la aprobación final de Dirección';}
+  if(!type)return [];
+  return [{id:'demo-notice-'+task.id,event_type:type,title,body:task.title,project_id:task.project_id,project_title:data.projects.find(item=>item.id===task.project_id)?.title,deliverable_id:task.id,created_at:task.created_at || new Date().toISOString()}];
+ });
 }
