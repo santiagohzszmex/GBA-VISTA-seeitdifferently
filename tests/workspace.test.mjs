@@ -7,7 +7,7 @@ let checks=0;
 const id=n=>`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
 const session=n=>`10000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
 const eq=(a,b)=>{assert.deepEqual(a,b);checks++;};
-const denied=async(p,re=/permiso|permission|denied|autorizad|propio|Sesión|Membresía|ronda|QA|Dirección|cambió|Transición|cerrado/i)=>{await assert.rejects(p,re);checks++;};
+const denied=async(p,re=/permiso|permission|denied|autorizad|propio|Sesión|Membresía|ronda|QA|Dirección|cambió|Transición|cerrado|Almacenamiento/i)=>{await assert.rejects(p,re);checks++;};
 async function actor(n){await db.exec('reset role');await db.query("select set_config('test.uid',$1,false),set_config('test.session',$2,false)",[n?id(n):'',n?session(n):'']);await db.exec('set role authenticated');}
 async function scalar(q,args=[]){return Object.values((await db.query(q,args)).rows[0])[0];}
 async function cmd(action,data,revision=null){return scalar('select public.workspace_command($1,$2,$3)',[action,data,revision]);}
@@ -42,7 +42,7 @@ await db.exec(`create role anon;create role authenticated;create role service_ro
  create function gimg_recruitment_private.recover_identity(text,text,text) returns boolean language sql as $$select false$$;`);
 for(let n=1;n<=12;n++) { await db.query("insert into auth.users values($1,$2,extensions.crypt('GBA-1234-SecureVault',extensions.gen_salt('bf',4)),now())",[id(n),`person${n}@gba.com`]);await db.query('insert into auth.sessions values($1,$2)',[session(n),id(n)]);await db.query('insert into public.usuarios values($1,$2,$3,$3,$4)',[id(n),n===1?'Dueño':'Usuario',`person${n}`,n===12?'sol':'old secret']); }
 await db.query("insert into public.gimg_recruitment_reviewers values($1,'director')",[id(2)]);
-for(const file of ['202608010001_gba_workspace_phase1.sql','202608140001_public_keynotes.sql','20261010005048_workspace_gimg.sql','20261010005053_workspace_licenses.sql','20261010005130_gba_id_secure_gateway.sql','20261010005309_gimg_role_isolation.sql','20261009123356_gimg_identity_role_isolation.sql','20261010010427_workspace_scope_search_path.sql','20261010012802_workspace_owner_desktop_access.sql','20261010183926_workspace_personal_drafts_and_library.sql']) await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+for(const file of ['202608010001_gba_workspace_phase1.sql','202608140001_public_keynotes.sql','20261010005048_workspace_gimg.sql','20261010005053_workspace_licenses.sql','20261010005130_gba_id_secure_gateway.sql','20261010005309_gimg_role_isolation.sql','20261009123356_gimg_identity_role_isolation.sql','20261010010427_workspace_scope_search_path.sql','20261010012802_workspace_owner_desktop_access.sql','20261010183926_workspace_personal_drafts_and_library.sql','20261011002134_workspace_prisma_references_and_originals.sql','20261011002843_workspace_prisma_original_completion_scope.sql']) await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
 const restoredCheckpoint=await scalar('select extensions.pgp_sym_decrypt(b.encrypted_payload,k.decrypted_secret)::jsonb from workspace_private.identity_rollout_backups b join vault.decrypted_secrets k on k.id=b.key_id');
 eq(restoredCheckpoint.length,12);eq(restoredCheckpoint[0].frase_seguridad,'old secret');
 eq(restoredCheckpoint[0].encrypted_password,await scalar('select pin_hash from workspace_private.id_secrets where user_id=$1',[id(1)]));
@@ -140,6 +140,58 @@ await actor(2);await cmd('grant.revoke',{unit_id:unit,id:narrowReference.id});aw
 await actor(1);await denied(scalar('select public.workspace_work_permissions($1)',[project.id]));await denied(scalar('select public.workspace_edition_documents($1)',[project.id])); // Global owner has no editorial assignment.
 await actor(6);writing=await cmd('qa.block',{project_id:project.id,deliverable_id:writing.id,reason:'La referencia necesita una verificación crítica'},writing.revision);eq((await scalar('select public.workspace_edition_documents($1)',[project.id])).some(x=>x.deliverable_id===writing.id),false);
 await actor(2);await cmd('member.save',{unit_id:unit,user_id:id(9),membership_status:'suspended',reason:'Suspensión de prueba para referencias'});await actor(9);await denied(scalar('select public.workspace_edition_documents($1)',[project.id]));
+// Prisma references: creative authority, area instructions, originals and hard limits.
+const richReference={type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Referencia de color',marks:[{type:'textStyle',attrs:{color:'#673AB7',fontFamily:'Georgia, serif'}}]}]}]};
+const saveReference=(data,revision=0)=>scalar('select public.workspace_save_reference($1,$2,$3)',[project.id,data,revision]);
+await actor(2);let concept=await saveReference({kind:'concept',title:'Concepto de Prisma',content_document:richReference,palette:['#673AB7']});
+eq(concept.content_markdown.trim(),'Referencia de color');eq(concept.content_document.content[0].content[0].marks[0].attrs.color,'#673AB7');
+await actor(3);await denied(saveReference({kind:'concept',title:'Producción cambia concepto',content_document:richReference}));
+const productionGuide=await saveReference({kind:'instructions',title:'Indicaciones operativas',content_document:richReference});
+await denied(cmd('project.save',{project_id:project.id,title:project.title,brief:'Cambio creativo por producción',status:'active'},project.revision));
+await actor(4);let artGuide=await saveReference({kind:'instructions',area_id:art.id,title:'Instrucciones de ilustración',content_document:richReference});
+await denied(saveReference({kind:'creative_direction',title:'Responsable modifica dirección',content_document:richReference}));
+const otherArea=areas.rows.find(item=>item.id!==art.id);
+await denied(saveReference({kind:'instructions',area_id:otherArea.id,title:'Fuera del área',content_document:richReference}));
+await actor(6);await denied(saveReference({kind:'concept',title:'QA cambia concepto',content_document:richReference}));
+await actor(1);await denied(scalar('select public.workspace_reference_bundle($1)',[project.id]));await denied(saveReference({kind:'concept',title:'Dueño GBA sin GIMG',content_document:richReference}));
+await actor(5);let bundle=await scalar('select public.workspace_reference_bundle($1)',[project.id]);eq(bundle.references.some(item=>item.id===concept.id),true);eq(bundle.references.some(item=>item.id===artGuide.id),true);eq(bundle.references.every(item=>!item.can_edit),true);
+await denied(saveReference({kind:'concept',title:'Colaborador cambia concepto',content_document:richReference}));await denied(scalar('select public.workspace_reference_bundle($1)',[second.id]));
+await actor(2);await denied(saveReference({...concept,palette:['javascript:alert(1)']},concept.revision),/color/);
+concept=await saveReference({...concept,title:'Concepto actualizado'},concept.revision);await denied(saveReference({...concept,title:'Edición antigua'},1),/cambió/);
+await denied(saveReference({...artGuide,area_id:otherArea.id},artGuide.revision),/alcance/);
+const moodboard=await saveReference({kind:'moodboard',title:'Moodboard privado',content_document:{type:'doc',content:[{type:'paragraph'}]}});
+await denied(scalar('select public.workspace_original_gate($1,$2)',[moodboard.id,'wrong']),/Almacenamiento/);
+const gatewayKey='local-gateway-test-only';
+await admin("update workspace_private.original_limits set enabled=true,gateway_url='https://workspace-originals.test.workers.dev',gateway_key_hash=encode(extensions.digest($1,'sha256'),'hex')",[gatewayKey]);
+await actor(2);const originalBegin=(reference,mime,size=100)=>scalar('select public.workspace_original_begin($1,$2,$3,$4,$5,$6)',[reference.id,'Original.pdf',mime,size,'a'.repeat(64),gatewayKey]);
+await denied(originalBegin(concept,'application/pdf'),/PDF/);await denied(originalBegin(moodboard,'image/svg+xml'),/formato/);await denied(originalBegin(moodboard,'application/pdf',26214401),/25 MB/);
+let original=await originalBegin(moodboard,'application/pdf');eq(original.status,'reserved');await admin("update public.workspace_unit_memberships set membership_status='inactive' where unit_id=$1 and user_id=$2",[unit,id(2)]);await actor(2);await denied(scalar('select public.workspace_original_finish($1,true,$2)',[original.id,gatewayKey]));await admin("update public.workspace_unit_memberships set membership_status='active' where unit_id=$1 and user_id=$2",[unit,id(2)]);await actor(2);await scalar('select public.workspace_original_finish($1,true,$2)',[original.id,gatewayKey]);
+await denied(scalar('select public.workspace_original_finish($1,false,$2)',[original.id,gatewayKey]),/procesó/);
+await actor(5);bundle=await scalar('select public.workspace_reference_bundle($1)',[project.id]);eq(bundle.references.find(item=>item.id===moodboard.id).originals[0].sha256,'a'.repeat(64));eq(bundle.references.find(item=>item.id===moodboard.id).originals[0].object_key,undefined);
+eq((await scalar('select public.workspace_original_access($1,false,$2)',[original.id,gatewayKey])).id,original.id);
+await denied(scalar('select public.workspace_original_finish($1,false,$2)',[original.id,gatewayKey]),/autorizado/);
+await denied(scalar('select public.workspace_original_gate($1,$2)',[concept.id,gatewayKey]));
+await admin('update workspace_private.original_limits set capacity_bytes=allocated_bytes+50');await actor(2);await denied(originalBegin(moodboard,'application/pdf'),/10 GB/);
+await admin('update workspace_private.original_limits set capacity_bytes=10000000000,write_operations=200000');await actor(2);await denied(originalBegin(moodboard,'application/pdf'),/gratuito/);
+await admin('update workspace_private.original_limits set write_operations=0,read_operations=2000000');await actor(2);await denied(scalar('select public.workspace_original_access($1,false,$2)',[original.id,gatewayKey]),/gratuito/);
+await admin('update workspace_private.original_limits set read_operations=0,gateway_requests=50000');await actor(2);await denied(scalar('select public.workspace_original_gate($1,$2)',[moodboard.id,gatewayKey]),/gratuito/);
+await admin('update workspace_private.original_limits set gateway_requests=0');await actor(2);const failedOriginal=await originalBegin(moodboard,'image/png');
+await scalar('select public.workspace_original_finish($1,false,$2)',[failedOriginal.id,gatewayKey]);
+await admin('select 1');eq(await scalar('select allocated_bytes from workspace_private.original_limits'),100);
+await actor(2);await scalar('select public.workspace_archive_reference($1,$2)',[moodboard.id,moodboard.revision]);
+eq((await scalar('select public.workspace_reference_bundle($1)',[project.id])).references.some(item=>item.id===moodboard.id),false);
+await denied(scalar('select public.workspace_original_access($1,false,$2)',[original.id,gatewayKey]));
+await admin('select 1');eq(await scalar('select allocated_bytes from workspace_private.original_limits'),100);eq(await scalar('select count(*)::int from workspace_private.reference_history where reference_id=$1',[concept.id]),2);
+await actor(2);await db.query("select set_config('test.session','revoked-session',false)");await denied(scalar('select public.workspace_reference_bundle($1)',[project.id]));await denied(scalar('select public.workspace_original_gate($1,$2)',[concept.id,gatewayKey]));
+await actor(9);await denied(scalar('select public.workspace_reference_bundle($1)',[project.id]));
+await actor(5);await denied(db.query('select * from workspace_private.edition_references'));await denied(db.query('select * from workspace_private.original_limits'));
+await actor(2);await cmd('member.save',{unit_id:unit,user_id:id(10),membership_status:'active'});await cmd('grant.save',{unit_id:unit,user_id:id(10),access_role:'gimg_workspace_coordinator',scope_type:'project',scope_id:project.id,reason:'Coordinación scoped'});await cmd('assignment.save',{unit_id:unit,user_id:id(10),assignment_role:'production',project_id:project.id});
+await actor(10);await denied(saveReference({kind:'concept',title:'Coordinación modifica concepto',content_document:richReference}));await saveReference({kind:'instructions',title:'Coordinación operativa',content_document:richReference});
+await actor(7);await denied(saveReference({kind:'concept',title:'Dirección sin mandato creativo',content_document:richReference}));
+await actor(2);const creativeMandate=await cmd('delegation.save',{unit_id:unit,user_id:id(7),scope_type:'project',scope_id:project.id,permission_keys:['reference.manage_creative'],starts_at:new Date(Date.now()-60000).toISOString(),expires_at:new Date(Date.now()+60000).toISOString(),reason:'Mandato creativo explícito de esta edición'});
+await actor(7);await saveReference({kind:'concept',title:'Concepto delegado',content_document:richReference});
+await admin("update public.workspace_delegations set expires_at=now()-interval '1 second',starts_at=now()-interval '1 day' where id=$1",[creativeMandate.id]);await actor(7);await denied(saveReference({kind:'concept',title:'Delegación vencida',content_document:richReference}));
+
 await actor(1);const issued=await scalar('select public.workspace_issue_license($1,$2,$3)',[7200,'Pilot',id(5)]);eq(issued.code.length,48);eq((await scalar('select public.workspace_license_codes()'))[0].code_hash,undefined);
 await actor(6);eq(Boolean((await scalar('select public.workspace_activate_license($1)',[issued.code])).error),true);
 await actor(5);let license=await scalar('select public.workspace_activate_license($1)',[issued.code]);eq(license.user_id,id(5));eq(new Date(license.expires_at).getTime()-new Date(license.starts_at).getTime(),7200000);eq((await scalar('select public.workspace_license_status()')).active,true);eq((await scalar('select public.workspace_activate_license($1)',[issued.code])).id,license.id);

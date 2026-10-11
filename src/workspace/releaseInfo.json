@@ -1,7 +1,9 @@
 {
-  "version": "0.1.4.1",
-  "nativeVersion": "0.1.401",
+  "version": "1.5.0",
+  "nativeVersion": "1.5.0",
+  "codename": "Prisma",
   "minimumNativeVersion": "0.1.401",
-  "mandatory": true,
-  "notice": "Esta actualización incorpora el nuevo acceso de Workspace. Usa el mismo GBA ID y PIN de tu cuenta o de la convocatoria de GIMG. Puedes buscar, descargar e instalar actualizaciones antes de iniciar sesión."
+  "mandatory": false,
+  "noticeTitle": "Bienvenido a Prisma",
+  "notice": "Workspace 1.5.0 Prisma reúne las referencias de cada edición y permite consultarlas junto al trabajo. Guarda conceptos y dirección con formato, añade imágenes originales y reserva el PDF para moodboards. Los avisos de guardado aparecen en la parte inferior."
 }

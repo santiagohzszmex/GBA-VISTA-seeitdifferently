@@ -15,13 +15,15 @@
     "test:session": "node tests/session.test.mjs",
     "test:home": "node tests/home.test.mjs",
     "test:recruitment": "node tests/recruitment.test.mjs",
-    "test:workspace": "node tests/workspace.test.mjs && node tests/identity-gateway.test.mjs && node tests/editor-compatibility.test.mjs && node tests/workflow-demo.test.mjs",
+    "test:workspace": "node tests/workspace.test.mjs && node tests/identity-gateway.test.mjs && node tests/editor-compatibility.test.mjs && node tests/workflow-demo.test.mjs && node tests/reference-originals.test.mjs",
     "workspace:dev": "vite --config vite.workspace.config.js",
     "workspace:build": "vite build --config vite.workspace.config.js",
     "desktop:dev": "tauri dev",
     "desktop:build": "node scripts/workspace-build.mjs",
     "test:desktop": "node tests/license-clock.test.mjs && node tests/desktop-config.test.mjs && node tests/native-paths.test.mjs && node tests/native-build.test.mjs && node tests/release-manifest.test.mjs && node tests/manual-updates.test.mjs && node tests/update-manifest.test.mjs && node tests/database-acceptance.test.mjs && node tests/maintenance-updates.test.mjs && node tests/identity-acceptance.test.mjs",
-    "desktop:publish": "node scripts/workspace-publish-update.mjs"
+    "desktop:publish": "node scripts/workspace-publish-update.mjs",
+    "test:r2-runtime": "node tests/reference-runtime.test.mjs",
+    "r2:check": "wrangler deploy --config cloudflare/workspace-originals/wrangler.jsonc --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
@@ -46,6 +48,7 @@
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
-    "vite": "^5.1.4"
+    "vite": "^5.1.4",
+    "wrangler": "4.149.0"
   }
 }

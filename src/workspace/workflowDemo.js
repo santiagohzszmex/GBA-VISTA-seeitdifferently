@@ -1,6 +1,7 @@
 import { WORKSPACE_DEMO } from './workspaceDemo';
 import matrix from './permissionMatrix.json';
 import { documentMarkdown, taskIsMine } from './documentModel';
+import { referencePermission } from './referenceModel';
 export const DEMO_ACTORS = {
  researcher: { id: 'demo-researcher', name: 'Investigador', role: 'gimg_contributor', area: 'research-demo', projects: ['halloween-demo'] },
  lead: { id: 'demo-lead', name: 'Responsable de Investigación', role: 'gimg_area_lead', area: 'research-demo', projects: ['halloween-demo'] },
@@ -36,6 +37,8 @@ export function createWorkflowDemo() {
     state.tasks.push(task);
     if (task.current_version) state.versions.push({ ...state.versions[1], id: `${id}-version`, deliverable_id: id, content_markdown: `## ${title}\n\nDocumento de demostración para recorrer revisión, calidad y aprobación final.`, author_id: responsible });
   }
+  state.references = [{ id: 'concept-demo', project_id: 'halloween-demo', kind: 'concept', title: 'Lo que permanece en la oscuridad', area_id: null, content_markdown: '## La idea de esta edición\n\nObservar las tradiciones desde sus historias y las personas que las mantienen vivas. Evitamos el terror gratuito; buscamos memoria, curiosidad y contraste.', palette: ['#342943', '#CAB8DD', '#F6F0E7'], revision: 1, updated_at: '2026-10-09T18:00:00Z', originals: [] }, { id: 'research-guide-demo', project_id: 'halloween-demo', kind: 'instructions', area_id: 'research-demo', title: 'Cómo construir la investigación', content_markdown: '## Una historia que se pueda comprobar\n\nRegistra tus fuentes, distingue los testimonios de los datos históricos y explica la relación con el concepto de la edición. Tu investigación aceptada orientará a Redacción y Arte.', palette: [], revision: 1, updated_at: '2026-10-09T18:00:00Z', originals: [] }];
+  state.referenceStorage = { capacity_bytes: 10_000_000_000, used_bytes: 0, gateway_url: null };
   state.dependencies = [];
   state.sequence = 0;
   state.drafts = {};
@@ -52,6 +55,7 @@ export function workflowDemoData(state, actor, projectId) {
   const taskIds = new Set(tasks.map(task => task.id));
   const areas = state.areas.filter(area => actor.projects.includes(area.project_id));
   return { ...state, projects, tasks, areas, versions: state.versions.filter(version => taskIds.has(version.deliverable_id)), comments: state.comments.filter(comment => taskIds.has(comment.deliverable_id)), events: state.events.filter(event => actor.projects.includes(event.project_id) && (!event.deliverable_id || taskIds.has(event.deliverable_id))), dependencies: (state.dependencies || []).filter(item => taskIds.has(item.deliverable_id) && taskIds.has(item.depends_on_id)),
+    references: (state.references || []).filter(reference => reference.project_id === projectId && actor.projects.includes(projectId) && (!reference.area_id || !actor.area || reference.area_id === actor.area)).map(reference => ({...reference, area_name:areas.find(area => area.id === reference.area_id)?.name, can_edit: Boolean(demoPermissions(actor, projectId, reference.area_id)[referencePermission(reference.kind)])})),
     approvedDocuments: state.approvedDocuments.filter(document => state.tasks.find(task => task.id === document.deliverable_id)?.project_id === projectId && (() => { const task = state.tasks.find(item => item.id === document.deliverable_id); const permissions = demoPermissions(actor, projectId, task.area_id, task); return !task.qa_blocked && (permissions['content.read'] || permissions['reference.read']); })()),
     areaPermissions: Object.fromEntries(areas.filter(area => area.project_id === projectId).map(area => [area.id, demoPermissions(actor, projectId, area.id)])),
     taskPermissions: Object.fromEntries(tasks.filter(task => task.project_id === projectId).map(task => [task.id, demoPermissions(actor, projectId, task.area_id, task)])) };
@@ -62,6 +66,15 @@ export function runWorkflowDemo(state, actor, action, payload, revision) {
   let task = next.tasks.find(item => item.id === payload.deliverable_id);
   const perms = demoPermissions(actor, payload.project_id || task?.project_id, payload.area_id || task?.area_id, task);
   const require = key => { if (!perms[key]) throw new Error('Esta función corresponde a otra persona del equipo.'); };
+  if (action.startsWith('reference.')) {
+    const old = next.references.find(reference => reference.id === payload.id);
+    require(referencePermission(payload.kind || old?.kind));
+    if (old && old.revision !== revision) throw Error('La referencia cambió en otra ventana.');
+    if (action === 'reference.archive') { next.references = next.references.filter(reference => reference.id !== old.id); return { state:next, result:{id:old.id} }; }
+    if (old && (old.kind !== payload.kind || old.area_id !== payload.area_id)) throw Error('El tipo y alcance no se pueden cambiar.');
+    const reference = {...payload, id:old?.id || uid('reference'), content_markdown:documentMarkdown(payload.content_document), revision:(old?.revision || 0)+1, updated_at:new Date().toISOString(), originals:old?.originals || []};
+    next.references = [...next.references.filter(item => item.id !== reference.id), reference]; return {state:next,result:reference};
+  }
   const key = `${task?.id}:${actor.id}`;
   if (action === 'draft.get') { require('content.edit_assigned'); return { state, result: clone(next.drafts[key] || null) }; }
   if (action === 'draft.save') {
