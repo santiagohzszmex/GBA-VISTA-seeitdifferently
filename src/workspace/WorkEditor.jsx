@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { AlertCircle, ArrowRight, CheckCircle2, Hourglass, Lock, Maximize2, Minimize2, PanelLeftOpen } from 'lucide-react';
 const RichDocument = React.lazy(() => import('./RichDocument'));
 import { DocumentContent } from './EditionDocuments';
 import StructuredDocument from './StructuredDocument';
@@ -7,13 +8,15 @@ import VersionFile from './VersionFile';
 import WorkConversation from './WorkConversation';
 import WorkOperations from './WorkOperations';
 import { EDITABLE_STATES, documentText, nextStep } from './documentModel';
-import { STATES, dateLabel } from './gimgModel';
+import { dateLabel } from './gimgModel';
+import { DueLabel, Status, savedLabel } from './workView';
 
-export default function WorkEditor({ task, data, actorId, api, command, onDirtyChange, busy, onReference, previewMode }) {
+export default function WorkEditor({ task, data, actorId, api, command, onDirtyChange, busy, onReference, previewMode, focus = false, onFocusChange, onSplitChange }) {
   const [referenceOpen, setReferenceOpen] = useState(false);
   const [payload, setPayload] = useState(null);
   const [saved, setSaved] = useState(null);
   const [working, setWorking] = useState(false);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const baseline = useRef('');
@@ -37,6 +40,7 @@ export default function WorkEditor({ task, data, actorId, api, command, onDirtyC
     })();
     return () => { live = false; };
   }, [task.id, task.current_version, task.state, actorId]);
+  useEffect(() => { onSplitChange?.(referenceOpen); return () => onSplitChange?.(false); }, [referenceOpen, onSplitChange]);
   useEffect(() => { onDirtyChange(dirty); }, [dirty, onDirtyChange]);
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
   useEffect(() => { if (!dirty) return; const warn = event => { event.preventDefault(); event.returnValue = ''; }; window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn); }, [dirty]);
@@ -55,28 +59,61 @@ export default function WorkEditor({ task, data, actorId, api, command, onDirtyC
     baseline.current = JSON.stringify(payload); setSaved(draft); onDirtyChange(false); return draft;
   }
   async function save(send) {
-    setWorking(true); setError('');
+    setWorking(true); setSending(Boolean(send)); setError('');
     try { const draft = await persist(); if (send) await api('draft.submit', task, { draft_revision: draft.revision, task_revision: task.revision }); }
     catch (failure) { setError(failure.message); }
-    finally { setWorking(false); }
+    finally { setWorking(false); setSending(false); }
   }
-  if (loading) return <p role="status" className="gw-loading">Abriendo tu documento…</p>;
+  if (loading) return <p role="status" className="gw-loading gw-wk-loading">Abriendo tu documento…</p>;
   const comments = data.comments.filter(comment => comment.deliverable_id === task.id && comment.kind === 'changes');
-  return <ReferenceSplit open={referenceOpen} project={data.projects.find(item => item.id === task.project_id)} data={data} onClose={() => setReferenceOpen(false)}><section className="gw-personal-editor" aria-label={`Trabajo: ${task.title}`}>
-    <div className="gw-editor-header"><div><span className="gw-eyebrow">{area?.name} · {STATES[task.state]}</span><h2>{task.title}</h2><p>Entrega: {dateLabel(task.due_at)}</p></div>
-      {editable && payload && <div className="gw-editor-save"><span role="status">{dirty ? 'Cambios sin guardar' : saved ? `Borrador guardado · ${dateLabel(saved.updated_at)}` : 'Tu borrador'}</span><div><button type="button" disabled={working || busy || (!dirty && Boolean(saved) && !staleDraft)} onClick={() => void save(false)}>Guardar borrador</button><button type="button" className="gw-primary" disabled={working || busy || staleDraft || !permissions['content.request_review'] || (!documentText(payload.content_document).trim() && !payload.asset_url)} onClick={() => void save(true)}>{working ? 'Guardando…' : 'Enviar a revisión'}</button></div></div>}
+  const latestChange = task.state === 'changes_requested' && comments.length ? [...comments].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0] : null;
+  const changeAuthor = latestChange && data.members.find(member => member.user_id === latestChange.actor_id)?.display_name;
+  const saveState = working ? 'saving' : dirty ? 'dirty' : saved ? 'saved' : 'new';
+  const saveText = { saving: 'Guardando…', dirty: 'Cambios sin guardar', saved: `Borrador guardado · ${savedLabel(saved?.updated_at)}`, new: 'Tu borrador' }[saveState];
+  const cannotSend = !permissions['content.request_review'];
+  const readOnly = task.state === 'review' ? { tone: 'wait', Icon: Hourglass, text: 'Enviaste esta versión a revisión. Aquí verás si el responsable solicita cambios o acepta el documento.' }
+    : ['area_approved','in_qa','qa_approved','published','archived'].includes(task.state) ? { tone: 'ok', Icon: CheckCircle2, text: 'Esta versión ya fue aceptada. Puedes consultarla en Documentos.' }
+    : !permissions['content.edit_assigned'] ? { tone: 'idle', Icon: Lock, text: 'Tu cargo no permite editar este trabajo. Puedes consultarlo en modo de lectura.' }
+    : { tone: 'idle', Icon: Lock, text: 'Este trabajo no se puede editar en su estado actual.' };
+  return <ReferenceSplit open={referenceOpen} project={data.projects.find(item => item.id === task.project_id)} data={data} onClose={() => setReferenceOpen(false)}><section className="gw-wk-sheet" aria-label={`Trabajo: ${task.title}`}>
+    <div className="gw-wk-sheet-head">
+      <div className="gw-wk-sheet-title">
+        <h2 title={task.title}>{task.title}</h2>
+        <div className="gw-wk-meta">{area && <span>{area.name}</span>}<Status state={task.state} /><span>Entrega <DueLabel task={task} /></span></div>
+      </div>
+      <div className="gw-wk-sheet-actions">
+        {editable && payload && <>
+          <span role="status" className="gw-wk-savestate" data-state={saveState}><i aria-hidden="true" />{saveText}</span>
+          <button type="button" className="gw-wk-btn" disabled={working || busy || (!dirty && Boolean(saved) && !staleDraft)} onClick={() => void save(false)}>{working && !sending ? 'Guardando…' : 'Guardar borrador'}</button>
+          <button type="button" className="gw-wk-btn gw-wk-btn-primary" title={cannotSend ? 'Tu cargo no incluye enviar a revisión.' : undefined} disabled={working || busy || staleDraft || cannotSend || (!documentText(payload.content_document).trim() && !payload.asset_url)} onClick={() => void save(true)}>{working && sending ? 'Enviando…' : 'Enviar a revisión'}</button>
+        </>}
+        {onFocusChange && <button type="button" className="gw-wk-icon-btn" aria-pressed={focus} aria-label={focus ? 'Salir del modo enfoque' : 'Modo enfoque: ocultar lista y panel'} title={focus ? 'Salir del modo enfoque' : 'Modo enfoque'} onClick={() => onFocusChange(!focus)}>{focus ? <Minimize2 size={17} aria-hidden="true" /> : <Maximize2 size={17} aria-hidden="true" />}</button>}
+      </div>
     </div>
-    {error && <p className="gw-alert" role="alert">{error}</p>}{staleDraft && <p className="gw-work-notice">Este borrador parte de la versión {saved.base_version}; la última entrega es la versión {task.current_version}. Revisa el contenido y guarda el borrador antes de enviarlo.</p>}
-    <div className="gw-writing-layout"><div>
-      {!editable && <VersionFile version={version} permissions={permissions} previewMode={previewMode} />}
-      {!editable && <p className="gw-work-notice">{task.state === 'review' ? 'Enviaste esta versión a revisión. Aquí verás si el responsable solicita cambios o acepta el documento.' : ['area_approved','in_qa','qa_approved','published','archived'].includes(task.state) ? 'Esta versión ya fue aceptada. Puedes consultarla en Documentos.' : 'Este trabajo no se puede editar en su estado actual.'}</p>}
-      {task.state === 'changes_requested' && comments.length > 0 && <div className="gw-corrections"><strong>Cambios solicitados</strong><p>{[...comments].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0].body}</p></div>}
-      {editable && payload ? <React.Suspense fallback={<p role="status">Abriendo editor…</p>}><RichDocument initialDocument={payload.content_document} initialMarkdown={payload.content_markdown} onChange={change} disabled={working || busy} /></React.Suspense> : version?.content_document ? <StructuredDocument document={version.content_document} /> : <DocumentContent content={version?.content_markdown || ''} />}
-    </div><aside className="gw-work-context"><h3>Siguiente paso</h3><p>{nextStep(task, true)}</p><h3>Tu asignación</h3><p>{task.description || (task.created_by === actorId ? 'Documento creado por ti para esta edición.' : 'El responsable del área todavía no ha añadido indicaciones.')}</p><button type="button" onClick={() => setReferenceOpen(true)}>Abrir referencia al lado</button>
-      {editable && payload && <details><summary>Créditos y archivo de apoyo</summary><label>Créditos<textarea value={payload.credits} disabled={working || busy} onChange={event => change({ credits: event.target.value })} /></label><label>Enlace a tu archivo<input type="url" placeholder="https://…" disabled={working || busy} value={payload.asset_url} onChange={event => change({ asset_url: event.target.value })} /></label><p>Si tu trabajo está en un repositorio externo, añade aquí su enlace.</p></details>}
-      <WorkOperations task={task} permissions={permissions} command={command} busy={working || busy || dirty} />
-      {dirty && <small>Guarda tu borrador antes de cambiar el estado del trabajo.</small>}
-    </aside></div>
+    {error && <p className="gw-wk-alert" role="alert"><AlertCircle size={17} aria-hidden="true" />{error}</p>}
+    {staleDraft && <p className="gw-wk-banner" data-tone="warn"><AlertCircle size={17} aria-hidden="true" />Este borrador parte de la versión {saved.base_version}; la última entrega es la versión {task.current_version}. Revisa el contenido y guarda el borrador antes de enviarlo.</p>}
+    {!editable && <p className="gw-wk-banner" data-tone={readOnly.tone}><readOnly.Icon size={17} aria-hidden="true" />{readOnly.text}</p>}
+    {latestChange && <section className="gw-wk-changes" aria-label="Cambios solicitados">
+      <h3><AlertCircle size={16} aria-hidden="true" />Cambios solicitados</h3>
+      <p>{latestChange.body}</p>
+      <small>{changeAuthor || 'Responsable del área'} · {dateLabel(latestChange.created_at)}</small>
+    </section>}
+    <div className="gw-wk-body">
+      <div className="gw-wk-main">
+        {!editable && <VersionFile version={version} permissions={permissions} previewMode={previewMode} />}
+        {editable && payload
+          ? <React.Suspense fallback={<p role="status" className="gw-wk-loading">Abriendo editor…</p>}><RichDocument initialDocument={payload.content_document} initialMarkdown={payload.content_markdown} onChange={change} disabled={working || busy} /></React.Suspense>
+          : <article className="gw-wk-page">{version?.content_document ? <StructuredDocument document={version.content_document} /> : version?.content_markdown ? <DocumentContent content={version.content_markdown} /> : <p className="gw-wk-page-empty">Todavía no hay una versión enviada de este trabajo.</p>}</article>}
+      </div>
+      <aside className="gw-wk-context" aria-label="Contexto del trabajo">
+        <section><h3>Tu asignación</h3><p className="gw-wk-prose">{task.description || (task.created_by === actorId ? 'Documento creado por ti para esta edición.' : 'El responsable del área todavía no ha añadido indicaciones.')}</p></section>
+        <section><h3>Siguiente paso</h3><p className="gw-wk-next"><ArrowRight size={15} aria-hidden="true" /><span>{nextStep(task, true)}</span></p></section>
+        <button type="button" className="gw-wk-btn gw-wk-btn-block" onClick={() => setReferenceOpen(true)}><PanelLeftOpen size={16} aria-hidden="true" />Abrir referencia al lado</button>
+        {editable && payload && <details className="gw-wk-fold"><summary><span>Créditos y archivo de apoyo</span></summary><label>Créditos<textarea value={payload.credits} disabled={working || busy} onChange={event => change({ credits: event.target.value })} /></label><label>Enlace a tu archivo<input type="url" placeholder="https://…" disabled={working || busy} value={payload.asset_url} onChange={event => change({ asset_url: event.target.value })} /></label><p>Si tu trabajo está en un repositorio externo, añade aquí su enlace.</p></details>}
+        <WorkOperations task={task} permissions={permissions} command={command} busy={working || busy || dirty} />
+        {dirty && <small className="gw-wk-hint">Guarda tu borrador antes de cambiar el estado del trabajo.</small>}
+      </aside>
+    </div>
     <WorkConversation task={task} data={data} command={command} busy={working || busy} />
   </section></ReferenceSplit>;
 }

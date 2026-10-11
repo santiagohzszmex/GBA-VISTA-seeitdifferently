@@ -1,9 +1,9 @@
 {
-  "version": "1.5.7",
-  "nativeVersion": "1.5.700",
+  "version": "1.5.8",
+  "nativeVersion": "1.5.800",
   "codename": "Prisma",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Referencias desde el primer día",
-  "notice": "Workspace 1.5.7 Prisma abre los materiales de la edición desde la asignación y permite añadir PDF e imágenes en todas las categorías de referencias. Los trabajos privados siguen separados. La descarga base sigue siendo 1.5.0."
+  "noticeTitle": "Un espacio más cómodo para trabajar",
+  "notice": "Workspace 1.5.8 Prisma renueva Mi trabajo y Asignaciones: tareas organizadas por estado, editor con modo enfoque y referencias al lado, y controles más claros para organizar las entregas. La descarga base sigue siendo 1.5.0."
 }
