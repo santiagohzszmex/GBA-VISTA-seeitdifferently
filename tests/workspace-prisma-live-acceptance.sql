@@ -5,7 +5,7 @@ declare
  ids uuid[]:=array[gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid()];
  sessions uuid[]:=array[gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid()];
  u uuid; p uuid; other_p uuid; a uuid; other_a uuid; rich jsonb; concept jsonb; guide jsonb; mood jsonb; original jsonb; bundle jsonb;
- grant_id uuid; denied boolean; checks integer:=0; n integer; allocated_snapshot bigint; password_snapshot text; keynote_snapshot text; gateway_key text:='disposable-prisma-gateway-test';
+ test_grant_id uuid; denied boolean; checks integer:=0; n integer; allocated_snapshot bigint; password_snapshot text; keynote_snapshot text; gateway_key text:='disposable-prisma-gateway-test';
 begin
  select allocated_bytes into allocated_snapshot from workspace_private.original_limits;
  select md5(string_agg(id::text||coalesce(encrypted_password,''),'' order by id)) into password_snapshot from auth.users;
@@ -83,10 +83,10 @@ begin
  denied:=false;begin perform public.workspace_save_reference(p,jsonb_build_object('kind','concept','title','Undelegated product concept','content_document',rich),0);exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Product creative authority assumed';end if;checks:=checks+1;
  perform set_config('role','postgres',true);
  insert into public.workspace_delegations(delegate_user_id,delegated_by,unit_id,scope_type,scope_id,permission_keys,starts_at,expires_at,reason)
- values(ids[7],ids[1],u,'project',p,array['reference.manage_creative'],now()-interval '1 minute',now()+interval '1 minute','Explicit test creative mandate') returning id into grant_id;
+ values(ids[7],ids[1],u,'project',p,array['reference.manage_creative'],now()-interval '1 minute',now()+interval '1 minute','Explicit test creative mandate') returning id into test_grant_id;
  perform set_config('role','authenticated',true);
  perform public.workspace_save_reference(p,jsonb_build_object('kind','concept','title','Explicit product concept','content_document',rich),0);checks:=checks+1;
- perform set_config('role','postgres',true);update public.workspace_delegations set expires_at=now()-interval '1 second',starts_at=now()-interval '1 day' where id=grant_id;
+ perform set_config('role','postgres',true);update public.workspace_delegations set expires_at=now()-interval '1 second',starts_at=now()-interval '1 day' where id=test_grant_id;
  perform set_config('role','authenticated',true);
  denied:=false;begin perform public.workspace_save_reference(p,jsonb_build_object('kind','concept','title','Expired product concept','content_document',rich),0);exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Expired creative authority accepted';end if;checks:=checks+1;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',ids[4],'session_id',gen_random_uuid(),'role','authenticated')::text,true);

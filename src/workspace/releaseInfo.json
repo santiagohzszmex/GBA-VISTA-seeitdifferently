@@ -1,9 +1,9 @@
 {
-  "version": "1.5.5",
-  "nativeVersion": "1.5.500",
+  "version": "1.5.6",
+  "nativeVersion": "1.5.600",
   "codename": "Prisma",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Tu equipo, al día",
-  "notice": "Workspace 1.5.5 Prisma añade notificaciones según tus funciones en GIMG, permite editar el concepto anterior de la edición y retirar o restaurar ediciones desde Configuración. La descarga base sigue siendo 1.5.0."
+  "noticeTitle": "Tu equipo, más claro",
+  "notice": "Workspace 1.5.6 Prisma reúne el acceso, los cargos y las delegaciones en una ficha por persona. Invita por GBA ID, asigna cargo y función juntos y consulta la matriz de permisos. La descarga base sigue siendo 1.5.0."
 }

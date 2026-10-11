@@ -1,0 +1,40 @@
+import { ACCESS_ROLES, CARGOS, FUNCTIONS } from './catalog.js';
+export { ACCESS_ROLES, FUNCTIONS };
+export const ROLE_ORDER=['gba_platform_owner','gimg_direction','gimg_production_lead','gimg_workspace_coordinator','gimg_project_director','gimg_area_lead','gimg_contributor','gimg_quality_manager','gimg_viewer'];
+export const STATUS={active:'Activo',inactive:'Inactivo',suspended:'Suspendido',expired:'Vencido',reserve:'Reserva'};
+export const MEANING={U:'Toda la unidad',P:'Sólo proyectos asignados',A:'Sólo su área',E:'Sólo entregables propios o asignados',D:'Sólo con delegación','-':'No permitido'};
+export const LABELS={
+ 'platform.manage':'Modificar la configuración de la plataforma','unit.read':'Ver la unidad GIMG','unit.settings.manage':'Modificar la configuración editorial de GIMG','unit.members.read':'Ver el directorio de integrantes','unit.members.invite':'Invitar o aceptar integrantes','unit.members.suspend':'Suspender o revocar acceso operativo','unit.roles.grant':'Otorgar rol técnico o delegación',
+ 'project.read':'Ver una edición compartida','project.create':'Crear proyecto o microedición','project.update':'Editar datos de proyecto','project.archive':'Archivar o retirar una edición',
+ 'task.read':'Ver tareas compartidas','task.create':'Crear tareas y entregables','task.assign':'Asignar o reasignar tareas','task.update_schedule':'Cambiar prioridad o fecha','task.update_status':'Actualizar el estado propio','task.block':'Declarar o retirar un bloqueo',
+ 'content.read':'Leer contenido compartido','content.create':'Crear documentos o archivos','content.edit_assigned':'Editar contenido propio o asignado','content.edit_any_scoped':'Editar contenido de otras personas','content.comment':'Comentar','content.request_review':'Solicitar revisión',
+ 'review.request_changes':'Consolidar solicitud de cambios','review.approve_research':'Aprobar investigación para redacción','review.approve_text':'Aprobar texto para diseño','review.approve_art':'Aprobar boceto para arte final','review.approve_integration':'Aprobar integración técnica de páginas','review.queue_qa':'Enviar un trabajo a QA','review.authorize_extra_round':'Autorizar una segunda ronda','review.reopen':'Reabrir un entregable aprobado',
+ 'qa.raise_issue':'Marcar incidencia de QA','qa.block_release':'Bloquear salida por error crítico','qa.approve':'Aprobar QA','publication.approve_final':'Aprobar publicación final','publication.execute':'Publicar en VISTA (ejecución técnica)',
+ 'asset.upload':'Subir nueva versión','asset.download_preview':'Descargar vistas previas','asset.download_source':'Descargar archivos fuente','asset.archive':'Archivar un archivo','asset.delete_physical':'Borrar físicamente un archivo','credits.edit':'Registrar créditos y permisos','credits.approve':'Aprobar créditos y permisos','audit.read_scoped':'Ver la auditoría operativa','audit.export_full':'Exportar la auditoría completa',
+ 'reference.read':'Consultar documentos aceptados de la edición','reference.manage_creative':'Preparar concepto, dirección creativa y moodboard','reference.manage_instructions':'Preparar instrucciones de trabajo'
+};
+export const SENSITIVE=new Set(['unit.members.suspend','review.reopen','publication.execute','audit.export_full','reference.manage_creative']);
+export function permissionGroup(key){const prefix=key.split('.')[0];return ({platform:'Unidad y miembros',unit:'Unidad y miembros',project:'Proyectos',task:'Tareas',content:'Contenido',review:'Revisión y aprobación',qa:'Calidad (QA)',publication:'Publicación',asset:'Archivos',credits:'Créditos y auditoría',audit:'Créditos y auditoría',reference:'Referencias'})[prefix] || 'Otros permisos';}
+export function statusOf(member,now=Date.now()) {if(!member)return 'inactive';if(member.suspended_at || member.membership_status==='suspended')return 'suspended';if(member.expires_at && Date.parse(member.expires_at)<=now)return 'expired';if(member.membership_status==='accepted')return 'reserve';return ['active','continuity_requested','continuity_confirmed'].includes(member.membership_status)?'active':'inactive';}
+export function live(row,now=Date.now()){return !row.revoked_at && (!row.starts_at || Date.parse(row.starts_at)<=now) && (!row.expires_at || Date.parse(row.expires_at)>now);}
+export function fmt(value,short=false){if(!value || !Number.isFinite(Date.parse(value)))return 'Sin fecha';return new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',dateStyle:'medium',...(short?{}:{timeStyle:'short'})}).format(new Date(value));}
+export function expiry(kind,project,member,custom,now=Date.now()){let value=kind==='close'?project?.ends_at:kind==='custom'&&/^\d{4}-\d{2}-\d{2}$/.test(custom||'')?`${custom}T23:59:59-06:00`: /^d\d+$/.test(kind)?new Date(now+Number(kind.slice(1))*86400000).toISOString():null;
+ if(value && !Number.isFinite(Date.parse(value)))value=null;
+ const cap=member?.expires_at,clamped=Boolean(cap && (kind==='none' || value && Date.parse(value)>Date.parse(cap)));
+ if(clamped)value=cap;
+ return {date:value?new Date(value).toISOString():null,clamped,valid:kind==='none'?(!value || Date.parse(value)>now):Boolean(value && Date.parse(value)>now)};
+}
+export function cargos(snapshot){return (snapshot.catalog || CARGOS).map(item=>({...CARGOS.find(c=>c.key===item.key),...item}));}
+export function scopeText(snapshot,row){if(row.scope_type==='unit')return 'Toda la unidad GIMG';if(row.scope_type==='area'){const area=snapshot.areas.find(a=>a.id===row.scope_id);return `${area?.name || 'Área asignada'} · ${snapshot.projects.find(p=>p.id===area?.project_id)?.name || 'Edición asignada'}`;}return snapshot.projects.find(p=>p.id===row.scope_id)?.name || 'Recurso asignado';}
+export function personCargos(snapshot,id,includeExpired=false){return snapshot.grants.filter(g=>g.user_id===id && (includeExpired?!g.revoked_at:live(g))).map(grant=>{
+ const assignments=snapshot.assignments.filter(a=>a.grant_id===grant.id || (!a.grant_id && a.user_id===id && (grant.scope_type==='area'?a.area_id===grant.scope_id:grant.scope_type==='project'?a.project_id===grant.scope_id:!a.project_id)));
+ const definition=cargos(snapshot).find(c=>c.key===grant.cargo_key) || cargos(snapshot).find(c=>c.accessRole===grant.access_role);
+ const fn=assignments.find(a=>a.function_key)?.function_key || assignments[0]?.assignment_role;
+ return {grant,assignments,role:grant.access_role,title:FUNCTIONS[fn] && ['gimg_contributor','gimg_area_lead'].includes(grant.access_role)?`${grant.access_role==='gimg_area_lead'?'Responsable de ':''}${FUNCTIONS[fn]}`:definition?.title || ACCESS_ROLES[grant.access_role]?.name,scopeText:scopeText(snapshot,grant)};
+});}
+const ABILITY_ORDER=['publication.approve_final','unit.roles.grant','unit.members.invite','unit.members.suspend','project.create','task.assign','task.update_schedule','content.edit_assigned','content.create','task.create','review.approve_research','review.approve_text','review.approve_art','review.approve_integration','review.request_changes','qa.approve','qa.block_release','asset.download_source','credits.edit','reference.manage_creative','reference.manage_instructions','content.read','reference.read','project.read','unit.members.read','audit.read_scoped'];
+export function abilities(snapshot,role){const matrix=snapshot.matrix?.[role] || {};
+ const can=ABILITY_ORDER.filter(key=>matrix[key] && !['-','D'].includes(matrix[key]) && (role!=='gimg_project_director' || ['project.read','content.read','unit.members.read','audit.read_scoped'].includes(key))).slice(0,5).map(key=>LABELS[key]);
+ const cannot=role==='gimg_project_director'?['Operar sin una delegación escrita vigente','Aprobar publicación final','Ver otras ediciones']:['publication.approve_final','unit.roles.grant','content.edit_any_scoped','task.assign','asset.delete_physical'].filter(key=>!matrix[key] || ['-','D'].includes(matrix[key])).map(key=>LABELS[key]);return {can,cannot:cannot.slice(0,4)};
+}
+export function delegationGroups(keys){return [...new Set(keys.map(permissionGroup))].map(title=>({title,keys:keys.filter(k=>permissionGroup(k)===title)}));}
