@@ -53,3 +53,7 @@ release-candidates/
 supabase/.temp/
 .vercel
 .env*
+
+# Private Cloudflare development state and gateway credentials.
+.wrangler/
+.dev.vars*

@@ -19,7 +19,8 @@ export function toNativeVersion(version) {
 }
 export function displayVersion(version) {
   const [major, minor, patch] = nativeParts(version);
-  if (patch < 100) return version;
+  // Pre-1.0 installers used plain patches; the 1.x family encodes maintenance even for base patch zero.
+  if (major === 0 && patch < 100) return version;
   const base = `${major}.${minor}.${Math.floor(patch / 100)}`;
   return patch % 100 ? `${base}.${patch % 100}` : base;
 }

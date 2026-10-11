@@ -1,3 +1,4 @@
+import SaveNotice from './SaveNotice';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
@@ -310,7 +311,7 @@ export default function Workspace({ previewMode = false }) {
           <div className="ml-auto hidden md:flex items-center gap-2 text-[9px] text-[#8b9099]"><ShieldCheck size={13}/>Acceso mediante GBA ID</div>
         </nav>
 
-        {notice && <div className={`mb-4 min-h-10 px-4 py-2.5 border-l-2 flex items-center gap-2 text-xs ${notice.type === 'error' ? 'border-red-500 bg-red-50 text-red-700' : notice.type === 'success' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-[#2563eb] bg-blue-50 text-blue-700'}`}>{notice.type === 'error' ? <AlertCircle size={14}/> : notice.type === 'success' ? <Check size={14}/> : <Database size={14}/>}<span className="flex-1">{notice.message}</span><button type="button" title="Cerrar aviso" onClick={() => setNotice(null)}><X size={14}/></button></div>}
+        <SaveNotice message={notice?.message} onDismiss={() => setNotice(null)} />
 
         {canAccess ? (
           activeArea === 'calendar'

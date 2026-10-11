@@ -66,7 +66,7 @@ export default function DesktopUpdates({ client, children }) {
     {(open || state.required) && <div className="wu-overlay"><section ref={panel} className="wu-panel" role="dialog" aria-modal="true" aria-labelledby="wu-title" tabIndex={-1}>
       {!state.required && <button className="wu-close" onClick={close} aria-label="Cerrar actualizaciones"><X size={18}/></button>}
       <p className="wu-label">WORKSPACE · ACTUALIZACIONES</p>
-      <h2 id="wu-title">{state.required ? 'Actualización obligatoria' : firstNotice && !available ? 'Importante · Acceso actualizado' : available ? `Workspace ${state.version}` : 'Tu espacio, al día.'}</h2>
+      <h2 id="wu-title">{state.required ? 'Actualización obligatoria' : firstNotice && !available ? releaseInfo.noticeTitle || 'Importante · Acceso actualizado' : available ? `Workspace ${state.version}` : 'Tu espacio, al día.'}</h2>
       {state.required && <p>Instala Workspace {state.version || releaseInfo.version} para continuar. Puedes hacerlo aquí sin iniciar sesión.</p>}
       {!state.required && state.mandatoryAvailable && <p>Esta actualización será obligatoria al volver a abrir Workspace. Guarda tu trabajo antes de instalarla.</p>}
       {firstNotice && !available && <><p><strong>Workspace {releaseInfo.version}</strong></p><p>{releaseInfo.notice}</p></>}

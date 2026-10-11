@@ -17,3 +17,7 @@ src-tauri/tauri*.json
 supabase/
 tests/
 docs/
+
+cloudflare/
+.dev.vars*
+.wrangler/

@@ -1,0 +1,14 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "workspace-originals",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-10",
+  "account_id": "4334afb560574c76fa5054127dcd9b0b",
+  "workers_dev": true,
+  "r2_buckets": [{"binding":"ORIGINALS","bucket_name":"workspace-originals"}],
+  "vars": {
+    "SUPABASE_URL": "https://wgihpztgwsovhykboyru.supabase.co",
+    "ALLOWED_ORIGINS": "https://gba.software,https://www.gba.software,https://vista.gba.software,http://tauri.localhost,https://tauri.localhost,tauri://localhost,null"
+  },
+  "observability": {"enabled":true,"logs":{"enabled":true,"head_sampling_rate":0.1},"traces":{"enabled":true,"head_sampling_rate":0.01}}
+}

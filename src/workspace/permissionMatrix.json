@@ -58,7 +58,9 @@
     "project.read": "U",
     "content.read": "U",
     "task.read": "U",
-    "review.queue_qa": "U"
+    "review.queue_qa": "U",
+    "reference.manage_instructions": "U",
+    "reference.manage_creative": "U"
   },
   "gimg_production_lead": {
     "unit.read": "U",
@@ -90,7 +92,8 @@
     "project.read": "U",
     "content.read": "U",
     "task.read": "U",
-    "review.queue_qa": "U"
+    "review.queue_qa": "U",
+    "reference.manage_instructions": "U"
   },
   "gimg_workspace_coordinator": {
     "unit.read": "U",
@@ -116,7 +119,8 @@
     "audit.read_scoped": "P",
     "project.read": "U",
     "content.read": "U",
-    "task.read": "U"
+    "task.read": "U",
+    "reference.manage_instructions": "P"
   },
   "gimg_project_director": {
     "unit.read": "P",
@@ -149,7 +153,9 @@
     "project.read": "P",
     "content.read": "P",
     "task.read": "P",
-    "review.queue_qa": "P"
+    "review.queue_qa": "P",
+    "reference.manage_instructions": "P",
+    "reference.manage_creative": "D"
   },
   "gimg_area_lead": {
     "unit.read": "A",
@@ -179,7 +185,8 @@
     "project.read": "A",
     "content.read": "A",
     "task.read": "A",
-    "review.queue_qa": "A"
+    "review.queue_qa": "A",
+    "reference.manage_instructions": "A"
   },
   "gimg_contributor": {
     "reference.read": "P",

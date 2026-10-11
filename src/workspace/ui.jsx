@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { STATES, dateLabel, inputDate, isoDate } from './gimgModel';
 export const choices=(items,label='title')=>Object.fromEntries(items.map(x=>[x.id||x.user_id,x[label]||x.display_name]));
 export async function rpc(name,args){const {data,error}=await supabase.rpc(name,args);if(error)throw error;return data;}
-export function CommandForm({fields,onSave,initial={},button='Guardar',busy=false,resetOnSuccess=false}){
+export function CommandForm({fields,onSave,initial={},button='Guardar',busy=false,resetOnSuccess=Object.keys(initial).length === 0}){
+ const submitting = useRef(false);
  async function submit(event) {
   event.preventDefault();
-  if (busy) return;
+  if (busy || submitting.current) return;
+  submitting.current = true;
   const form = event.currentTarget;
   const values = new FormData(form);
   const out = {};
@@ -14,8 +16,10 @@ export function CommandForm({fields,onSave,initial={},button='Guardar',busy=fals
    const value = values.get(key);
    out[key] = field.type === 'datetime-local' ? isoDate(value) : value || null;
   }
-  const result = await onSave(out);
-  if (resetOnSuccess && result) form.reset();
+  try {
+   const result = await onSave(out);
+   if (resetOnSuccess && result) form.reset();
+  } finally { submitting.current = false; }
  }
  return <form className="gw-form" onSubmit={submit}>{Object.entries(fields).map(([key,value])=>{
   const f=typeof value==='string'?{label:value}:value;

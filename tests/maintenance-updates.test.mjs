@@ -30,3 +30,9 @@ await nextStart.check();assert.equal(nextStart.getState().required,true);
 const invalid=createUpdateController({check:async()=>({...update,rawJson:{minimumNativeVersion:'0.1.999'}}),currentVersion:async()=> '0.1.401',relaunch:async()=>{}});
 await invalid.check();assert.equal(invalid.getState().phase,'error');
 console.log('PASS: maintenance numbering, legacy upgrade ordering, pre-login mandatory updates, manual installation, offline enforcement and preservation of active work.');
+
+assert.equal(toNativeVersion('1.5.0'),'1.5.0');
+assert.equal(toNativeVersion('1.5.0.1'),'1.5.1');
+assert.equal(displayVersion('1.5.1'),'1.5.0.1');
+assert.ok(newerNative(toNativeVersion('1.5.0.1'),toNativeVersion('1.5.0')));
+assert.ok(newerNative(toNativeVersion('1.6.0'),toNativeVersion('1.5.0.99')));

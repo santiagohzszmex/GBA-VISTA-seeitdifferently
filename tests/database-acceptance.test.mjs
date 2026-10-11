@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
-import { DATABASE_CHECKS, verifyDatabaseAcceptance } from '../scripts/workspace-database-acceptance.mjs';
+import { DATABASE_CHECKS, PRISMA_DATABASE_CHECKS, verifyDatabaseAcceptance } from '../scripts/workspace-database-acceptance.mjs';
 const file=(await fs.readdir('supabase/migrations')).find(file=>file.endsWith('_workspace_personal_drafts_and_library.sql'));
 const target=`supabase/migrations/${file}`,commit='a'.repeat(40),projectRef='example';
 const proof={commit,projectRef,verifiedAt:new Date().toISOString(),changes:[{file:target,sha256:createHash('sha256').update(await fs.readFile(target)).digest('hex')}],...Object.fromEntries(DATABASE_CHECKS.map(key=>[key,true]))};
@@ -15,3 +15,12 @@ await assert.rejects(verifyDatabaseAcceptance({...proof,changes:[]},context),/li
 await assert.rejects(verifyDatabaseAcceptance({...proof,changes:[{file:target,sha256:'b'.repeat(64)}]},context),/bytes/);
 await assert.rejects(verifyDatabaseAcceptance(proof,{...context,files:['supabase/migrations/20261010005130_gba_id_secure_gateway.sql']}),/Full acceptance/);
 console.log('PASS: live database acceptance requires every check, exact source and project, fresh evidence and unchanged migration bytes.');
+
+const prismaFiles=(await fs.readdir('supabase/migrations')).filter(name=>name.includes('_workspace_prisma_')).map(name=>`supabase/migrations/${name}`);
+const prismaProof={...proof,changes:[...proof.changes,...await Promise.all(prismaFiles.map(async file=>({file,sha256:createHash('sha256').update(await fs.readFile(file)).digest('hex')})))],...Object.fromEntries(PRISMA_DATABASE_CHECKS.map(key=>[key,true])),r2:{gatewayUrl:'https://workspace-originals.fixture.workers.dev',bucket:'workspace-originals',storageClass:'Standard',capacityBytes:10000000000,uploadedSha256:'c'.repeat(64),downloadedSha256:'c'.repeat(64)}};
+const prismaContext={...context,files:[target,...prismaFiles]};
+assert.equal(await verifyDatabaseAcceptance(prismaProof,prismaContext),prismaProof);
+for(const key of PRISMA_DATABASE_CHECKS)await assert.rejects(verifyDatabaseAcceptance({...prismaProof,[key]:false},prismaContext),/Missing Prisma/);
+await assert.rejects(verifyDatabaseAcceptance({...prismaProof,r2:{...prismaProof.r2,downloadedSha256:'d'.repeat(64)}},prismaContext),/Live R2/);
+await assert.rejects(verifyDatabaseAcceptance({...prismaProof,r2:{...prismaProof.r2,storageClass:'InfrequentAccess'}},prismaContext),/Live R2/);
+console.log('PASS: Prisma cannot be published without live R2 round-trip integrity, capacity, operation limits and upload-revocation acceptance.');

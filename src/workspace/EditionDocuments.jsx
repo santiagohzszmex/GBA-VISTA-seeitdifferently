@@ -1,29 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { FileText, Search, BookOpen } from 'lucide-react';
+import { FileText, Search, BookOpen, Plus, Pencil, Image, Archive } from 'lucide-react';
 import StructuredDocument from './StructuredDocument';
+import ReferenceEditor, { Palette } from './ReferenceEditor';
+import ReferenceOriginal from './ReferenceOriginal';
+import DraftExitDialog from './DraftExitDialog';
+import { REFERENCE_KINDS, canManageReference } from './referenceModel';
 import { dateLabel } from './gimgModel';
 import { taskIsMine } from './documentModel';
 export function DocumentContent({ content }) { return <div className="gw-document-content"><ReactMarkdown skipHtml>{content || ''}</ReactMarkdown></div>; }
-export default function EditionDocuments({ project, data, actorId, onOpenTask, initialTaskId }) {
-  const [selectedId, setSelectedId] = useState(() => data.approvedDocuments?.find(document => document.deliverable_id === initialTaskId)?.version_id || 'brief');
+export default function EditionDocuments({ project, data, actorId, onOpenTask, initialTaskId, permissions = {}, referenceApi, onDirtyChange, busy, compact = false }) {
+  const references = data.references || [], documents = data.approvedDocuments || [];
+  const referencePermissions = data.referencePermissions || permissions;
+  const [selectedId, setSelectedId] = useState(() => documents.find(document => document.deliverable_id === initialTaskId)?.version_id || references[0]?.id || 'brief');
   const [search, setSearch] = useState('');
-  const documents = data.approvedDocuments || [];
+  const [editing, setEditing] = useState(false);
+  const [draftDirty, setDraftDirty] = useState(false);
+  const [pending, setPending] = useState(null);
+  const [archiving, setArchiving] = useState(false);
+  const [error, setError] = useState('');
+  const selected = references.find(document => document.id === selectedId);
+  const accepted = documents.find(document => document.version_id === selectedId);
+  const isBrief = !selected && !accepted;
+  const title = selected?.title || accepted?.title || 'Concepto y dirección';
+  const ownTask = accepted && data.tasks.find(task => task.id === accepted.deliverable_id && taskIsMine(task, actorId));
+  const showBrief = !references.some(reference => reference.kind === 'concept') && (Boolean(project.brief) || references.length === 0);
   const query = search.trim().toLocaleLowerCase('es');
-  const visible = documents.filter(document => `${document.title} ${document.area_name}`.toLocaleLowerCase('es').includes(query));
-  const selected = documents.find(document => document.version_id === selectedId);
-  const ownTask = selected && data.tasks.find(task => task.id === selected.deliverable_id && taskIsMine(task, actorId));
-  const isBrief = !selected;
-  return <div className="gw-document-browser"><h1 className="gw-sr-only">Documentos de {project.title}</h1>
-    <aside className="gw-file-sidebar" aria-label="Documentos disponibles para la edición"><div className="gw-file-heading"><h2>Documentos</h2><span>{documents.length + 1}</span></div>
-      <label className="gw-file-search"><Search size={15} aria-hidden="true" /><span className="gw-sr-only">Buscar documentos de esta edición</span><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar documento" /></label>
-      <p className="gw-library-label">Referencias</p><div className="gw-file-list">{(!query || 'concepto dirección creativa'.includes(query)) && <button type="button" className={isBrief ? 'gw-file-active' : ''} aria-current={isBrief ? 'true' : undefined} onClick={() => setSelectedId('brief')}><BookOpen size={17} aria-hidden="true" /><span><strong>Concepto y dirección</strong><small>Referencia de la edición</small></span></button>}</div>
-      <p className="gw-library-label">Documentos aceptados</p><div className="gw-file-list">{visible.map(document => <button type="button" key={document.version_id} className={selectedId === document.version_id ? 'gw-file-active' : ''} aria-current={selectedId === document.version_id ? 'true' : undefined} onClick={() => setSelectedId(document.version_id)}><FileText size={17} aria-hidden="true" /><span><strong>{document.title}</strong><small>{document.area_name} · Aceptado · v{document.version_number}</small></span></button>)}{!visible.length && <p className="gw-file-empty">{query ? 'Sin resultados.' : 'Aquí aparecerán las versiones que acepte el responsable del área.'}</p>}</div>
+  const matches = value => !query || value.toLocaleLowerCase('es').includes(query);
+  const writable = !['closed','archived'].includes(project.status) && Boolean(referenceApi) && (canManageReference('concept', null, referencePermissions) || canManageReference('instructions', null, referencePermissions) || Object.values(data.areaPermissions || {}).some(area => area['reference.manage_instructions']));
+  const canEdit = selected && writable && selected.can_edit;
+  function navigate(action) { if (draftDirty) setPending(() => action); else action(); }
+  function select(id) { navigate(() => { setSelectedId(id); setEditing(false); setArchiving(false); setError(''); }); }
+  const dirty = useCallback(value => { setDraftDirty(value); onDirtyChange?.(value); }, [onDirtyChange]);
+  async function archive() { try { await referenceApi('reference.archive', selected, selected.revision); setArchiving(false); setSelectedId('brief'); } catch (failure) { setError(failure.message); } }
+  const library = [{label:'Referencias de la edición', rows:[...(showBrief ? [{id:'brief', title:'Concepto y dirección', label:'Referencia anterior', icon:BookOpen}] : []), ...references.map(reference => ({id:reference.id, title:reference.title, label:`${REFERENCE_KINDS[reference.kind]}${reference.area_name ? ` · ${reference.area_name}` : ''}`, icon:reference.kind === 'moodboard' ? Image : BookOpen}))]}, {label:'Documentos aceptados', rows:documents.map(document => ({id:document.version_id, title:document.title, label:`${document.area_name} · Aceptado · v${document.version_number}`, icon:FileText}))}];
+  return <div className={`gw-document-browser${compact ? ' gw-document-compact' : ''}`}>
+    <h1 className="gw-sr-only">Documentos de {project.title}</h1>
+    <aside className="gw-file-sidebar" aria-label="Documentos disponibles para la edición"><div className="gw-file-heading"><h2>Documentos</h2><span>{references.length + documents.length + Number(showBrief)}</span></div>
+      {compact ? <label className="gw-reference-picker">Consultar<select value={selectedId} onChange={event => select(event.target.value)}>{library.map(group => <optgroup key={group.label} label={group.label}>{group.rows.map(row => <option key={row.id} value={row.id}>{row.title}</option>)}</optgroup>)}</select></label> : <><label className="gw-file-search"><Search size={15} aria-hidden="true" /><span className="gw-sr-only">Buscar documentos de esta edición</span><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar documento" /></label>{writable && <button type="button" className="gw-new-reference" disabled={busy} onClick={() => navigate(() => { setEditing('new'); setArchiving(false); })}><Plus size={16} />Nueva referencia</button>}
+        {library.map(group => <React.Fragment key={group.label}><p className="gw-library-label">{group.label}</p><div className="gw-file-list">{group.rows.filter(row => matches(`${row.title} ${row.label}`)).map(row => { const Icon = row.icon; return <button type="button" key={row.id} className={selectedId === row.id ? 'gw-file-active' : ''} aria-current={selectedId === row.id ? 'true' : undefined} onClick={() => select(row.id)}><Icon size={17} aria-hidden="true" /><span><strong>{row.title}</strong><small>{row.label}</small></span></button>; })}{!group.rows.length && <p className="gw-file-empty">{group.label === 'Documentos aceptados' ? 'Las entregas aceptadas aparecerán aquí.' : 'Dirección añadirá las referencias de la edición.'}</p>}</div></React.Fragment>)}</>}{writable && data.referenceStorage?.capacity_bytes && <div className="gw-reference-storage"><span>Originales privados</span><progress aria-label="Espacio ocupado por originales" value={data.referenceStorage.used_bytes} max={data.referenceStorage.capacity_bytes} /><small>{(data.referenceStorage.used_bytes / 1_000_000_000).toFixed(2)} de 10 GB · 25 MB por archivo</small></div>}
     </aside>
-    <section className="gw-document-view" aria-label={isBrief ? 'Concepto y dirección' : selected.title}><div className="gw-document-toolbar"><span>{isBrief ? 'Referencia para trabajar' : 'Versión aceptada para consulta'}</span>{ownTask && <button type="button" onClick={() => onOpenTask(ownTask)}>Ir a mi trabajo</button>}</div>
-      <article className="gw-document-paper"><p className="gw-eyebrow">{project.title}</p><h2>{isBrief ? 'Concepto y dirección' : selected.title}</h2>
-        {isBrief ? project.brief ? <DocumentContent content={project.brief} /> : <p className="gw-document-empty">Dirección todavía no ha añadido el concepto de esta edición.</p> : <><p className="gw-document-meta">{selected.area_name} · Versión {selected.version_number} · {selected.imported ? 'Registro histórico' : dateLabel(selected.approved_at)}</p>{selected.content_document ? <StructuredDocument document={selected.content_document} /> : <DocumentContent content={selected.content_markdown} />}{selected.credits && <footer className="gw-document-credits"><h3>Créditos</h3><p>{selected.credits}</p></footer>}</>}
-      </article>
-    </section>
+    <section className="gw-document-view" aria-label={title}>{editing && !compact ? <ReferenceEditor key={editing === 'new' ? 'new' : selected.id} reference={editing === 'new' ? null : selected} project={project} data={data} permissions={referencePermissions} busy={busy} onDirtyChange={dirty} onSave={(value, revision) => referenceApi('reference.save', value, revision)} onUpload={(reference, file) => referenceApi('reference.upload', reference, file)} onClose={id => { if (id) { setSelectedId(id); setEditing(false); dirty(false); } else navigate(() => { setEditing(false); dirty(false); }); }} /> : <><div className="gw-document-toolbar"><span>{selected ? REFERENCE_KINDS[selected.kind] : accepted ? 'Versión aceptada para consulta' : 'Referencia para trabajar'}</span><div>{canEdit && !compact && <><button type="button" disabled={busy} onClick={() => setEditing(true)}><Pencil size={14} />Editar referencia</button><button type="button" disabled={busy} onClick={() => setArchiving(true)} aria-label="Archivar referencia"><Archive size={14} /></button></>}{ownTask && onOpenTask && <button type="button" onClick={() => onOpenTask(ownTask)}>Ir a mi trabajo</button>}</div></div>
+      {archiving && selected && <div className="gw-reference-archive"><p>¿Archivar «{selected.title}»? Dejará de aparecer en la biblioteca. Sus originales e historial se conservan.</p><button type="button" disabled={busy} onClick={() => void archive()}>Archivar referencia</button><button type="button" onClick={() => setArchiving(false)}>Cancelar</button></div>}{error && <p role="alert" className="gw-error">{error}</p>}
+      <article className="gw-document-paper"><p className="gw-eyebrow">{project.title}{selected?.area_name ? ` · ${selected.area_name}` : ''}</p><h2>{title}</h2>
+        {selected ? <><p className="gw-document-meta">Actualizado {dateLabel(selected.updated_at)}</p><Palette colors={selected.palette} />{selected.content_document ? <StructuredDocument document={selected.content_document} /> : <DocumentContent content={selected.content_markdown} />}{(selected.originals || []).map(asset => <ReferenceOriginal key={asset.id} asset={asset} gateway={data.referenceStorage?.gateway_url} />)}{selected.kind === 'moodboard' && !selected.originals?.length && <p className="gw-document-empty">Todavía no se han añadido imágenes o PDF a este moodboard.</p>}</> : isBrief ? project.brief ? <DocumentContent content={project.brief} /> : <div className="gw-reference-empty"><BookOpen size={32} /><h3>Una base común para trabajar</h3><p>Dirección puede añadir el concepto, la dirección creativa y el moodboard. Cada responsable puede preparar las instrucciones de su área.</p>{writable && <button type="button" onClick={() => setEditing('new')}>Crear la primera referencia</button>}</div> : <><p className="gw-document-meta">{accepted.area_name} · Versión {accepted.version_number} · {accepted.imported ? 'Registro histórico' : dateLabel(accepted.approved_at)}</p>{accepted.content_document ? <StructuredDocument document={accepted.content_document} /> : <DocumentContent content={accepted.content_markdown} />}{accepted.credits && <footer className="gw-document-credits"><h3>Créditos</h3><p>{accepted.credits}</p></footer>}</>}
+      </article></>}
+    </section>{pending && <DraftExitDialog onStay={() => setPending(null)} onDiscard={() => { const next = pending; setPending(null); dirty(false); next(); }} />}
   </div>;
 }
