@@ -10,7 +10,8 @@ const mimeTests=[[originalBytes,'image/png'],[pdfBytes,'application/pdf'],[new U
 for(const [bytes,mime] of mimeTests) assert.equal(detectMime(bytes),mime==='invalid'?null:mime);
 assert.deepEqual(parsePalette('#673ab7, #F4ECE0 #673AB7'),['#673AB7','#F4ECE0']);
 assert.equal(validatePalette(['#673AB7']),true);assert.equal(validatePalette(['javascript:alert(1)']),false);
-assert.throws(()=>validateOriginal({size:5,type:'application/pdf'},'concept'),/moodboards/);
+for(const kind of ['concept','creative_direction','moodboard','instructions'])validateOriginal({size:5,type:'application/pdf'},kind);
+assert.throws(()=>validateOriginal({size:5,type:'image/svg+xml'},'concept'),/PDF o una imagen/);
 assert.throws(()=>validateOriginal({size:26214401,type:'image/png'},'moodboard'),/25 MB/);
 assert.equal(canManageReference('concept',null,{}),false);
 assert.equal(canManageReference('instructions','art',{}, {art:{'reference.manage_instructions':true}}),true);
@@ -40,7 +41,7 @@ function fixture({kind='moodboard',denied=false,putFailure=false,finishFailure=f
 let f=fixture();let response=await f.run(f.request());assert.equal(response.status,201);let receipt=await response.json();assert.equal(receipt.sha256,createHash('sha256').update(originalBytes).digest('hex'));assert.deepEqual(f.objects.get(f.asset().object_key).body,originalBytes);
 response=await f.run(new Request(`https://workspace-originals.test.workers.dev/originals/${assetId}?download=1`,{headers:{Authorization:'Bearer user-fixture',Origin:'http://tauri.localhost'}}));assert.equal(response.status,200);assert.deepEqual(new Uint8Array(await response.arrayBuffer()),originalBytes);assert.match(response.headers.get('Content-Disposition'),/^attachment/);assert.equal(response.headers.get('Access-Control-Allow-Origin'),'http://tauri.localhost');assert.equal(f.calls.at(-2).args.p_download,true);assert.match(response.headers.get('Cache-Control'),/no-store/);
 f=fixture();response=await f.run(f.request(pdfBytes,'application/pdf'));assert.equal(response.status,201);assert.deepEqual(f.objects.get(f.asset().object_key).body,pdfBytes);
-f=fixture({kind:'concept'});assert.equal((await f.run(f.request(pdfBytes,'application/pdf'))).status,400);assert.equal(f.calls.some(call=>call.name==='r2.put'),false);
+for(const kind of ['concept','creative_direction','moodboard','instructions']){f=fixture({kind});assert.equal((await f.run(f.request(pdfBytes,'application/pdf'))).status,201);assert.deepEqual(f.objects.get(f.asset().object_key).body,pdfBytes);}
 f=fixture();assert.equal((await f.run(f.request(new TextEncoder().encode('<script>alert(1)</script>'),'image/png'))).status,400);assert.equal(f.calls.some(call=>call.name==='r2.put'),false);
 f=fixture();assert.equal((await f.run(f.request(originalBytes,'application/pdf'))).status,400);
 f=fixture();assert.equal((await f.run(f.request(originalBytes,'image/png',{'content-length':'26214401'}))).status,413);assert.equal(f.calls.some(call=>call.name==='workspace_original_begin'),false);

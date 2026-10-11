@@ -78,7 +78,7 @@ export function createGateway(fetcher = fetch, logger = console, fixedLength = l
           if (!/^[a-f0-9]{64}$/.test(sha256)) throw problem('Falta la huella de integridad del original.');
           incoming = await peekAndStream(request,size);
           const mime = detectMime(incoming.head);
-          if (!mime || (mime === 'application/pdf' && gate.kind !== 'moodboard')) throw problem('PDF sólo para moodboards; el archivo debe ser una imagen original.');
+          if (!mime) throw problem('Selecciona un PDF o una imagen original.');
           const requestedMime = request.headers.get('content-type')?.split(';')[0];
           if (requestedMime !== mime && !(['image/heic','image/heif'].includes(requestedMime) && ['image/heic','image/heif'].includes(mime))) throw problem('El contenido no coincide con el formato declarado.');
           let name; try { name = decodeURIComponent(request.headers.get('x-file-name') || ''); } catch { throw problem('Nombre de archivo inválido.'); }

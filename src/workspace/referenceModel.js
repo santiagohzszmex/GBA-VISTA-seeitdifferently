@@ -10,6 +10,6 @@ export function originalMime(file) { return file.type || ({jpg:'image/jpeg',jpeg
 export function validateOriginal(file, kind) {
   if (!file || file.size < 1 || file.size > ORIGINAL_LIMIT) throw Error('El archivo debe pesar entre 1 byte y 25 MB.');
   const types = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/tiff', 'image/avif', 'image/heic', 'image/heif'];
-  if (originalMime(file) === 'application/pdf' && kind !== 'moodboard') throw Error('El PDF sólo está disponible para moodboards.');
-  if (!types.includes(originalMime(file)) && !(kind === 'moodboard' && originalMime(file) === 'application/pdf')) throw Error('Selecciona una imagen original; los moodboards también admiten PDF.');
+  if (!Object.prototype.hasOwnProperty.call(REFERENCE_KINDS, kind)) throw Error('Tipo de referencia inválido.');
+  if (!types.includes(originalMime(file)) && originalMime(file) !== 'application/pdf') throw Error('Selecciona un PDF o una imagen original.');
 }

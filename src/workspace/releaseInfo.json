@@ -1,9 +1,9 @@
 {
-  "version": "1.5.6",
-  "nativeVersion": "1.5.600",
+  "version": "1.5.7",
+  "nativeVersion": "1.5.700",
   "codename": "Prisma",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Tu equipo, más claro",
-  "notice": "Workspace 1.5.6 Prisma reúne el acceso, los cargos y las delegaciones en una ficha por persona. Invita por GBA ID, asigna cargo y función juntos y consulta la matriz de permisos. La descarga base sigue siendo 1.5.0."
+  "noticeTitle": "Referencias desde el primer día",
+  "notice": "Workspace 1.5.7 Prisma abre los materiales de la edición desde la asignación y permite añadir PDF e imágenes en todas las categorías de referencias. Los trabajos privados siguen separados. La descarga base sigue siendo 1.5.0."
 }
