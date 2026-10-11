@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 export const DATABASE_CHECKS = ['databaseMigrationVerified','transactionRollbackVerified','draftLifecycleVerified','privateDraftIsolationVerified','acceptedReferencesVerified','revokedSessionDenied','keynotesPreserved'];
 export const PRISMA_DATABASE_CHECKS = ['referenceAuthorityVerified','referenceHistoryVerified','originalAccessVerified','storageCapacityVerified','operationLimitsVerified','uploadRevocationVerified','r2RoundTripVerified'];
 export async function verifyDatabaseAcceptance(proof, { commit, files, projectRef }) {
- if(files.some(file=>!/^supabase\/migrations\/[0-9]+_workspace_(personal_drafts_and_library|prisma_references_and_originals|prisma_original_completion_scope)\.sql$/.test(file))) throw Error('Full acceptance required for database changes outside reviewed Workspace migrations');
+ if(files.some(file=>!/^supabase\/migrations\/[0-9]+_workspace_(personal_drafts_and_library|prisma_references_and_originals|prisma_original_completion_scope|prisma_metered_singleton_updates)\.sql$/.test(file))) throw Error('Full acceptance required for database changes outside reviewed Workspace migrations');
  if(proof?.commit !== commit || proof.projectRef !== projectRef) throw Error('Database acceptance must match the release commit and project');
  if(!Number.isFinite(Date.parse(proof.verifiedAt)) || Math.abs(Date.now()-Date.parse(proof.verifiedAt))>86400000) throw Error('Fresh database acceptance required');
  if(files.some(file=>file.includes('_workspace_prisma_'))) {
