@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
+import EditionRemoval from './EditionRemoval';
 import LicensePanel from './LicensePanel';
 import TeamPanel from './TeamPanel';
 import { Activity, CommandForm, rpc } from './ui';
 import { dateLabel } from './gimgModel';
 
-export default function WorkspaceSettings({ context, data, permissions, command, busy, loading, unitId, projectId, onUnitChange, onProjectChange, previewMode, onNotice }) {
+export default function WorkspaceSettings({ context, data, permissions, command, busy, loading, unitId, projectId, onUnitChange, onProjectChange, previewMode, onNotice, removedEditions = [], onRemoveEdition, onRestoreEdition }) {
   const [section, setSection] = useState('general');
   const sections = { general: 'General' };
   if (permissions['unit.members.read']) sections.team = 'Integrantes y permisos';
-  if (permissions['project.create'] || permissions['project.update']) sections.projects = 'Administrar ediciones';
+  if (permissions['project.create'] || permissions['project.update'] || permissions['project.archive'] || removedEditions.length) sections.projects = 'Administrar ediciones';
   if (permissions['audit.read_scoped'] || permissions['audit.export_full']) sections.audit = 'Actividad';
   if (context?.platform_owner) sections.licenses = 'Licencias';
   const currentSection = sections[section] ? section : 'general';
@@ -37,7 +38,7 @@ export default function WorkspaceSettings({ context, data, permissions, command,
         {currentSection === 'team' && <TeamPanel data={data} permissions={permissions} command={command} busy={busy} unitId={unitId} projectId={projectId} />}
         {currentSection === 'projects' && <><h2>Administrar ediciones</h2>{permissions['project.create'] && <details className="gw-disclosure"><summary>Crear edición</summary><CommandForm busy={busy} button="Crear edición" fields={{ title: 'Nombre de la edición', starts_at: { label: 'Inicio', type: 'datetime-local', optional: true }, ends_at: { label: 'Cierre', type: 'datetime-local', optional: true } }} onSave={values => command('project.create', values)} /></details>}
           {project && permissions['project.update'] && <CommandForm key={project.id + project.revision} initial={project} busy={busy} button="Guardar edición" fields={{ title: 'Nombre', status: { label: 'Estado', options: { planned: 'Planeada', active: 'Activa', closed: 'Cerrada', ...(permissions['project.archive'] ? { archived: 'Archivada' } : {}) } }, starts_at: { label: 'Inicio', type: 'datetime-local', optional: true }, ends_at: { label: 'Cierre', type: 'datetime-local', optional: true } }} onSave={values => command('project.save', values, project.revision)} />}
-          <div className="gw-list">{data.projects.map(item => <article key={item.id}><h3>{item.title}</h3><p>{dateLabel(item.starts_at)} → {dateLabel(item.ends_at)}</p><button type="button" disabled={busy} onClick={() => onProjectChange(item.id)}>Seleccionar edición</button></article>)}</div>
+          <EditionRemoval key={project?.id || unitId} project={project} removed={removedEditions} canRemove={permissions['project.archive']} onRemove={onRemoveEdition} onRestore={onRestoreEdition} busy={busy && !previewMode}/><div className="gw-list">{data.projects.map(item => <article key={item.id}><h3>{item.title}</h3><p>{dateLabel(item.starts_at)} → {dateLabel(item.ends_at)}</p><button type="button" disabled={busy} onClick={() => onProjectChange(item.id)}>Seleccionar edición</button></article>)}</div>
         </>}
         {currentSection === 'audit' && <><h2>Actividad de Workspace</h2>{permissions['audit.export_full'] && <button type="button" disabled={busy} onClick={() => void exportAudit()}>Exportar auditoría completa</button>}<p>Últimas 200 acciones visibles según tu alcance.</p><Activity rows={data.audit} /></>}
         {currentSection === 'licenses' && context?.platform_owner && <LicensePanel previewMode={previewMode} />}

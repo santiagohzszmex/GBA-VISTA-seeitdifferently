@@ -34,7 +34,7 @@ Investigación, Redacción y Arte pueden consultar una referencia al lado del bo
 
 Los formularios de nuevas asignaciones y permisos limpian sus campos sólo después de éxito. Los formularios de edición conservan los datos guardados. Los documentos no se vacían al guardar: se conserva el trabajo y se limpia su estado pendiente. El aviso de confirmación aparece abajo, puede cerrarse y permanece mientras se señala o enfoca.
 
-La versión 1.6.0 queda reservada para notificaciones y observaciones de uso posteriores.
+Las notificaciones se incorporan en 1.5.5; las siguientes observaciones de uso se atenderán en 1.5.6. La descarga base pública permanece en 1.5.0.
 
 ## Comprobaciones y publicación
 

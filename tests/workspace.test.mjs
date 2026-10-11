@@ -42,7 +42,7 @@ await db.exec(`create role anon;create role authenticated;create role service_ro
  create function gimg_recruitment_private.recover_identity(text,text,text) returns boolean language sql as $$select false$$;`);
 for(let n=1;n<=12;n++) { await db.query("insert into auth.users values($1,$2,extensions.crypt('GBA-1234-SecureVault',extensions.gen_salt('bf',4)),now())",[id(n),`person${n}@gba.com`]);await db.query('insert into auth.sessions values($1,$2)',[session(n),id(n)]);await db.query('insert into public.usuarios values($1,$2,$3,$3,$4)',[id(n),n===1?'Dueño':'Usuario',`person${n}`,n===12?'sol':'old secret']); }
 await db.query("insert into public.gimg_recruitment_reviewers values($1,'director')",[id(2)]);
-for(const file of ['202608010001_gba_workspace_phase1.sql','202608140001_public_keynotes.sql','20261010005048_workspace_gimg.sql','20261010005053_workspace_licenses.sql','20261010005130_gba_id_secure_gateway.sql','20261010005309_gimg_role_isolation.sql','20261009123356_gimg_identity_role_isolation.sql','20261010010427_workspace_scope_search_path.sql','20261010012802_workspace_owner_desktop_access.sql','20261010183926_workspace_personal_drafts_and_library.sql','20261011002134_workspace_prisma_references_and_originals.sql','20261011002843_workspace_prisma_original_completion_scope.sql','20261011010112_workspace_prisma_metered_singleton_updates.sql']) await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+for(const file of ['202608010001_gba_workspace_phase1.sql','202608140001_public_keynotes.sql','20261010005048_workspace_gimg.sql','20261010005053_workspace_licenses.sql','20261010005130_gba_id_secure_gateway.sql','20261010005309_gimg_role_isolation.sql','20261009123356_gimg_identity_role_isolation.sql','20261010010427_workspace_scope_search_path.sql','20261010012802_workspace_owner_desktop_access.sql','20261010183926_workspace_personal_drafts_and_library.sql','20261011002134_workspace_prisma_references_and_originals.sql','20261011002843_workspace_prisma_original_completion_scope.sql','20261011010112_workspace_prisma_metered_singleton_updates.sql','20261011051823_workspace_prisma_notifications.sql','20261011051829_workspace_prisma_edition_removal.sql']) await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
 const restoredCheckpoint=await scalar('select extensions.pgp_sym_decrypt(b.encrypted_payload,k.decrypted_secret)::jsonb from workspace_private.identity_rollout_backups b join vault.decrypted_secrets k on k.id=b.key_id');
 eq(restoredCheckpoint.length,12);eq(restoredCheckpoint[0].frase_seguridad,'old secret');
 eq(restoredCheckpoint[0].encrypted_password,await scalar('select pin_hash from workspace_private.id_secrets where user_id=$1',[id(1)]));
@@ -192,6 +192,55 @@ await actor(2);const creativeMandate=await cmd('delegation.save',{unit_id:unit,u
 await actor(7);await saveReference({kind:'concept',title:'Concepto delegado',content_document:richReference});
 await admin("update public.workspace_delegations set expires_at=now()-interval '1 second',starts_at=now()-interval '1 day' where id=$1",[creativeMandate.id]);await actor(7);await denied(saveReference({kind:'concept',title:'Delegación vencida',content_document:richReference}));
 
+// 1.5.5 recipient authority, private inbox, legacy conversion and reversible removal.
+await actor(2);const legacy=await cmd('project.create',{unit_id:unit,title:'Legacy concept',brief:'Original preserved brief'});
+await actor(3);await denied(scalar('select public.workspace_import_concept($1,$2)',[legacy.id,{title:'Denied concept',content_document:richReference}]));
+await actor(2);const converted=await scalar('select public.workspace_import_concept($1,$2)',[legacy.id,{title:'Editable concept',content_document:richReference}]);
+eq((await scalar('select public.workspace_reference_history($1)',[converted.id])).map(row=>row.revision),[1,0]);
+eq((await scalar('select public.workspace_reference_history($1)',[converted.id]))[1].snapshot.content_markdown,'Original preserved brief');
+eq(await scalar('select brief from public.workspace_projects where id=$1',[legacy.id]),'Original preserved brief');
+await denied(scalar('select public.workspace_import_concept($1,$2)',[legacy.id,{title:'Duplicate',content_document:richReference}]),/ya tiene/);
+await actor(3);let inboxTask=await cmd('task.create',{project_id:project.id,area_id:art.id,title:'Inbox assignment',responsible_id:id(5)});
+await actor(5);let inbox=await scalar('select public.workspace_notifications()');let ownNotice=inbox.items.find(row=>row.deliverable_id===inboxTask.id);eq(Boolean(ownNotice),true);eq(ownNotice.read_at,null);
+eq((await scalar('select public.workspace_read_notification($1)',[ownNotice.id])).deliverable_id,inboxTask.id);
+eq(Boolean((await scalar('select public.workspace_notifications()')).items.find(row=>row.id===ownNotice.id).read_at),true);
+await actor(6);await denied(scalar('select public.workspace_read_notification($1)',[ownNotice.id]),/alcance/);
+await actor(1);eq((await scalar('select public.workspace_notifications()')).items.length,0);await denied(scalar('select public.workspace_remove_edition($1,$2,$3,$4)',[legacy.id,legacy.revision,legacy.title,'Unauthorized technical account']));
+await actor(5);await denied(db.query('select * from workspace_private.notifications'));
+await db.query("select set_config('test.session','expired',false)");await denied(scalar('select public.workspace_notifications()'));await actor(5);
+await admin("update public.workspace_unit_memberships set membership_status='suspended' where unit_id=$1 and user_id=$2",[unit,id(5)]);await actor(5);eq((await scalar('select public.workspace_notifications()')).items.length,0);
+await admin("update public.workspace_unit_memberships set membership_status='active' where unit_id=$1 and user_id=$2",[unit,id(5)]);
+await actor(3);inboxTask=await cmd('task.schedule',{project_id:project.id,deliverable_id:inboxTask.id,due_at:new Date(Date.now()+3600000).toISOString(),priority:'high'},inboxTask.revision);
+await actor(5);const deadlineCount=()=>scalar('select public.workspace_notifications()').then(result=>result.items.filter(row=>row.event_type==='deadline' && row.deliverable_id===inboxTask.id).length);eq(await deadlineCount(),1);eq(await deadlineCount(),1);
+await actor(5);inboxTask=await cmd('version.submit',{project_id:project.id,deliverable_id:inboxTask.id,content_markdown:'Review this document'},inboxTask.revision);
+await actor(4);eq((await scalar('select public.workspace_notifications()')).items.some(row=>row.event_type==='review.requested' && row.deliverable_id===inboxTask.id),true);
+await actor(4);inboxTask=await cmd('task.transition',{project_id:project.id,deliverable_id:inboxTask.id,state:'area_approved'},inboxTask.revision);
+await actor(5);eq((await scalar('select public.workspace_notifications()')).items.some(row=>row.event_type==='document.accepted' && row.deliverable_id===inboxTask.id),true);
+await actor(3);inboxTask=await cmd('task.transition',{project_id:project.id,deliverable_id:inboxTask.id,state:'in_qa'},inboxTask.revision);
+await actor(6);eq((await scalar('select public.workspace_notifications()')).items.some(row=>row.event_type==='qa.requested' && row.deliverable_id===inboxTask.id),true);inboxTask=await cmd('task.transition',{project_id:project.id,deliverable_id:inboxTask.id,state:'qa_approved'},inboxTask.revision);
+await actor(2);eq((await scalar('select public.workspace_notifications()')).items.some(row=>row.event_type==='publication.requested' && row.deliverable_id===inboxTask.id),true);inboxTask=await cmd('publication.approve',{project_id:project.id,deliverable_id:inboxTask.id},inboxTask.revision);
+await actor(3);eq((await scalar('select public.workspace_notifications()')).items.some(row=>row.event_type==='publication.authorized' && row.deliverable_id===inboxTask.id),false);
+await actor(6);eq((await scalar('select public.workspace_notifications()')).items.some(row=>row.event_type==='publication.authorized' && row.deliverable_id===inboxTask.id),true);
+await actor(3);await denied(scalar('select public.workspace_remove_edition($1,$2,$3,$4)',[legacy.id,legacy.revision,legacy.title,'Production without delegation']));
+await actor(2);await denied(scalar('select public.workspace_remove_edition($1,$2,$3,$4)',[legacy.id,legacy.revision,'wrong','Reason for removal']),/nombre exacto/);
+await denied(scalar('select public.workspace_remove_edition($1,$2,$3,$4)',[legacy.id,legacy.revision,legacy.title,'short']),/motivo/);
+await denied(scalar('select public.workspace_remove_edition($1,$2,$3,$4)',[legacy.id,0,legacy.title,'Reason for removal']),/cambió/);
+const removed=await scalar('select public.workspace_remove_edition($1,$2,$3,$4)',[legacy.id,legacy.revision,legacy.title,'Reversible removal test']);
+eq((await db.query('select id from public.workspace_projects where id=$1',[legacy.id])).rows.length,0);
+await denied(scalar('select public.workspace_reference_bundle($1)',[legacy.id]));
+await denied(cmd('project.save',{project_id:legacy.id,title:'Bypass',status:'active'},removed.revision),/eliminada/);
+eq((await scalar('select public.workspace_removed_editions($1)',[unit])).some(row=>row.id===legacy.id),true);
+await actor(3);eq((await scalar('select public.workspace_removed_editions($1)',[unit])).length,0);await denied(scalar('select public.workspace_restore_edition($1,$2)',[legacy.id,removed.revision]));
+await actor(2);const restored=await scalar('select public.workspace_restore_edition($1,$2)',[legacy.id,removed.revision]);eq(restored.revision,removed.revision+1);
+eq((await scalar('select public.workspace_reference_history($1)',[converted.id])).length,2);
+eq((await scalar('select public.workspace_reference_bundle($1)',[legacy.id])).references[0].id,converted.id);
+await admin('select 1');
+for(const n of [2,3,4,5,6,7,8,9,10]){
+ for(const key of ['project.archive','task.assign','review.approve_art','qa.approve','publication.approve_final','reference.manage_creative']){
+  await actor(n);const current=await scalar('select workspace_private.allowed($1,$2,$3,$4,$5)',[key,unit,project.id,art.id,inboxTask.id]);
+  await admin('select 1');eq(await scalar('select workspace_private.notification_allowed($1,$2,$3,$4,$5,$6)',[id(n),key,unit,project.id,art.id,inboxTask.id]),current);
+ }
+}
 await actor(1);const issued=await scalar('select public.workspace_issue_license($1,$2,$3)',[7200,'Pilot',id(5)]);eq(issued.code.length,48);eq((await scalar('select public.workspace_license_codes()'))[0].code_hash,undefined);
 await actor(6);eq(Boolean((await scalar('select public.workspace_activate_license($1)',[issued.code])).error),true);
 await actor(5);let license=await scalar('select public.workspace_activate_license($1)',[issued.code]);eq(license.user_id,id(5));eq(new Date(license.expires_at).getTime()-new Date(license.starts_at).getTime(),7200000);eq((await scalar('select public.workspace_license_status()')).active,true);eq((await scalar('select public.workspace_activate_license($1)',[issued.code])).id,license.id);
@@ -207,4 +256,4 @@ const shortPhraseRecovery=await scalar("select public.gba_id_gateway('recover','
 eq((await scalar("select public.gba_id_gateway('login','person12','9999','','origin','device',null)")).user_id,id(12));
 eq(Boolean((await scalar("select public.gba_id_gateway('prepare','newperson','1234','sol','origin','device',null)")).error),true);
 console.log(`PASS: ${checks} Workspace assertions: direct API denial, scopes, full editorial cycle, suspension, delegation expiry, immutable versions, self approval, licenses, recovery and session revocation.`);
-}catch(error){console.error(error.message,error.where||'',error.params||'');process.exitCode=1;}finally{await db.close();}
+}catch(error){console.error(error.stack,error.where||'',error.params||'');process.exitCode=1;}finally{await db.close();}
