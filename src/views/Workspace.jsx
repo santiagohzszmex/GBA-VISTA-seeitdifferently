@@ -61,7 +61,7 @@ export default function Workspace({ previewMode = false }) {
         const next = workflowDemoData(demoState.current, actor, id);
         setRemovedEditions(demoState.current.projects.filter(item=>item.deleted_at && actor.projects.includes(item.id) && demoPermissions(actor,item.id)['project.archive']));
         setData(next); setSelectedId(current => next.tasks.some(item => item.id === current && item.project_id === id) ? current : next.tasks.find(item => item.project_id === id && taskIsMine(item, actor.id))?.id || '');
-        setPermissions(demoPermissions(actor, id, actor.area || null));
+        setPermissions({...demoPermissions(actor, id, actor.area || null),'directory.unit_wide':['gimg_direction','gimg_production_lead','gimg_workspace_coordinator','gimg_quality_manager'].includes(actor.role)});
         return;
       }
       const ctx = await rpc('workspace_context');
@@ -93,7 +93,7 @@ export default function Workspace({ previewMode = false }) {
         rpc('workspace_removed_editions', {p_unit_id:unit})
       ]);
       if (seq !== generation.current) return;
-      const perm = { ...workPermissions.project, 'unit.members.read': Boolean(directoryPerm['unit.members.read']) };
+      const perm = { ...workPermissions.project, 'directory.unit_wide': Boolean(unitPerm['unit.members.read']), 'unit.members.read': Boolean(directoryPerm['unit.members.read']) };
       for (const [key, value] of Object.entries(unitPerm)) if ((key.startsWith('unit.') && key !== 'unit.members.read') || key === 'project.create') perm[key] = value;
       next.referencePermissions = workPermissions.project || {}; next.areaPermissions = workPermissions.areas || {}; next.taskPermissions = workPermissions.tasks || {}; next.approvedDocuments = approvedDocuments; next.references = referenceBundle.references; next.referenceStorage = referenceBundle.storage;
       next.members = directoryPerm['unit.members.read'] ? await rpc('workspace_directory', { p_unit: unit, p_project: id || null, p_area: area, p_deliverable: contextualTask?.id || null }) : [];
@@ -243,6 +243,12 @@ export default function Workspace({ previewMode = false }) {
       setSection(t && taskIsMine(t,userId) ? 'work' : ['review.requested','qa.requested','publication.requested','publication.authorized'].includes(item.event_type) ? 'reviews' : 'assignments');
     })());
   }
+  async function peopleCommand(action, value) {
+    if(busy || loading)throw Error('Espera a que termine la operación actual.');
+    setBusy(true);setNotice('');
+    try{const result=await rpc('workspace_people_action',{p_unit_id:unitId,p_action:action,p_data:value});await load(true);return result;}
+    finally{setBusy(false);}
+  }
   function pick(item, target) {
     const scopedPermissions = data.taskPermissions?.[item.id] || {};
     const nextSection = target || (taskIsMine(item, userId) ? 'work' : canReviewTask(item, data.taskPermissions?.[item.id] || {}, data.areas.find(area => area.id === item.area_id)) || (!scopedPermissions['task.assign'] && hasReviewPermission(scopedPermissions)) ? 'reviews' : scopedPermissions['task.assign'] ? 'assignments' : 'documents');
@@ -250,7 +256,7 @@ export default function Workspace({ previewMode = false }) {
     navigate(() => { if (item.project_id !== projectId) changeProject(item.project_id); setSelectedId(item.id); setSection(nextSection); setScreen('editions'); });
   }
   const { canAssign, canReview } = editionCapabilities(data);
-  const canWork = data.tasks.some(item => item.project_id === projectId && taskIsMine(item, userId)) || Object.values(data.areaPermissions || {}).some(item => item['content.create']);
+  const canWork = data.tasks.some(item => item.project_id === projectId && taskIsMine(item, userId)) || Object.values(data.areaPermissions || {}).some(item => item['content.create'] || item['task.create']);
   const defaultSection = initialSection(data, projectId, userId);
   const visibleSection = section === 'auto' || section === 'assignments' && !canAssign || section === 'reviews' && !canReview ? defaultSection : section;
   const unitName = context?.units?.find(unit => unit.id === unitId)?.name || 'GBA';
@@ -259,7 +265,7 @@ export default function Workspace({ previewMode = false }) {
     <WorkspaceNavigation screen={screen} onScreenChange={selectScreen} context={context} unitName={unitName} name={previewMode ? actor.name : user?.nombre_publico || user?.nombre || 'GBA ID'} loading={loading || busy} onRefresh={() => navigate(() => void load())} previewMode={previewMode} blocked={Boolean(pendingNavigation)} notifications={<Notifications key={userId} actorId={userId} previewMode={previewMode} previewItems={previewMode ? demoNotifications(demoState.current,actor) : []} onOpen={openNotification} blocked={busy || Boolean(pendingNavigation)}/>} />
     <main className="gw-main" aria-hidden={Boolean(pendingNavigation) || undefined}>
       {previewMode && <div className="gw-demo-flow"><span>Demostración local · prueba el flujo sin modificar datos reales.</span><label>Ver como<select value={demoActorKey} disabled={busy} onChange={event => { const next = event.target.value; if (next === demoActorKey) return; navigate(() => { setDemoActorKey(next); setSection('auto'); setSelectedId(''); setLoading(true); setData(EMPTY); setNotice(''); }); }}>{Object.entries(DEMO_ACTORS).map(([key, value]) => <option key={key} value={key}>{value.name}</option>)}</select></label></div>}
-      {screen === 'keynotes' && context?.keynotes_access ? <KeynotesWorkspace previewMode={previewMode} /> : screen === 'settings' ? <WorkspaceSettings context={context} data={data} permissions={permissions} command={command} busy={disabled || previewMode} loading={loading} unitId={unitId} projectId={projectId} onUnitChange={selectUnit} onProjectChange={selectProject} previewMode={previewMode} onNotice={setNotice} removedEditions={removedEditions} onRemoveEdition={(...args)=>changeEditionRemoval('project.remove',...args)} onRestoreEdition={item=>changeEditionRemoval('project.restore',item)} /> : <>
+      {screen === 'keynotes' && context?.keynotes_access ? <KeynotesWorkspace previewMode={previewMode} /> : screen === 'settings' ? <WorkspaceSettings context={context} data={data} permissions={permissions} command={command} busy={disabled || previewMode} loading={loading} unitId={unitId} projectId={projectId} onUnitChange={selectUnit} onProjectChange={selectProject} previewMode={previewMode} onNotice={setNotice} actorId={userId} peopleCommand={peopleCommand} removedEditions={removedEditions} onRemoveEdition={(...args)=>changeEditionRemoval('project.remove',...args)} onRestoreEdition={item=>changeEditionRemoval('project.restore',item)} /> : <>
         {data.projects.length > 0 && <EditionTabs projects={data.projects} selectedId={projectId} onSelect={selectProject} busy={busy} />}
         {loading ? <p className="gw-loading" role="status">Abriendo edición…</p> : !context?.units?.length ? <div className="gw-empty"><h2>Tu equipo está por comenzar.</h2><p>Dirección debe incorporar tu GBA ID y asignarte permisos para una unidad. Una licencia de escritorio no concede acceso editorial.</p></div> : !project ? <div className="gw-empty"><h2>Todavía no hay ediciones disponibles.</h2><p>Las ediciones aparecerán aquí cuando tengas acceso a ellas.</p>{permissions['project.create'] && <button type="button" onClick={() => setScreen('settings')}>Ir a Configuración</button>}</div> : <section role="tabpanel" id="workspace-edition-panel" aria-labelledby={`workspace-edition-${projectId}`} tabIndex={0}>
           <EditionNavigation section={visibleSection} onSelect={selectSection} canAssign={canAssign} canReview={canReview} canWork={canWork} />

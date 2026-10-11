@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
-import { DATABASE_CHECKS, PRISMA_DATABASE_CHECKS, NOTIFICATION_CHECKS, verifyDatabaseAcceptance } from '../scripts/workspace-database-acceptance.mjs';
+import { DATABASE_CHECKS, PRISMA_DATABASE_CHECKS, NOTIFICATION_CHECKS, PEOPLE_CHECKS, verifyDatabaseAcceptance } from '../scripts/workspace-database-acceptance.mjs';
 const file=(await fs.readdir('supabase/migrations')).find(file=>file.endsWith('_workspace_personal_drafts_and_library.sql'));
 const target=`supabase/migrations/${file}`,commit='a'.repeat(40),projectRef='example';
 const proof={commit,projectRef,verifiedAt:new Date().toISOString(),changes:[{file:target,sha256:createHash('sha256').update(await fs.readFile(target)).digest('hex')}],...Object.fromEntries(DATABASE_CHECKS.map(key=>[key,true]))};
@@ -26,3 +26,9 @@ await assert.rejects(verifyDatabaseAcceptance({...prismaProof,r2:{...prismaProof
 console.log('PASS: Prisma cannot be published without live R2 round-trip integrity, capacity, operation limits and upload-revocation acceptance.');
 
 for(const key of NOTIFICATION_CHECKS)await assert.rejects(verifyDatabaseAcceptance({...prismaProof,[key]:false},prismaContext),/Missing 1.5.5/);
+
+const peopleTarget=`supabase/migrations/${(await fs.readdir('supabase/migrations')).find(file=>file.endsWith('_workspace_people_access.sql'))}`;
+const peopleProof={...proof,changes:[{file:peopleTarget,sha256:createHash('sha256').update(await fs.readFile(peopleTarget)).digest('hex')}],...Object.fromEntries(PEOPLE_CHECKS.map(key=>[key,true]))},peopleContext={...context,files:[peopleTarget]};
+assert.equal(await verifyDatabaseAcceptance(peopleProof,peopleContext),peopleProof);
+for(const key of PEOPLE_CHECKS)await assert.rejects(verifyDatabaseAcceptance({...peopleProof,[key]:false},peopleContext),/Missing 1.5.6/);
+console.log('PASS: 1.5.6 requires live authority, atomic cargo, expiry, mandate, sharing, matrix, legacy guard and deduplication evidence.');
