@@ -5,8 +5,9 @@ declare
  ids uuid[]:=array[gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid()];
  sessions uuid[]:=array[gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid()];
  u uuid; p uuid; other_p uuid; a uuid; other_a uuid; rich jsonb; concept jsonb; guide jsonb; mood jsonb; original jsonb; bundle jsonb;
- grant_id uuid; denied boolean; checks integer:=0; n integer; password_snapshot text; keynote_snapshot text; gateway_key text:='disposable-prisma-gateway-test';
+ grant_id uuid; denied boolean; checks integer:=0; n integer; allocated_snapshot bigint; password_snapshot text; keynote_snapshot text; gateway_key text:='disposable-prisma-gateway-test';
 begin
+ select allocated_bytes into allocated_snapshot from workspace_private.original_limits;
  select md5(string_agg(id::text||coalesce(encrypted_password,''),'' order by id)) into password_snapshot from auth.users;
  select md5(coalesce(string_agg(to_jsonb(k)::text,'' order by id),'')) into keynote_snapshot from public.gba_keynotes k;
  for n in 1..8 loop
@@ -91,7 +92,7 @@ begin
  perform set_config('request.jwt.claims',jsonb_build_object('sub',ids[4],'session_id',gen_random_uuid(),'role','authenticated')::text,true);
  denied:=false;begin perform public.workspace_reference_bundle(p);exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Revoked session accepted';end if;checks:=checks+1;
  perform set_config('role','postgres',true);
- if (select allocated_bytes from workspace_private.original_limits)<>100 then raise exception 'Archive unexpectedly freed storage';end if;checks:=checks+1;
+ if (select allocated_bytes from workspace_private.original_limits)<>allocated_snapshot+100 then raise exception 'Archive unexpectedly freed storage';end if;checks:=checks+1;
  insert into workspace_prisma_test_result select checks,
  password_snapshot=(select md5(string_agg(id::text||coalesce(encrypted_password,''),'' order by id)) from auth.users where not id=any(ids)),
  keynote_snapshot=(select md5(coalesce(string_agg(to_jsonb(k)::text,'' order by id),'')) from public.gba_keynotes k);
