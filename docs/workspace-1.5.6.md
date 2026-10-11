@@ -20,6 +20,7 @@ El catálogo y la matriz reales proceden del servidor. Los datos del prototipo, 
 - No se delegan administración técnica, otorgamiento de roles/delegaciones, borrado físico ni aprobación final. Cada clave se verifica contra los permisos actuales del otorgante y el alcance real.
 - Los mandatos son registros privados conservados al revocar, con mínimo 20 caracteres y sin marcadores pendientes.
 - Fotografía dispone de un área real propia, separada de Ilustración. Investigación se incluye entre las funciones de área.
+- Los endpoints anteriores y actuales bloquean la misma cuenta antes de comprobar su membresía: dos invitaciones simultáneas no pueden omitir la comprobación de una membresía recién creada.
 - Los cargos editoriales no cambian el rango general de GBA. Las credenciales, Keynotes y los accesos existentes se conservan.
 
 ## Comprobación
