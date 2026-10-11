@@ -41,3 +41,14 @@ La versión 1.6.0 queda reservada para notificaciones y observaciones de uso pos
 La implementación local se valida con pruebas de permisos y llamadas directas a Postgres, pruebas de bytes de la pasarela y pruebas de interfaz. La publicación exige, además, aceptación en Supabase real, Worker desplegado con sus secretos, una subida/lectura real con integridad comprobada y los instaladores de las tres plataformas. No se publica una conexión de R2 que sólo funcione en simulación.
 
 Fuentes: [R2](https://developers.cloudflare.com/r2/pricing/), [API de Workers](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/), `docs/workspace-rbac-source.md`.
+
+## Publicación comprobada
+
+La versión beta 1.5.0 tiene instaladores para Apple Silicon, Intel y Windows x64. Cada instalador se instaló y abrió en su corredor nativo, y sus bytes se comprobaron antes de promover el canal de actualizaciones. Código nativo: `8fa9af25a6089b68cb3a9e16ff84891abfc94988`.
+
+- [Instalación y apertura en los tres sistemas](https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/actions/runs/38100713139).
+- [Paquetes públicos de Prisma](https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/tag/workspace-v1.5.0-beta.1).
+
+La pasarela `workspace-originals.gba-vista.workers.dev` está desplegada con el bucket privado `workspace-originals`. La prueba real subió y descargó un PNG y un PDF: ambos conservaron todos sus bytes y SHA-256. Los permisos y la sesión de la cuenta temporal se revocaron, y la pasarela confirmó la denegación posterior. Los archivos de prueba quedan archivados y siguen contando como 5,773 bytes; no se descontó almacenamiento que todavía existe.
+
+Se ejecutaron 50 comprobaciones con rollback en Supabase: 12 de borradores, 10 de identidad y 28 de referencias/originales. Los usuarios y Keynotes existentes se conservaron. La actualización interactiva de Windows todavía necesita validación en un equipo real, aparte de la instalación y apertura verificadas en CI.
