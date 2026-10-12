@@ -688,6 +688,18 @@ $function$
   await no(db.query("update public.gimg_recruitment_applications set phase='submitted' where id=$1", [existingApplication]), /Ilustración ya no recibe/);
   await db.query("update public.gimg_recruitment_applications set answers=answers||'{\"secondary\":\"\"}'::jsonb,phase='submitted' where id=$1", [existingApplication]);
   ok(await scalar('select phase from public.gimg_recruitment_applications where id=$1', [existingApplication]), 'submitted');
+  const beforeVacancies = await applicationSnapshot();
+  const vacanciesMigration = fs.readdirSync('supabase/migrations').find(p => p.endsWith('_gimg_recruitment_vacancies.sql'));
+  await db.exec(fs.readFileSync(`supabase/migrations/${vacanciesMigration}`, 'utf8'));
+  ok(await applicationSnapshot(), beforeVacancies);
+  ok(await scalar('select remaining_places from public.gimg_recruitment_cycles where key=$1', [CYCLE]), {design: 2, research: 1});
+  ok(await scalar("select closed_areas @> array['illustration','writing']::text[] from public.gimg_recruitment_cycles where key=$1", [CYCLE]), true);
+  await db.query("update public.gimg_recruitment_applications set phase='draft',answers=answers||'{\"area\":\"writing\"}'::jsonb where id=$1", [existingApplication]);
+  await no(db.query("update public.gimg_recruitment_applications set phase='submitted' where id=$1", [existingApplication]), /Redacción ya no recibe/);
+  await db.query("update public.gimg_recruitment_applications set answers=answers||'{\"area\":\"research\",\"secondary\":\"writing\"}'::jsonb where id=$1", [existingApplication]);
+  await no(db.query("update public.gimg_recruitment_applications set phase='submitted' where id=$1", [existingApplication]), /Redacción ya no recibe/);
+  await db.query("update public.gimg_recruitment_applications set answers=answers||'{\"secondary\":\"\"}'::jsonb,phase='submitted' where id=$1", [existingApplication]);
+  ok(await scalar('select phase from public.gimg_recruitment_applications where id=$1', [existingApplication]), 'submitted');
   console.log(
     `PASS: ${count} checks — private drafts, ownership, reviewer access, publication snapshots, private contact, deadline, conditional questions, recovery budget and session revocation.`,
   );
