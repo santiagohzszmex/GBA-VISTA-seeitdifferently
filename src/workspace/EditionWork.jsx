@@ -6,6 +6,8 @@ import { PRIORITIES, dateLabel } from './gimgModel';
 import WorkConversation from './WorkConversation';
 import WorkOperations from './WorkOperations';
 import { taskIsMine, canReviewTask, nextStep, hasReviewPermission } from './documentModel';
+import TaskMaterials from './TaskMaterials';
+import ReferenceSplit from './ReferenceSplit';
 import { Avatar, CLOSED_STATES, DueLabel, Status, dateShort, dueInfo } from './workView';
 
 /* Mi trabajo y Asignaciones · Workspace 1.5.7 (rediseño visual).
@@ -31,7 +33,7 @@ export function CreateWork({ project, data, actorId, personal, command, busy, on
     <div className="gw-wk-popover">
       <h3>{personal ? 'Nuevo documento' : 'Nueva asignación'}</h3>
       <p>{personal ? 'Se crea como borrador privado y puedes empezar a escribir de inmediato.' : 'Indica qué debe entregar la persona, en qué área y quién lo realiza.'}</p>
-      <CommandForm resetOnSuccess initial={{ area_id: areas.length === 1 ? areas[0].id : '' }} busy={busy} button={personal ? 'Crear y empezar a escribir' : 'Asignar trabajo'} fields={{ title: personal ? 'Título del documento' : 'Título de la asignación', ...(personal ? {} : { description: { label: 'Qué debe realizar y entregar esta persona', type: 'textarea' } }), area_id: { label: 'Área', options: choices(areas, 'name') }, ...(personal ? {} : { responsible_id: { label: 'Asignar a', options: choices(data.members, 'display_name'), optional: true } }) }} onSave={async values => { const task = await command('task.create', { ...values, responsible_id: personal ? actorId : values.responsible_id }); if (task) { onCreated(task); setOpen(false); createTrigger.current?.focus(); } return task; }} />
+      <CommandForm resetOnSuccess initial={{ area_id: areas.length === 1 ? areas[0].id : '' }} busy={busy} button={personal ? 'Crear y empezar a escribir' : 'Asignar trabajo'} fields={{ title: personal ? 'Título del documento' : 'Título de la asignación', ...(personal ? {} : { description: { label: 'Qué debe realizar y entregar esta persona', type: 'richtext', scope:{kind:'assignment',projectId:project.id} } }), area_id: { label: 'Área', options: choices(areas, 'name') }, ...(personal ? {} : { responsible_id: { label: 'Asignar a', options: choices(data.members, 'display_name'), optional: true } }) }} onSave={async values => { const task = await command('task.create', { ...values, responsible_id: personal ? actorId : values.responsible_id }); if (task) { onCreated(task); setOpen(false); createTrigger.current?.focus(); } return task; }} />
     </div>
   </details>;
 }
@@ -43,7 +45,7 @@ const WORK_GROUPS = [
 ];
 const groupOf = state => (WORK_GROUPS.find(([, , states]) => states.includes(state))?.[0]) || 'closed';
 
-export function PersonalWork({ project, data, task, actorId, command, api, busy, onPick, previewMode, onDirtyChange, onReference }) {
+export function PersonalWork({ project, data, task, actorId, command, api, busy, onPick, previewMode, onDirtyChange, onReference, referenceApi }) {
   const [filter, setFilter] = useState(() => task && CLOSED_STATES.includes(task.state) ? 'all' : 'active');
   const [focus, setFocus] = useState(false);
   const [split, setSplit] = useState(false);
@@ -74,7 +76,7 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
         {!tasks.length && <p className="gw-wk-rail-empty">{filter === 'active' && mine.length ? 'No tienes trabajo pendiente. Cambia a «Todo» para ver lo aceptado.' : 'Aquí aparecerá tu trabajo.'}</p>}
       </aside>
       {selected
-        ? <WorkEditor key={selected.id} task={selected} data={data} actorId={actorId} api={api} command={command} previewMode={previewMode} busy={busy} onDirtyChange={onDirtyChange} onReference={onReference} focus={focus} onFocusChange={setFocus} onSplitChange={setSplit} />
+        ? <WorkEditor key={selected.id} task={selected} data={data} actorId={actorId} api={api} command={command} previewMode={previewMode} busy={busy} onDirtyChange={onDirtyChange} onReference={onReference} focus={focus} onFocusChange={setFocus} onSplitChange={setSplit} referenceApi={referenceApi} />
         : <div className="gw-wk-empty"><FileText size={30} aria-hidden="true" /><h2>No tienes trabajo pendiente en esta edición.</h2><p>Cuando el responsable de tu área te asigne trabajo, podrás abrirlo aquí, preparar el documento y enviarlo a revisión.</p><button type="button" className="gw-wk-btn" onClick={onReference}>Consultar documentos de la edición</button></div>}
     </div>
   </section>;
@@ -82,8 +84,9 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
 
 const FILTERS = [['open', 'Abierto'], ['unassigned', 'Sin responsable'], ['blocked', 'Bloqueado'], ['late', 'Con retraso'], ['all', 'Todo']];
 
-export function AreaAssignments({ project, data, task, command, busy, onPick, onReview }) {
+export function AreaAssignments({ project, data, task, command, busy, onPick, onReview, referenceApi }) {
   const [query, setQuery] = useState('');
+  const [referenceTarget,setReferenceTarget] = useState(null);
   const [filter, setFilter] = useState('open');
   const [areaId, setAreaId] = useState('');
   const scoped = data.tasks.filter(item => item.project_id === project.id && data.taskPermissions?.[item.id]?.['task.assign']);
@@ -119,7 +122,7 @@ export function AreaAssignments({ project, data, task, command, busy, onPick, on
         </ul>
         {!tasks.length && <div className="gw-wk-list-empty"><Inbox size={22} aria-hidden="true" />{scoped.length ? <><p>Ninguna asignación coincide con la búsqueda o el filtro.</p><button type="button" className="gw-wk-btn" onClick={() => { setQuery(''); setFilter('open'); setAreaId(''); }}>Mostrar el trabajo abierto</button></> : <p>Todavía no hay asignaciones en tu área.</p>}</div>}
       </div>
-      {selected ? <section className="gw-wk-detail" aria-label={`Asignación: ${selected.title}`}>
+      {selected ? <ReferenceSplit open={Boolean(referenceTarget)} initialReferenceId={referenceTarget} task={selected} project={project} data={data} onClose={()=>setReferenceTarget(null)}><section className="gw-wk-detail" aria-label={`Asignación: ${selected.title}`}>
         <div className="gw-wk-detail-head">
           <span className="gw-wk-eyebrow">{area?.name}</span>
           <h2>{selected.title}</h2>
@@ -134,9 +137,9 @@ export function AreaAssignments({ project, data, task, command, busy, onPick, on
         <div className="gw-wk-detail-grid">
           <div className="gw-wk-col">
             <section className="gw-wk-card"><h3>Asignación</h3>
-              {editable ? <CommandForm key={selected.id + selected.revision} initial={selected} busy={busy} fields={{ title: 'Título de la asignación', description: { label: 'Indicaciones para la persona', type: 'textarea' }, responsible_id: { label: 'Responsable', options: choices(data.members, 'display_name'), optional: true } }} button="Guardar asignación" onSave={values => command('task.save', { ...values, deliverable_id: selected.id, collaborator_ids: selected.collaborator_ids || [] }, selected.revision)} /> : <p className="gw-wk-note">La versión está aceptada. Su contenido y asignación se conservan.</p>}
+              {editable ? <CommandForm key={selected.id + selected.revision} initial={selected} busy={busy} fields={{ title: 'Título de la asignación', description: { label: 'Indicaciones para la persona', type: 'richtext', scope:{kind:'assignment',taskId:selected.id,projectId:project.id,areaId:selected.area_id} }, responsible_id: { label: 'Responsable', options: choices(data.members, 'display_name'), optional: true } }} button="Guardar asignación" onSave={values => command('task.save', { ...values, deliverable_id: selected.id, collaborator_ids: selected.collaborator_ids || [] }, selected.revision)} /> : <p className="gw-wk-note">La versión está aceptada. Su contenido y asignación se conservan.</p>}
             </section>
-            <WorkConversation task={selected} data={data} command={command} busy={busy} />
+            <TaskMaterials task={selected} data={data} editable={Boolean(editable)} referenceApi={referenceApi} onOpen={row=>setReferenceTarget(row.reference_id)}/><WorkConversation task={selected} data={data} command={command} busy={busy} />
           </div>
           <div className="gw-wk-col gw-wk-side">
             {permissions['task.update_schedule'] && <details className="gw-wk-fold"><summary><span>Fecha de entrega y prioridad</span><small>{dateShort(selected.due_at)} · {PRIORITIES[selected.priority] || 'Normal'}</small></summary><CommandForm key={`schedule-${selected.id}-${selected.revision}`} initial={selected} busy={busy} button="Guardar fecha" fields={{ due_at: { label: 'Fecha de entrega', type: 'datetime-local', optional: true }, priority: { label: 'Prioridad', options: { low: 'Baja', normal: 'Normal', high: 'Alta', urgent: 'Urgente' } } }} onSave={values => command('task.schedule', { ...values, deliverable_id: selected.id }, selected.revision)} /></details>}
@@ -144,7 +147,7 @@ export function AreaAssignments({ project, data, task, command, busy, onPick, on
             <WorkOperations task={selected} permissions={permissions} command={command} busy={busy} />
           </div>
         </div>
-      </section> : <div className="gw-wk-empty"><Inbox size={30} aria-hidden="true" /><h2>Selecciona una asignación</h2><p>{scoped.length ? 'Elige una de la lista para ver sus indicaciones, su fecha y a quién está asignada.' : 'Cuando crees una asignación, aparecerá aquí con su responsable y su fecha.'}</p></div>}
+      </section></ReferenceSplit> : <div className="gw-wk-empty"><Inbox size={30} aria-hidden="true" /><h2>Selecciona una asignación</h2><p>{scoped.length ? 'Elige una de la lista para ver sus indicaciones, su fecha y a quién está asignada.' : 'Cuando crees una asignación, aparecerá aquí con su responsable y su fecha.'}</p></div>}
     </div>
   </section>;
 }

@@ -69,6 +69,18 @@ export function runWorkflowDemo(state, actor, action, payload, revision) {
   let task = next.tasks.find(item => item.id === payload.deliverable_id);
   const perms = demoPermissions(actor, payload.project_id || task?.project_id, payload.area_id || task?.area_id, task);
   const require = key => { if (!perms[key]) throw new Error('Esta función corresponde a otra persona del equipo.'); };
+  const emitMentions=(document,previous,kind,resource)=>{
+    const mentions=doc=>{const rows=[];const walk=node=>{if(node?.type==='mention')rows.push(node.attrs);node?.content?.forEach(walk);};walk(doc);return rows;};
+    const old=mentions(previous),sent=new Set();next.mentionNotices ||= [];
+    for(const mention of mentions(document)){
+      const person=Object.values(DEMO_ACTORS).find(row=>row.id===mention.id);
+      if(!person||person.id===actor.id||sent.has(person.id)||old.some(row=>row.id===mention.id&&row.anchorId===mention.anchorId))continue;
+      const access=demoPermissions(person,resource.project_id,resource.area_id,kind==='reference'?null:resource);
+      if(!person.projects.includes(resource.project_id)||(kind==='reference'?resource.area_id&&person.area&&resource.area_id!==person.area:!access[kind==='assignment'?'task.read':'content.read']))continue;
+      sent.add(person.id);const date=new Date().toISOString();
+      next.mentionNotices.push({id:uid('mention'),recipient_id:person.id,event_type:'mention',title:actor.name+' te mencionó',body:resource.title,project_id:resource.project_id,deliverable_id:kind==='reference'?null:resource.id,reference_id:kind==='reference'?resource.id:null,created_at:date,snapshot:{title:resource.title,document:clone(document),kind,project_id:resource.project_id,deliverable_id:kind==='reference'?null:resource.id,reference_id:kind==='reference'?resource.id:null,anchor_id:mention.anchorId,created_at:date,edition_title:next.projects.find(row=>row.id===resource.project_id)?.title}});
+    }
+  };
   if (action.startsWith('reference.')) {
     const old = next.references.find(reference => reference.id === payload.id);
     require(referencePermission(payload.kind || old?.kind));
@@ -78,7 +90,7 @@ export function runWorkflowDemo(state, actor, action, payload, revision) {
     const reference = {...payload, id:old?.id || uid('reference'), content_markdown:payload.content_document ? documentMarkdown(payload.content_document) : payload.content_markdown || '', revision:(old?.revision || 0)+1, updated_at:new Date().toISOString(), originals:old?.originals || []};
     if(payload.from_legacy_brief){const project=next.projects.find(item=>item.id===payload.project_id);next.referenceHistory[reference.id]=[{revision:0,created_at:new Date().toISOString(),snapshot:{content_markdown:project.brief}}];}
     next.referenceHistory[reference.id]=[{revision:reference.revision,created_at:reference.updated_at,snapshot:reference},...(next.referenceHistory[reference.id] || [])];
-    next.references = [...next.references.filter(item => item.id !== reference.id), reference]; return {state:next,result:reference};
+    next.references = [...next.references.filter(item => item.id !== reference.id), reference]; emitMentions(reference.content_document,old?.content_document,'reference',reference);return {state:next,result:reference};
   }
   if(action==='project.remove' || action==='project.restore'){
     require('project.archive');const project=next.projects.find(item=>item.id===payload.project_id);
@@ -102,14 +114,14 @@ export function runWorkflowDemo(state, actor, action, payload, revision) {
     require('content.request_review'); const draft = next.drafts[key];
     if (!draft) throw new Error('Guarda el borrador antes de enviarlo.');
     const version = { id: uid('version'), deliverable_id: task.id, version_number: task.current_version + 1, content_markdown: draft.content_markdown, content_document: draft.content_document, asset_url: draft.asset_url, has_file: Boolean(draft.asset_url), credits: draft.credits, change_summary: 'Envío a revisión', author_id: actor.id, created_at: new Date().toISOString() };
-    next.versions.push(version); task.current_version++; task.state = 'review'; task.revision++; delete next.drafts[key];
+    emitMentions(draft.content_document,next.versions.filter(row=>row.deliverable_id===task.id).at(-1)?.content_document,'version',task);next.versions.push(version); task.current_version++; task.state = 'review'; task.revision++; delete next.drafts[key];
     return { state: next, result: task };
   }
   if (action === 'task.create') {
     require('task.create');
     if (payload.responsible_id !== actor.id) require('task.assign');
-    task = { id: uid('task'), unit_id: 'gimg-demo', project_id: payload.project_id, area_id: payload.area_id, title: payload.title, created_by: actor.id, description: payload.description || '', responsible_id: payload.responsible_id, collaborator_ids: [], state: payload.responsible_id ? 'assigned' : 'pending', current_version: 0, revision: 1, round: 0, extra_rounds: 0, priority: 'normal' };
-    next.tasks.push(task); return { state: next, result: task };
+    task = { id: uid('task'), unit_id: 'gimg-demo', project_id: payload.project_id, area_id: payload.area_id, title: payload.title, created_by: actor.id, description: payload.description || '', description_document:payload.description_document, responsible_id: payload.responsible_id, collaborator_ids: [], state: payload.responsible_id ? 'assigned' : 'pending', current_version: 0, revision: 1, round: 0, extra_rounds: 0, priority: 'normal' };
+    next.tasks.push(task);emitMentions(task.description_document,null,'assignment',task); return { state: next, result: task };
   }
   if (action === 'event.save') {
     require('task.update_schedule');
@@ -124,7 +136,8 @@ export function runWorkflowDemo(state, actor, action, payload, revision) {
     return { state: next, result: event };
   }
   if (!task || (revision != null && task.revision !== revision)) throw new Error('La asignación cambió; actualiza la vista.');
-  if (action === 'task.save') { require('task.assign'); Object.assign(task, payload, { revision: task.revision + 1 }); }
+  if (action === 'task.save') { require('task.assign');const old=task.description_document;Object.assign(task, payload, { revision: task.revision + 1 });emitMentions(task.description_document,old,'assignment',task); }
+  else if (action === 'task.references') { require('task.assign'); next.taskReferences ||= {}; next.taskReferences[task.id] = payload.ids.map(id => {const reference=next.references.find(row=>row.id===id) || next.approvedDocuments.find(row=>row.version_id===id);if(!reference)throw Error('Material fuera de esta edición.');const current=next.taskReferences[task.id]?.find(row=>row.reference_id===id);if(current&&!payload.refresh)return current;return {reference_id:id,title:reference.title,revision:reference.revision || reference.version_number,latest_revision:reference.revision || reference.version_number,latest_source_id:id,snapshot:clone(reference),originals:reference.originals || []};}); task.revision++; }
   else if (action === 'task.schedule') {
     require('task.update_schedule'); Object.assign(task, { due_at: payload.due_at, priority: payload.priority, revision: task.revision + 1 });
     next.events = next.events.filter(event => event.deliverable_id !== task.id || event.kind !== 'deadline');
@@ -141,7 +154,7 @@ export function runWorkflowDemo(state, actor, action, payload, revision) {
   else if (action === 'comment.add' || action === 'qa.issue') {
     require(action === 'comment.add' ? 'content.comment' : 'qa.raise_issue');
     if (!payload.body?.trim()) throw new Error('Escribe el mensaje.');
-    next.comments.push({ id: uid('comment'), deliverable_id: task.id, version_number: task.current_version, body: payload.body, kind: action === 'comment.add' ? 'comment' : 'qa_issue', actor_id: actor.id, created_at: new Date().toISOString(), round: task.round }); task.revision++;
+    emitMentions(payload.body_document,null,'comment',task);next.comments.push({ id: uid('comment'), deliverable_id: task.id, version_number: task.current_version, body: payload.body, body_document:payload.body_document, kind: action === 'comment.add' ? 'comment' : 'qa_issue', actor_id: actor.id, created_at: new Date().toISOString(), round: task.round }); task.revision++;
   }
   else if (action === 'review.extra_round') { require('review.authorize_extra_round'); if (!payload.reason || payload.reason.trim().length < 10) throw new Error('Registra el motivo (mínimo 10 caracteres).'); task.extra_rounds++; task.revision++; }
   else if (action === 'review.reopen') { require('review.reopen'); if (!['area_approved','in_qa','qa_approved','published','archived'].includes(task.state) || !payload.reason || payload.reason.trim().length < 10) throw new Error('Registra el motivo y elige un documento aceptado.'); task.state = 'in_progress'; task.final_approved_by = null; task.revision++; }
@@ -155,7 +168,7 @@ export function runWorkflowDemo(state, actor, action, payload, revision) {
   }
   else if (action === 'review.changes') {
     require('review.request_changes'); if (!['review','in_qa'].includes(task.state) || task.round >= 1 + task.extra_rounds) throw new Error('Dirección debe autorizar otra ronda de correcciones.'); if (task.state === 'in_qa') require('qa.approve'); task.state = 'changes_requested'; task.round++; task.revision++;
-    next.comments.push({ id: uid('comment'), deliverable_id: task.id, version_number: task.current_version, body: payload.body, kind: 'changes', actor_id: actor.id, created_at: new Date().toISOString(), round: task.round });
+    emitMentions(payload.body_document,null,'comment',task);next.comments.push({ id: uid('comment'), deliverable_id: task.id, version_number: task.current_version, body: payload.body, body_document:payload.body_document, kind: 'changes', actor_id: actor.id, created_at: new Date().toISOString(), round: task.round });
   } else if (action === 'task.transition') {
     const area = next.areas.find(item => item.id === task.area_id);
     if (payload.state === 'blocked') {
@@ -181,7 +194,7 @@ export function runWorkflowDemo(state, actor, action, payload, revision) {
 
 export function demoNotifications(state,actor){
  const data=workflowDemoData(state,actor,actor.projects[0]);
- return data.tasks.flatMap(task=>{
+ return [...(state.mentionNotices || []).filter(notice=>notice.recipient_id===actor.id && data.projects.some(project=>project.id===notice.project_id)),...data.tasks.flatMap(task=>{
   const p=demoPermissions(actor,task.project_id,task.area_id,task), own=taskIsMine(task,actor.id);
   const area=state.areas.find(item=>item.id===task.area_id);
   let type,title;
@@ -191,5 +204,5 @@ export function demoNotifications(state,actor){
   else if(task.state==='qa_approved' && p['publication.approve_final'] && !own){type='publication.requested';title='Falta la aprobación final de Dirección';}
   if(!type)return [];
   return [{id:'demo-notice-'+task.id,event_type:type,title,body:task.title,project_id:task.project_id,project_title:data.projects.find(item=>item.id===task.project_id)?.title,deliverable_id:task.id,created_at:task.created_at || new Date().toISOString()}];
- });
+ })];
 }
