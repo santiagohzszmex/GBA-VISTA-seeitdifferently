@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
+import { runOpalAcceptance } from './workspace-opal.test.mjs';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 const db = new PGlite({ extensions: { pgcrypto } });
 let checks=0;
@@ -42,7 +43,7 @@ await db.exec(`create role anon;create role authenticated;create role service_ro
  create function gimg_recruitment_private.recover_identity(text,text,text) returns boolean language sql as $$select false$$;`);
 for(let n=1;n<=12;n++) { await db.query("insert into auth.users values($1,$2,extensions.crypt('GBA-1234-SecureVault',extensions.gen_salt('bf',4)),now())",[id(n),`person${n}@gba.com`]);await db.query('insert into auth.sessions values($1,$2)',[session(n),id(n)]);await db.query('insert into public.usuarios values($1,$2,$3,$3,$4)',[id(n),n===1?'Dueño':'Usuario',`person${n}`,n===12?'sol':'old secret']); }
 await db.query("insert into public.gimg_recruitment_reviewers values($1,'director')",[id(2)]);
-for(const file of ['202608010001_gba_workspace_phase1.sql','202608140001_public_keynotes.sql','20261010005048_workspace_gimg.sql','20261010005053_workspace_licenses.sql','20261010005130_gba_id_secure_gateway.sql','20261010005309_gimg_role_isolation.sql','20261009123356_gimg_identity_role_isolation.sql','20261010010427_workspace_scope_search_path.sql','20261010012802_workspace_owner_desktop_access.sql','20261010183926_workspace_personal_drafts_and_library.sql','20261011002134_workspace_prisma_references_and_originals.sql','20261011002843_workspace_prisma_original_completion_scope.sql','20261011010112_workspace_prisma_metered_singleton_updates.sql','20261011051823_workspace_prisma_notifications.sql','20261011051829_workspace_prisma_edition_removal.sql','20261011065113_workspace_people_access.sql','20261011070825_workspace_people_access_lock.sql','20261011143801_workspace_reference_access_and_documents.sql']) await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+for(const file of ['202608010001_gba_workspace_phase1.sql','202608140001_public_keynotes.sql','20261010005048_workspace_gimg.sql','20261010005053_workspace_licenses.sql','20261010005130_gba_id_secure_gateway.sql','20261010005309_gimg_role_isolation.sql','20261009123356_gimg_identity_role_isolation.sql','20261010010427_workspace_scope_search_path.sql','20261010012802_workspace_owner_desktop_access.sql','20261010183926_workspace_personal_drafts_and_library.sql','20261011002134_workspace_prisma_references_and_originals.sql','20261011002843_workspace_prisma_original_completion_scope.sql','20261011010112_workspace_prisma_metered_singleton_updates.sql','20261011051823_workspace_prisma_notifications.sql','20261011051829_workspace_prisma_edition_removal.sql','20261011065113_workspace_people_access.sql','20261011070825_workspace_people_access_lock.sql','20261011143801_workspace_reference_access_and_documents.sql','20261012012500_workspace_opal_editor_and_mentions.sql']) await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
 const restoredCheckpoint=await scalar('select extensions.pgp_sym_decrypt(b.encrypted_payload,k.decrypted_secret)::jsonb from workspace_private.identity_rollout_backups b join vault.decrypted_secrets k on k.id=b.key_id');
 eq(restoredCheckpoint.length,12);eq(restoredCheckpoint[0].frase_seguridad,'old secret');
 eq(restoredCheckpoint[0].encrypted_password,await scalar('select pin_hash from workspace_private.id_secrets where user_id=$1',[id(1)]));
@@ -116,7 +117,7 @@ const saveDraft=(body,revision=0,base=0)=>scalar('select public.workspace_save_d
 await actor(5);let draft=await saveDraft(draftBody);eq(draft.revision,1);eq(draft.content_markdown.trim(),'Investigación en borrador');eq((await db.query('select state,current_version from public.workspace_deliverables where id=$1',[writing.id])).rows[0],{state:'assigned',current_version:0});
 eq(await scalar('select count(*)::integer from public.workspace_versions where deliverable_id=$1',[writing.id]),0);
 await denied(saveDraft(draftBody),/borrador cambió/);await denied(saveDraft(draftBody,draft.revision,1),/trabajo cambió/);
-await denied(db.query('select * from workspace_private.drafts'));await denied(saveDraft({...draftBody,content_document:{}},draft.revision),/Elemento|check constraint/);await denied(saveDraft({...draftBody,content_document:{type:'doc',content:[{type:'script',text:'bad'}]}},draft.revision),/Elemento/);await denied(db.query('select * from workspace_private.document_acceptances'));
+await denied(db.query('select * from workspace_private.drafts'));await denied(saveDraft({...draftBody,content_document:{}},draft.revision),/Elemento|check constraint|Documento inválido/);await denied(saveDraft({...draftBody,content_document:{type:'doc',content:[{type:'script',text:'bad'}]}},draft.revision),/Elemento/);await denied(db.query('select * from workspace_private.document_acceptances'));
 await actor(3);await denied(scalar('select public.workspace_draft($1)',[writing.id]));
 await actor(2);eq(await scalar('select public.workspace_draft($1)',[writing.id]),null); // Direction cannot see another author's private working copy.
 await actor(5);await denied(scalar('select public.workspace_submit_draft($1,$2,$3,$4)',[writing.id,0,writing.revision,'Entrega']),/borrador cambió/);
@@ -340,5 +341,6 @@ await db.exec(fs.readFileSync(new URL('./workspace-reference-access-live-accepta
 const referenceAcceptance=(await db.query('select * from workspace_reference_access_test_result')).rows[0];
 eq(referenceAcceptance.checks,26);eq(referenceAcceptance.credentials_preserved,true);eq(referenceAcceptance.keynotes_preserved,true);
 await db.exec('rollback');
+checks += await runOpalAcceptance(db);
 console.log(`PASS: ${checks} Workspace assertions: direct API denial, scopes, full editorial cycle, suspension, delegation expiry, immutable versions, self approval, licenses, recovery and session revocation.`);
 }catch(error){console.error(error.stack,error.where||'',error.params||'');process.exitCode=1;}finally{await db.close();}

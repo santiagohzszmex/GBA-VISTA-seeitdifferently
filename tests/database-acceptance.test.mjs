@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
-import { DATABASE_CHECKS, PRISMA_DATABASE_CHECKS, NOTIFICATION_CHECKS, PEOPLE_CHECKS, REFERENCE_ACCESS_CHECKS, verifyDatabaseAcceptance } from '../scripts/workspace-database-acceptance.mjs';
+import { DATABASE_CHECKS, PRISMA_DATABASE_CHECKS, NOTIFICATION_CHECKS, PEOPLE_CHECKS, REFERENCE_ACCESS_CHECKS, OPAL_DATABASE_CHECKS, verifyDatabaseAcceptance } from '../scripts/workspace-database-acceptance.mjs';
 const file=(await fs.readdir('supabase/migrations')).find(file=>file.endsWith('_workspace_personal_drafts_and_library.sql'));
 const target=`supabase/migrations/${file}`,commit='a'.repeat(40),projectRef='example';
 const proof={commit,projectRef,verifiedAt:new Date().toISOString(),changes:[{file:target,sha256:createHash('sha256').update(await fs.readFile(target)).digest('hex')}],...Object.fromEntries(DATABASE_CHECKS.map(key=>[key,true]))};
@@ -37,3 +37,9 @@ const referenceTarget=`supabase/migrations/${(await fs.readdir('supabase/migrati
 const referenceProof={...proof,changes:[{file:referenceTarget,sha256:createHash('sha256').update(await fs.readFile(referenceTarget)).digest('hex')}],...Object.fromEntries(REFERENCE_ACCESS_CHECKS.map(key=>[key,true]))},referenceContext={...context,files:[referenceTarget]};
 assert.equal(await verifyDatabaseAcceptance(referenceProof,referenceContext),referenceProof);
 for(const key of REFERENCE_ACCESS_CHECKS)await assert.rejects(verifyDatabaseAcceptance({...referenceProof,[key]:false},referenceContext),/Missing 1.5.7/);
+
+const opalTarget='supabase/migrations/20261012012500_workspace_opal_editor_and_mentions.sql';
+const opalProof={...proof,changes:[{file:opalTarget,sha256:createHash('sha256').update(await fs.readFile(opalTarget)).digest('hex')}],...Object.fromEntries(OPAL_DATABASE_CHECKS.map(key=>[key,true]))},opalContext={...context,files:[opalTarget]};
+assert.equal(await verifyDatabaseAcceptance(opalProof,opalContext),opalProof);
+for(const key of OPAL_DATABASE_CHECKS)await assert.rejects(verifyDatabaseAcceptance({...opalProof,[key]:false},opalContext),/Missing 1.6.0/);
+console.log('PASS: Ópalo publishing requires scoped mentions, snapshots, private media, frozen materials, concurrency and legacy editor evidence.');

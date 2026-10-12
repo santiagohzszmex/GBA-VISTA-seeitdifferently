@@ -1,11 +1,15 @@
 export const FONTS = { 'Inter, system-ui, sans-serif': 'Inter', 'Georgia, serif': 'Georgia', 'Arial, sans-serif': 'Arial', 'Times New Roman, serif': 'Times New Roman' };
 export const FONT_SIZES = ['12px', '14px', '16px', '18px', '24px', '32px'];
 export const EMPTY_DOCUMENT = { type: 'doc', content: [{ type: 'paragraph' }] };
-export function documentText(node) { return node?.type === 'text' ? node.text || '' : (node?.content || []).map(documentText).join(node?.type === 'doc' ? '\n' : ''); }
+export function documentText(node) { return node?.type === 'text' ? node.text || '' : node?.type === 'mention' ? `@${node.attrs?.label || 'Integrante'}` : node?.type === 'originalImage' ? node.attrs?.caption || '[Imagen]' : (node?.content || []).map(documentText).join(['doc','tableRow'].includes(node?.type) ? '\n' : ''); }
 const codeFence = (text, minimum = 1) => '`'.repeat((text.match(/`+/g) || []).reduce((longest, run) => Math.max(longest, run.length), minimum - 1) + 1);
 export function documentMarkdown(node) {
   const type = node?.type;
   let body = (node?.content || []).map(documentMarkdown).join('');
+  if (type === 'mention') return `@${String(node.attrs?.label || 'Integrante').replace(/[\\*_\[\]<>#`]/g, '\\$&')}`;
+  if (type === 'originalImage') return `\n[Imagen: ${String(node.attrs?.caption || 'Original privado').replace(/[\\*_\[\]<>#`]/g, '\\$&')}]${node.attrs?.credits ? ` · Crédito: ${node.attrs.credits}` : ''}\n\n`;
+  if (type === 'table') return (node.content || []).map(row => `| ${(row.content || []).map(cell => documentMarkdown(cell).trim().replace(/\|/g, '\\|').replace(/\n+/g, ' ')).join(' | ')} |`).join('\n') + '\n\n';
+  if (['tableCell','tableHeader','tableRow'].includes(type)) return body;
   if (type === 'text') {
     body = (node.text || '').replace(/[\\*_\[\]<>#`]/g, '\\$&');
     for (const mark of node.marks || []) {

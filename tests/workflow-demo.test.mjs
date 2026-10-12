@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 const bundle = await build({entryPoints:['src/workspace/workflowDemo.js'],bundle:true,platform:'node',format:'esm',write:false});
-const { createWorkflowDemo, workflowDemoData, DEMO_ACTORS, demoPermissions, runWorkflowDemo } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const { createWorkflowDemo, workflowDemoData, DEMO_ACTORS, demoPermissions, runWorkflowDemo, demoNotifications } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const state = createWorkflowDemo();
 const leadReferences = workflowDemoData(state, DEMO_ACTORS.lead, 'halloween-demo');
 assert.equal(leadReferences.referencePermissions['reference.manage_instructions'], false);
@@ -61,3 +61,17 @@ round = mutate(round, 'direction', 'review.extra_round', 'cover-demo', { reason:
 round = mutate(round, 'direction', 'review.changes', 'cover-demo', { body: 'Aplicar la referencia nueva.' });
 assert.equal(round.tasks.find(task => task.id === 'cover-demo').round, 2);
 console.log('PASS: role entry points, scoped authority, scheduling, conversations, blockers, QA release, final approval, reopening, dependencies and correction rounds.');
+
+const mentionDoc={type:'doc',attrs:{schemaVersion:2},content:[{type:'paragraph',content:[{type:'mention',attrs:{id:DEMO_ACTORS.lead.id,label:DEMO_ACTORS.lead.name,anchorId:'mention-demo'}},{type:'text',text:' revisa estas fuentes.'}]}]};
+let mentionFlow=mutate(state,'researcher','draft.save','research-task-demo',{data:{content_document:mentionDoc}});
+assert.equal(demoNotifications(mentionFlow,DEMO_ACTORS.lead).filter(row=>row.event_type==='mention').length,0);
+mentionFlow=mutate(mentionFlow,'researcher','draft.submit','research-task-demo');
+const notice=demoNotifications(mentionFlow,DEMO_ACTORS.lead).find(row=>row.event_type==='mention');
+assert.deepEqual(notice.snapshot.document,mentionDoc);
+assert.equal(demoNotifications(mentionFlow,DEMO_ACTORS.artist).filter(row=>row.event_type==='mention').length,0);
+let materialFlow=mutate(state,'lead','task.references','research-task-demo',{ids:['concept-demo','accepted-version-demo']});
+assert.equal(materialFlow.taskReferences['research-task-demo'].length,2);
+materialFlow.references.find(row=>row.id==='concept-demo').title='Concepto revisado';
+materialFlow=mutate(materialFlow,'lead','task.references','research-task-demo',{ids:['concept-demo','accepted-version-demo']});
+assert.equal(materialFlow.taskReferences['research-task-demo'][0].title,'Lo que permanece en la oscuridad');
+console.log('PASS: demo private drafts stay silent, submitted mentions retain anchors and assignment materials freeze accepted documents.');

@@ -1,9 +1,9 @@
 {
-  "version": "1.5.8",
-  "nativeVersion": "1.5.800",
-  "codename": "Prisma",
+  "version": "1.6.0",
+  "nativeVersion": "1.6.0",
+  "codename": "Ópalo",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Un espacio más cómodo para trabajar",
-  "notice": "Workspace 1.5.8 Prisma renueva Mi trabajo y Asignaciones: tareas organizadas por estado, editor con modo enfoque y referencias al lado, y controles más claros para organizar las entregas. La descarga base sigue siendo 1.5.0."
+  "noticeTitle": "Escribe con todo a la mano",
+  "notice": "Workspace 1.6.0 Ópalo renueva el editor con formato junto al cursor, tablas, imágenes originales, búsqueda y guardado automático de borradores. Menciona integrantes con @ y añade materiales específicos a cada encargo. La descarga base sigue siendo 1.5.0."
 }
