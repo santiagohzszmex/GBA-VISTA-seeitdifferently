@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import {
+  CYCLE,
   cleanAnswers,
   sectionsFor,
   validateAnswers,
@@ -671,6 +672,22 @@ $function$
     ),
     10,
   );
+  // Closing an area preserves submitted applications while denying new sends.
+  const applicationSnapshot = async () => JSON.stringify((await db.query('select * from public.gimg_recruitment_applications order by id')).rows);
+  const beforeClosure = await applicationSnapshot();
+  const closureMigration = fs.readdirSync('supabase/migrations').find(p => p.endsWith('_gimg_close_illustration.sql'));
+  await db.exec(fs.readFileSync(`supabase/migrations/${closureMigration}`, 'utf8'));
+  ok(await applicationSnapshot(), beforeClosure);
+  ok(await scalar("select 'illustration'=any(closed_areas) from public.gimg_recruitment_cycles where key=$1", [CYCLE]), true);
+  const existingApplication = (await db.query("select id from public.gimg_recruitment_applications where phase='submitted' limit 1")).rows[0].id;
+  await db.query("update public.gimg_recruitment_applications set answers=answers||'{\"area\":\"illustration\"}'::jsonb where id=$1", [existingApplication]);
+  ok(await scalar('select phase from public.gimg_recruitment_applications where id=$1', [existingApplication]), 'submitted');
+  await db.query("update public.gimg_recruitment_applications set phase='draft' where id=$1", [existingApplication]);
+  await no(db.query("update public.gimg_recruitment_applications set phase='submitted' where id=$1", [existingApplication]), /Ilustración ya no recibe/);
+  await db.query("update public.gimg_recruitment_applications set answers=answers||'{\"area\":\"design\",\"secondary\":\"illustration\"}'::jsonb where id=$1", [existingApplication]);
+  await no(db.query("update public.gimg_recruitment_applications set phase='submitted' where id=$1", [existingApplication]), /Ilustración ya no recibe/);
+  await db.query("update public.gimg_recruitment_applications set answers=answers||'{\"secondary\":\"\"}'::jsonb,phase='submitted' where id=$1", [existingApplication]);
+  ok(await scalar('select phase from public.gimg_recruitment_applications where id=$1', [existingApplication]), 'submitted');
   console.log(
     `PASS: ${count} checks — private drafts, ownership, reviewer access, publication snapshots, private contact, deadline, conditional questions, recovery budget and session revocation.`,
   );

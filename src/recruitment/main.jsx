@@ -232,6 +232,7 @@ function Questionnaire({ session, user, definition, onBack }) {
     !definition.is_open ||
     Date.now() < Date.parse(definition.opens_at) ||
     Date.now() >= Date.parse(definition.closes_at);
+  const closedAreas = definition.closed_areas || [];
   const loadResult = useCallback(async () => {
     if (preview) return;
     const { data, error: failed } = await supabase.rpc(
@@ -451,6 +452,11 @@ function Questionnaire({ session, user, definition, onBack }) {
   }
   async function submit() {
     if (busy) return;
+    if (closedAreas.includes(answers.area) || closedAreas.includes(answers.secondary)) {
+      setSection('profile');
+      setError('Ilustración ya no recibe nuevas postulaciones. Puedes elegir Diseño editorial si te interesa la maquetación y la composición de páginas.');
+      return;
+    }
     const invalid = validateAnswers(answers);
     if (invalid) {
       setSection(invalid.section);
@@ -708,8 +714,8 @@ function Questionnaire({ session, user, definition, onBack }) {
                   >
                     <option value="">Elige un área</option>
                     {AREAS.map(([key, name]) => (
-                      <option key={key} value={key}>
-                        {name}
+                      <option key={key} value={key} disabled={closedAreas.includes(key)}>
+                        {name}{closedAreas.includes(key) ? ' · Convocatoria cerrada' : ''}
                       </option>
                     ))}
                   </select>
@@ -721,7 +727,7 @@ function Questionnaire({ session, user, definition, onBack }) {
                     onChange={(e) => change("secondary", e.target.value)}
                   >
                     <option value="">Por ahora, solo mi área principal</option>
-                    {AREAS.filter(([key]) => key !== answers.area).map(
+                    {AREAS.filter(([key]) => key !== answers.area && !closedAreas.includes(key)).map(
                       ([key, name]) => (
                         <option key={key} value={key}>
                           {name}
@@ -730,6 +736,7 @@ function Questionnaire({ session, user, definition, onBack }) {
                     )}
                   </select>
                 </label>
+                {closedAreas.includes('illustration') && <p className="rg-note" role="status">Ilustración ya no recibe nuevas postulaciones. Si te interesa la composición de páginas, la tipografía y la maquetación, Diseño editorial sigue abierto. Las postulaciones de Ilustración ya enviadas continúan en revisión.</p>}
                 <Choices
                   name="coordination"
                   answers={answers}
@@ -1047,7 +1054,7 @@ function App() {
     [access, setAccess] = useState({}),
     [definition, setDefinition] = useState(
       preview
-        ? { key: CYCLE, is_open: true, opens_at: OPEN_AT, closes_at: CLOSE_AT }
+        ? { key: CYCLE, is_open: true, opens_at: OPEN_AT, closes_at: CLOSE_AT, closed_areas: ['illustration'] }
         : null,
     ),
     [view, setView] = useState("landing"),
@@ -1312,14 +1319,15 @@ function App() {
           <section className="rg-wrap rg-areas" id="areas">
             <p className="rg-kicker">MUCHAS FORMAS DE APORTAR</p>
             <h2>Encuentra tu lugar.</h2>
+            {definition?.closed_areas?.includes('illustration') && <p className="rg-note">La convocatoria de Ilustración está cerrada para nuevas postulaciones. Las que ya recibimos siguen en revisión. ¿Tu perfil también incluye composición, tipografía o maquetación? Seguimos buscando integrantes en <a href="#area-design">Diseño editorial</a>.</p>}
             <div>
               {AREAS.map(([key, name, places], i) => (
-                <article key={key}>
+                <article key={key} id={`area-${key}`}>
                   <span>{String(i + 1).padStart(2, "0")}</span>
                   <h3>{name}</h3>
                   <p>{SCENARIOS[key][0]}</p>
                   <strong>
-                    {places} {places === 1 ? "plaza" : "plazas"}
+                    {definition?.closed_areas?.includes(key) ? 'Cerrada para nuevas postulaciones' : `${places} ${places === 1 ? 'plaza' : 'plazas'}`}
                   </strong>
                 </article>
               ))}
