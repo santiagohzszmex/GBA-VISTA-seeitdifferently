@@ -1,9 +1,9 @@
 {
-  "version": "1.6.0",
-  "nativeVersion": "1.6.0",
+  "version": "1.6.0.1",
+  "nativeVersion": "1.6.1",
   "codename": "Ópalo",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Escribe con todo a la mano",
-  "notice": "Workspace 1.6.0 Ópalo renueva el editor con formato junto al cursor, tablas, imágenes originales, búsqueda y guardado automático de borradores. Menciona integrantes con @ y añade materiales específicos a cada encargo. La descarga base sigue siendo 1.5.0."
+  "noticeTitle": "Menciona directamente con @",
+  "notice": "Workspace 1.6.0.1 Ópalo elimina el botón + del editor. Escribe @ para elegir a un integrante autorizado; puedes buscarlo por nombre. Las imágenes y tablas tienen controles propios en la barra."
 }
