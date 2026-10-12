@@ -233,6 +233,7 @@ function Questionnaire({ session, user, definition, onBack }) {
     Date.now() < Date.parse(definition.opens_at) ||
     Date.now() >= Date.parse(definition.closes_at);
   const closedAreas = definition.closed_areas || [];
+  const closedAreaNotice = `${closedAreas.map(key => key === 'illustration' ? 'Ilustración' : key === 'writing' ? 'Redacción' : areaName(key)).join(' y ')}: convocatoria cerrada para nuevas postulaciones. Las solicitudes ya enviadas se conservan para revisión y selección.`;
   const loadResult = useCallback(async () => {
     if (preview) return;
     const { data, error: failed } = await supabase.rpc(
@@ -454,7 +455,7 @@ function Questionnaire({ session, user, definition, onBack }) {
     if (busy) return;
     if (closedAreas.includes(answers.area) || closedAreas.includes(answers.secondary)) {
       setSection('profile');
-      setError('Ilustración ya no recibe nuevas postulaciones. Puedes elegir Diseño editorial si te interesa la maquetación y la composición de páginas.');
+      setError(`${closedAreaNotice} Elige un área que siga disponible.`);
       return;
     }
     const invalid = validateAnswers(answers);
@@ -715,7 +716,7 @@ function Questionnaire({ session, user, definition, onBack }) {
                     <option value="">Elige un área</option>
                     {AREAS.map(([key, name]) => (
                       <option key={key} value={key} disabled={closedAreas.includes(key)}>
-                        {name}{closedAreas.includes(key) ? ' · Convocatoria cerrada' : ''}
+                        {name}{closedAreas.includes(key) ? ' · Convocatoria cerrada' : definition.remaining_places?.[key] !== undefined ? ` · ${definition.remaining_places[key]} ${definition.remaining_places[key] === 1 ? 'puesto disponible' : 'puestos disponibles'}` : ''}
                       </option>
                     ))}
                   </select>
@@ -736,7 +737,7 @@ function Questionnaire({ session, user, definition, onBack }) {
                     )}
                   </select>
                 </label>
-                {closedAreas.includes('illustration') && <p className="rg-note" role="status">Ilustración ya no recibe nuevas postulaciones. Si te interesa la composición de páginas, la tipografía y la maquetación, Diseño editorial sigue abierto. Las postulaciones de Ilustración ya enviadas continúan en revisión.</p>}
+                {closedAreas.length > 0 && <p className="rg-note" role="status">{closedAreaNotice} Diseño editorial sigue abierto para quienes tengan interés en composición, tipografía y maquetación.</p>}
                 <Choices
                   name="coordination"
                   answers={answers}
@@ -1054,7 +1055,7 @@ function App() {
     [access, setAccess] = useState({}),
     [definition, setDefinition] = useState(
       preview
-        ? { key: CYCLE, is_open: true, opens_at: OPEN_AT, closes_at: CLOSE_AT, closed_areas: ['illustration'] }
+        ? { key: CYCLE, is_open: true, opens_at: OPEN_AT, closes_at: CLOSE_AT, closed_areas: ['illustration', 'writing'], remaining_places: {design: 2, research: 1} }
         : null,
     ),
     [view, setView] = useState("landing"),
@@ -1268,7 +1269,7 @@ function App() {
                 </a>
               </div>
               <p className="rg-date">
-                8–18 de octubre · 7–10 minutos · 15 plazas
+                8–18 de octubre · 7–10 minutos · Puestos disponibles por área
               </p>
             </div>
             <Floral />
@@ -1319,18 +1320,20 @@ function App() {
           <section className="rg-wrap rg-areas" id="areas">
             <p className="rg-kicker">MUCHAS FORMAS DE APORTAR</p>
             <h2>Encuentra tu lugar.</h2>
-            {definition?.closed_areas?.includes('illustration') && <p className="rg-note">La convocatoria de Ilustración está cerrada para nuevas postulaciones. Las que ya recibimos siguen en revisión. ¿Tu perfil también incluye composición, tipografía o maquetación? Seguimos buscando integrantes en <a href="#area-design">Diseño editorial</a>.</p>}
+            {!!definition?.closed_areas?.length && <p className="rg-note">{definition.closed_areas.map(key => key === 'illustration' ? 'Ilustración' : key === 'writing' ? 'Redacción' : areaName(key)).join(' y ')}: convocatoria cerrada para nuevas postulaciones. Las solicitudes ya recibidas se conservan para revisión y selección. Si te interesa la composición, la tipografía o la maquetación, seguimos buscando integrantes en <a href="#area-design">Diseño editorial</a>.</p>}
             <div>
-              {AREAS.map(([key, name, places], i) => (
+              {AREAS.map(([key, name, initialPlaces], i) => {
+                const places = definition?.remaining_places?.[key] ?? initialPlaces;
+                return (
                 <article key={key} id={`area-${key}`}>
                   <span>{String(i + 1).padStart(2, "0")}</span>
                   <h3>{name}</h3>
                   <p>{SCENARIOS[key][0]}</p>
                   <strong>
-                    {definition?.closed_areas?.includes(key) ? 'Cerrada para nuevas postulaciones' : `${places} ${places === 1 ? 'plaza' : 'plazas'}`}
+                    {definition?.closed_areas?.includes(key) ? 'Cerrada para nuevas postulaciones' : `${places} ${places === 1 ? 'puesto disponible' : 'puestos disponibles'}`}
                   </strong>
                 </article>
-              ))}
+              );})}
             </div>
             <p className="rg-note">
               Las dos plazas de Producción incluyen Responsable de Producción y
