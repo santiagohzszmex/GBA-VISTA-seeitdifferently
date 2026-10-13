@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Upload, X } from 'lucide-react';
 import { REFERENCE_KINDS, canManageReference, parsePalette, validatePalette, validateOriginal } from './referenceModel';
-import { REFERENCE_CATEGORIES, referenceCategoryGroups } from './referenceCategories';
-import './referenceCategories.css';
 import { documentText } from './documentModel';
 const RichDocument = React.lazy(() => import('./RichDocument'));
 export function Palette({ colors = [] }) { return colors.length > 0 && <div className="gw-reference-palette" aria-label="Paleta de colores">{colors.map(color => <span key={color}><i style={{backgroundColor: color}} aria-hidden="true" /><code>{color}</code></span>)}</div>; }
@@ -14,8 +12,6 @@ export default function ReferenceEditor({ reference, initialValue, project, data
   const [paletteText, setPaletteText] = useState((reference?.palette || []).join(' '));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const categoryGroups = referenceCategoryGroups({ kind: value.kind, area: data.areas.find(area => area.id === value.area_id), assignments:data.assignments || [], projectId:project.id, allowAll:canManageReference('instructions', null, permissions) });
-  const listedCategories = new Set(categoryGroups.flatMap(group => group.values.map(([category]) => category)));
   const baseline = useRef(JSON.stringify(value));
   const baselinePalette = useRef(paletteText);
   const textDirty = JSON.stringify(value) !== baseline.current || paletteText !== baselinePalette.current;
@@ -31,7 +27,7 @@ export default function ReferenceEditor({ reference, initialValue, project, data
     if (!savedReference && !pendingFile && !documentText(value.content_document).trim() && !colors.length && value.kind !== 'moodboard') { setError('Añade texto, una paleta o un archivo de referencia.'); return; }
     setSaving(true);
     try {
-      const saved = await onSave({ ...value, category: value.category || null, editor_version:2, ...(savedReference ? {id: savedReference.id} : {}), palette: colors, project_id: project.id, ...(initialValue && !savedReference ? {from_legacy_brief:true} : {}) }, savedReference?.revision || 0);
+      const saved = await onSave({ ...value, editor_version:2, ...(savedReference ? {id: savedReference.id} : {}), palette: colors, project_id: project.id, ...(initialValue && !savedReference ? {from_legacy_brief:true} : {}) }, savedReference?.revision || 0);
       if (!saved) throw Error('No se pudo guardar. Inténtalo de nuevo.');
       setSavedReference(saved); setValue(saved); baseline.current = JSON.stringify(saved); baselinePalette.current = colors.join(' '); setPaletteText(colors.join(' '));
       if (pendingFile) {
@@ -51,8 +47,8 @@ export default function ReferenceEditor({ reference, initialValue, project, data
   return <form className="gw-reference-editor" onSubmit={save}><div className="gw-reference-editor-heading"><div><p className="gw-eyebrow">Referencia de {project.title}</p><h2>{savedReference ? 'Editar referencia' : initialValue ? 'Editar concepto' : 'Nueva referencia'}</h2></div><button type="button" onClick={() => onClose()} aria-label="Cerrar edición de referencia"><X size={18} /></button></div>
     <div className="gw-reference-fields"><label>Tipo de referencia<select value={value.kind} disabled={Boolean(savedReference || initialValue) || saving || busy} onChange={event => change({ kind: event.target.value, area_id: event.target.value === 'instructions' && !canManageReference('instructions', null, permissions) ? data.areas.find(area => canManageReference('instructions', area.id, permissions, data.areaPermissions))?.id : null })}>{available.map(kind => <option key={kind} value={kind}>{REFERENCE_KINDS[kind]}</option>)}</select></label>
       <label>Título<input required maxLength={180} value={value.title} disabled={saving || busy} onChange={event => change({title: event.target.value})} placeholder="Nombre claro para el equipo" /></label>
-      {value.kind === 'instructions' && <label>Destinatarios<select disabled={Boolean(savedReference || initialValue) || saving || busy} value={value.area_id || ''} onChange={event => { const areaId = event.target.value || null; const choices = referenceCategoryGroups({kind:value.kind,area:data.areas.find(area => area.id === areaId),assignments:data.assignments || [],projectId:project.id,allowAll:canManageReference('instructions', null, permissions)}).flatMap(group => group.values.map(([category]) => category)); change({area_id:areaId,...(value.category && !choices.includes(value.category) ? {category:null} : {})}); }}>{canManageReference('instructions', null, permissions) && <option value="">Toda la edición</option>}{data.areas.filter(area => area.project_id === project.id && canManageReference('instructions', area.id, permissions, data.areaPermissions)).map(area => <option key={area.id} value={area.id}>{area.name}</option>)}</select></label>}
-      <label>Categoría<select value={value.category || ''} disabled={saving || busy} onChange={event => change({category: event.target.value || null})} aria-describedby="gw-reference-category-help"><option value="">Sin categoría</option>{categoryGroups.map(group => <optgroup key={group.id} label={group.label}>{group.values.map(([category, label]) => <option key={category} value={category}>{label}</option>)}</optgroup>)}{value.category && !listedCategories.has(value.category) && <option value={value.category}>{REFERENCE_CATEGORIES[value.category] || 'Categoría guardada'}</option>}</select><small id="gw-reference-category-help">La categoría organiza el contenido; el tipo y el área siguen definiendo su alcance y permisos.</small></label>
+      {value.kind === 'instructions' && <label>Área<select disabled={Boolean(savedReference || initialValue) || saving || busy} value={value.area_id || ''} onChange={event => change({area_id:event.target.value || null})}>{canManageReference('instructions', null, permissions) && <option value="">Toda la edición</option>}{data.areas.filter(area => area.project_id === project.id && canManageReference('instructions', area.id, permissions, data.areaPermissions)).map(area => <option key={area.id} value={area.id}>{area.name}</option>)}</select></label>}
+
     </div>
     <React.Suspense fallback={<p role="status">Abriendo editor…</p>}><RichDocument scope={{kind:'reference',referenceId:savedReference?.id,projectId:project.id,areaId:value.area_id}} palette={colors} onSave={() => void save({preventDefault(){}})} initialDocument={value.content_document} initialMarkdown={value.content_markdown} onChange={change} disabled={saving || busy} /></React.Suspense>
     <div className="gw-reference-details"><label>Paleta de la referencia<input value={paletteText} onChange={event => setPaletteText(event.target.value)} disabled={saving || busy} placeholder="#673AB7 #F4ECE0" /><small>Códigos HEX separados por espacios. Selecciona texto en el editor para cambiar su color o tipografía.</small></label>{validatePalette(colors) && <Palette colors={colors} />}
