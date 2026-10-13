@@ -1,9 +1,9 @@
 {
-  "version": "1.6.0.1",
-  "nativeVersion": "1.6.1",
+  "version": "1.6.0.2",
+  "nativeVersion": "1.6.2",
   "codename": "Ópalo",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Menciona directamente con @",
-  "notice": "Workspace 1.6.0.1 Ópalo elimina el botón + del editor. Escribe @ para elegir a un integrante autorizado; puedes buscarlo por nombre. Las imágenes y tablas tienen controles propios en la barra."
+  "noticeTitle": "Workspace conectado con Codex",
+  "notice": "Workspace 1.6.0.2 Ópalo incorpora Conexiones en Configuración. Consulta la vigencia de tus conexiones editoriales con Codex y revócalas desde la app. Las referencias, asignaciones y fechas que cargues desde Codex aparecen en tu edición con los permisos habituales de GIMG."
 }
