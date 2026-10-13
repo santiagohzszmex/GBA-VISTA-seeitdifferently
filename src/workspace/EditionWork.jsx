@@ -8,6 +8,8 @@ import WorkOperations from './WorkOperations';
 import { taskIsMine, canReviewTask, nextStep, hasReviewPermission } from './documentModel';
 import TaskMaterials from './TaskMaterials';
 import ReferenceSplit from './ReferenceSplit';
+import SupportDocuments from './SupportDocuments';
+import DraftExitDialog from './DraftExitDialog';
 import { Avatar, CLOSED_STATES, DueLabel, Status, dateShort, dueInfo } from './workView';
 
 /* Mi trabajo y Asignaciones · Workspace 1.5.7 (rediseño visual).
@@ -29,11 +31,11 @@ export function CreateWork({ project, data, actorId, personal, command, busy, on
   const areas = data.areas.filter(area => area.project_id === project.id && data.areaPermissions?.[area.id]?.['task.create'] && (personal || data.areaPermissions?.[area.id]?.['task.assign']));
   if (!areas.length) return null;
   return <details ref={root} open={open} onToggle={event => setOpen(event.currentTarget.open)} className="gw-wk-create">
-    <summary ref={createTrigger} className={`gw-wk-btn${personal ? '' : ' gw-wk-btn-primary'}`}><Plus size={16} aria-hidden="true" />{personal ? 'Crear documento' : 'Nueva asignación'}</summary>
+    <summary ref={createTrigger} className={`gw-wk-btn${personal ? '' : ' gw-wk-btn-primary'}`}><Plus size={16} aria-hidden="true" />{personal ? 'Nueva entrega' : 'Nueva asignación'}</summary>
     <div className="gw-wk-popover">
-      <h3>{personal ? 'Nuevo documento' : 'Nueva asignación'}</h3>
-      <p>{personal ? 'Se crea como borrador privado y puedes empezar a escribir de inmediato.' : 'Indica qué debe entregar la persona, en qué área y quién lo realiza.'}</p>
-      <CommandForm resetOnSuccess initial={{ area_id: areas.length === 1 ? areas[0].id : '' }} busy={busy} button={personal ? 'Crear y empezar a escribir' : 'Asignar trabajo'} fields={{ title: personal ? 'Título del documento' : 'Título de la asignación', ...(personal ? {} : { description: { label: 'Qué debe realizar y entregar esta persona', type: 'richtext', scope:{kind:'assignment',projectId:project.id} } }), area_id: { label: 'Área', options: choices(areas, 'name') }, ...(personal ? {} : { responsible_id: { label: 'Asignar a', options: choices(data.members, 'display_name'), optional: true } }) }} onSave={async values => { const task = await command('task.create', { ...values, responsible_id: personal ? actorId : values.responsible_id }); if (task) { onCreated(task); setOpen(false); createTrigger.current?.focus(); } return task; }} />
+      <h3>{personal ? 'Nueva entrega' : 'Nueva asignación'}</h3>
+      <p>{personal ? 'Se crea como entrega privada para que empieces a trabajar.' : 'Indica qué debe entregar la persona, en qué área y quién lo realiza.'}</p>
+      <CommandForm resetOnSuccess initial={{ area_id: areas.length === 1 ? areas[0].id : '' }} busy={busy} button={personal ? 'Crear entrega y empezar' : 'Asignar trabajo'} fields={{ title: personal ? 'Título de la entrega' : 'Título de la asignación', ...(personal ? {} : { description: { label: 'Qué debe realizar y entregar esta persona', type: 'richtext', scope:{kind:'assignment',projectId:project.id} } }), area_id: { label: 'Área', options: choices(areas, 'name') }, ...(personal ? {} : { responsible_id: { label: 'Asignar a', options: choices(data.members, 'display_name'), optional: true } }) }} onSave={async values => { const task = await command('task.create', { ...values, responsible_id: personal ? actorId : values.responsible_id }); if (task) { onCreated(task); setOpen(false); createTrigger.current?.focus(); } return task; }} />
     </div>
   </details>;
 }
@@ -45,10 +47,15 @@ const WORK_GROUPS = [
 ];
 const groupOf = state => (WORK_GROUPS.find(([, , states]) => states.includes(state))?.[0]) || 'closed';
 
-export function PersonalWork({ project, data, task, actorId, command, api, busy, onPick, previewMode, onDirtyChange, onReference, referenceApi }) {
+export function PersonalWork({ project, data, task, actorId, command, api, busy, onPick, previewMode, onDirtyChange, onReference, referenceApi, supportApi, initialSupportId }) {
   const [filter, setFilter] = useState(() => task && CLOSED_STATES.includes(task.state) ? 'all' : 'active');
   const [focus, setFocus] = useState(false);
   const [split, setSplit] = useState(false);
+  const [view, setView] = useState(() => initialSupportId ? 'support' : 'deliveries');
+  const [workDirty, setWorkDirty] = useState(false);
+  const [supportDirty, setSupportDirty] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+  const anyDirty = workDirty || supportDirty;
   const order = { changes_requested: 0, blocked: 1, in_progress: 2, assigned: 3, pending: 3, review: 4 };
   const mine = data.tasks.filter(item => item.project_id === project.id && taskIsMine(item, actorId)).sort((a,b) => (order[a.state] ?? 5) - (order[b.state] ?? 5) || (a.due_at ? new Date(a.due_at).getTime() : Infinity) - (b.due_at ? new Date(b.due_at).getTime() : Infinity));
   const tasks = mine.filter(item => filter === 'all' || !CLOSED_STATES.includes(item.state));
@@ -56,10 +63,17 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
   const pending = mine.filter(item => !CLOSED_STATES.includes(item.state)).length;
   const groups = [...WORK_GROUPS.map(([id, label]) => [id, label]), ['closed', 'Aceptado y cerrado']]
     .map(([id, label]) => ({ id, label, items: tasks.filter(item => groupOf(item.state) === id) })).filter(group => group.items.length);
+  useEffect(() => { onDirtyChange?.(anyDirty); }, [anyDirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+  useEffect(() => { if (initialSupportId) changeView('support'); }, [initialSupportId]);
+  function requestNavigation(action) { if (anyDirty) setPendingNavigation(() => action); else action(); }
+  function openTask(target) { if (target?.id !== task?.id) requestNavigation(() => onPick?.(target)); }
+  function changeView(next) { if (next === view) return; requestNavigation(() => setView(next)); }
   return <section className="gw-wk gw-wk-mine" data-focus={selected && focus || undefined} data-split={selected && split || undefined} data-compact={selected && (focus || split) || undefined}>
     {focus && <h1 className="gw-sr-only">Mi trabajo</h1>}
-    <div className="gw-wk-head"><div><h1>Mi trabajo</h1><p>Tus asignaciones y los documentos que estás preparando.</p></div><CreateWork project={project} data={data} actorId={actorId} personal command={command} busy={busy} onCreated={onPick} /></div>
-    <div className="gw-wk-mine-layout">
+    <div className="gw-wk-head"><div><h1>Mi trabajo</h1><p>Tus entregas y documentos de apoyo para esta edición.</p></div>{view === 'deliveries' && <CreateWork project={project} data={data} actorId={actorId} personal command={command} busy={busy} onCreated={openTask} />}</div>
+    <div className="gw-opal-inbox-tabs" role="group" aria-label="Cambiar vista de Mi trabajo"><button type="button" aria-pressed={view === 'deliveries'} onClick={() => changeView('deliveries')}>Entregas</button><button type="button" aria-pressed={view === 'support'} onClick={() => changeView('support')}>Documentos de apoyo <span>{data.support?.documents?.filter(row => row.author_id === actorId || row.share_scope !== 'private').length || 0}</span></button></div>
+    {view === 'support' ? <SupportDocuments project={project} data={data} actorId={actorId} supportApi={supportApi} busy={busy} onDirtyChange={setSupportDirty} onOpenTask={openTask} initialSupportId={initialSupportId} /> : <div className="gw-wk-mine-layout">
       <aside className="gw-wk-rail" aria-label="Lista de mi trabajo">
         <div className="gw-wk-seg" role="group" aria-label="Mostrar mi trabajo">
           <button type="button" aria-pressed={filter === 'active'} onClick={() => setFilter('active')}>Pendiente <span>{pending}</span></button>
@@ -67,7 +81,7 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
         </div>
         {groups.map(group => <div key={group.id} className="gw-wk-group" role="group" aria-label={group.label}>
           <h2 className="gw-wk-group-label">{group.label}</h2>
-          <ul className="gw-wk-items">{group.items.map(item => <li key={item.id}><button type="button" className="gw-wk-work-item" aria-current={selected?.id === item.id || undefined} onClick={() => onPick(item)}>
+          <ul className="gw-wk-items">{group.items.map(item => <li key={item.id}><button type="button" className="gw-wk-work-item" aria-current={selected?.id === item.id || undefined} onClick={() => openTask(item)}>
             <strong>{item.title}</strong>
             <span className="gw-wk-work-meta"><Status state={item.state} /><DueLabel task={item} /></span>
             {item.block_reason && <span className="gw-wk-work-reason">{item.block_reason}</span>}
@@ -76,9 +90,9 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
         {!tasks.length && <p className="gw-wk-rail-empty">{filter === 'active' && mine.length ? 'No tienes trabajo pendiente. Cambia a «Todo» para ver lo aceptado.' : 'Aquí aparecerá tu trabajo.'}</p>}
       </aside>
       {selected
-        ? <WorkEditor key={selected.id} task={selected} data={data} actorId={actorId} api={api} command={command} previewMode={previewMode} busy={busy} onDirtyChange={onDirtyChange} onReference={onReference} focus={focus} onFocusChange={setFocus} onSplitChange={setSplit} referenceApi={referenceApi} />
+        ? <WorkEditor key={selected.id} task={selected} data={data} actorId={actorId} api={api} command={command} previewMode={previewMode} busy={busy} onDirtyChange={setWorkDirty} onReference={onReference} focus={focus} onFocusChange={setFocus} onSplitChange={setSplit} referenceApi={referenceApi} />
         : <div className="gw-wk-empty"><FileText size={30} aria-hidden="true" /><h2>No tienes trabajo pendiente en esta edición.</h2><p>Cuando el responsable de tu área te asigne trabajo, podrás abrirlo aquí, preparar el documento y enviarlo a revisión.</p><button type="button" className="gw-wk-btn" onClick={onReference}>Consultar documentos de la edición</button></div>}
-    </div>
+    </div>}{pendingNavigation && <DraftExitDialog onStay={() => setPendingNavigation(null)} onDiscard={() => { const navigate=pendingNavigation; setPendingNavigation(null); setWorkDirty(false); setSupportDirty(false); onDirtyChange?.(false); navigate(); }} />}
   </section>;
 }
 

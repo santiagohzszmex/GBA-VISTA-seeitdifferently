@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { BookOpen, Layers, Settings, RefreshCw } from 'lucide-react';
 import workspaceIcon from '../../src-tauri/icons/64x64.png';
 
-const EDITION_SECTIONS = { work: 'Mi trabajo', assignments: 'Asignaciones', reviews: 'Revisión', documents: 'Documentos', calendar: 'Calendario' };
+const EDITION_SECTIONS = { work: 'Mi trabajo', assignments: 'Asignaciones', reviews: 'Revisión', documents: 'Documentos', team: 'Equipo', calendar: 'Calendario' };
 
 export function WorkspaceNavigation({ screen, onScreenChange, context, unitName, name, loading, onRefresh, previewMode, blocked, notifications }) {
   return <header className="gw-topbar" aria-hidden={blocked || undefined}>
@@ -49,8 +49,8 @@ export function EditionTabs({ projects, selectedId, onSelect, busy }) {
   </div>;
 }
 
-export function EditionNavigation({ section, onSelect, canAssign, canReview, canWork }) {
+export function EditionNavigation({ section, onSelect, canAssign, canReview, canWork, canTeam = false }) {
   return <nav className="gw-section-nav" aria-label="Trabajo de la edición">
-    {Object.entries(EDITION_SECTIONS).filter(([id]) => (id !== 'work' || canWork) && (id !== 'assignments' || canAssign) && (id !== 'reviews' || canReview)).map(([id, label]) => <button type="button" key={id} aria-current={section === id ? 'page' : undefined} onClick={() => onSelect(id)}>{label}</button>)}
+    {Object.entries(EDITION_SECTIONS).filter(([id]) => (id !== 'work' || canWork) && (id !== 'assignments' || canAssign) && (id !== 'reviews' || canReview) && (id !== 'team' || canTeam)).map(([id, label]) => <button type="button" key={id} aria-current={section === id ? 'page' : undefined} onClick={() => onSelect(id)}>{label}</button>)}
   </nav>;
 }

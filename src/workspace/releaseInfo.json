@@ -1,9 +1,9 @@
 {
-  "version": "1.6.0.2",
-  "nativeVersion": "1.6.2",
+  "version": "1.6.5",
+  "nativeVersion": "1.6.500",
   "codename": "Ópalo",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Workspace conectado con Codex",
-  "notice": "Workspace 1.6.0.2 Ópalo incorpora Conexiones en Configuración. Consulta la vigencia de tus conexiones editoriales con Codex y revócalas desde la app. Las referencias, asignaciones y fechas que cargues desde Codex aparecen en tu edición con los permisos habituales de GIMG."
+  "noticeTitle": "Tu trabajo y tu equipo",
+  "notice": "Workspace 1.6.5 Ópalo separa tus entregas de los documentos de apoyo. Guarda entrevistas, notas y fuentes en privado; compártelas con tu área o vincula una copia a una asignación. Consulta tu equipo y organiza las referencias por área y categoría."
 }

@@ -39,6 +39,13 @@ export function createWorkflowDemo() {
   }
   state.referenceHistory = {};
   state.references = [{ id: 'concept-demo', project_id: 'halloween-demo', kind: 'concept', title: 'Lo que permanece en la oscuridad', area_id: null, content_markdown: '## La idea de esta edición\n\nObservar las tradiciones desde sus historias y las personas que las mantienen vivas. Evitamos el terror gratuito; buscamos memoria, curiosidad y contraste.', palette: ['#342943', '#CAB8DD', '#F6F0E7'], revision: 1, updated_at: '2026-10-09T18:00:00Z', originals: [] }, { id: 'research-guide-demo', project_id: 'halloween-demo', kind: 'instructions', area_id: 'research-demo', title: 'Cómo construir la investigación', content_markdown: '## Una historia que se pueda comprobar\n\nRegistra tus fuentes, distingue los testimonios de los datos históricos y explica la relación con el concepto de la edición. Tu investigación aceptada orientará a Redacción y Arte.', palette: [], revision: 1, updated_at: '2026-10-09T18:00:00Z', originals: [] }];
+  const privateDocument = { type:'doc', attrs:{schemaVersion:2}, content:[{type:'paragraph',content:[{type:'text',text:'Preguntas para la próxima entrevista y fuentes por verificar.'}]}] };
+  const sharedDocument = { type:'doc', attrs:{schemaVersion:2}, content:[{type:'paragraph',content:[{type:'text',text:'Notas del equipo de investigación compartidas para consulta.'}]}] };
+  state.supportDocuments = [
+    { id:'support-private-interview-demo', project_id:'halloween-demo', area_id:'research-demo', author_id:'demo-researcher', title:'Guía privada de entrevista', document_kind:'interview', content_document:privateDocument, content_markdown:documentMarkdown(privateDocument), credits:'', palette:[], revision:1, updated_at:'2026-10-10T16:00:00Z', share_scope:'private', linked_task_id:null, converted_task_id:null, archived_at:null, originals:[] },
+    { id:'support-shared-research-demo', project_id:'halloween-demo', area_id:'research-demo', author_id:'demo-researcher', title:'Notas de investigación para el equipo', document_kind:'notes', content_document:sharedDocument, content_markdown:documentMarkdown(sharedDocument), credits:'', palette:[], revision:1, updated_at:'2026-10-10T17:00:00Z', share_scope:'area', linked_task_id:null, converted_task_id:null, archived_at:null, originals:[] }
+  ];
+  state.supportHistory = Object.fromEntries(state.supportDocuments.map(row => [row.id,[{revision:row.revision,created_at:row.updated_at,snapshot:clone(row)}]]));
   state.referenceStorage = { capacity_bytes: 10_000_000_000, used_bytes: 0, gateway_url: null };
   state.dependencies = [];
   state.sequence = 0;
@@ -50,18 +57,51 @@ export function demoPermissions(actor, projectId, areaId = null, task = null) {
   const own = task ? taskIsMine(task, actor.id) : areaId === actor.area;
   return Object.fromEntries(Object.entries(matrix[actor.role]).map(([key, mode]) => [key, Boolean(principal && (actor.role !== 'gimg_project_director' || ['unit.read','project.read','task.read','content.read','unit.members.read','audit.read_scoped'].includes(key) || actor.delegated?.includes(key)) && (mode === 'U' || mode === 'P' || (mode === 'D' && actor.delegated?.includes(key)) || (mode === 'A' && areaId === actor.area) || (mode.startsWith('E') && own)))]));
 }
+function supportCanCreate(actor, projectId, areaId, state) {
+  if (demoPermissions(actor, projectId, areaId)['task.create']) return true;
+  return state.tasks.some(task => task.project_id === projectId && task.area_id === areaId && taskIsMine(task, actor.id) && demoPermissions(actor, projectId, areaId, task)['content.create']);
+}
+function supportCanRead(actor, row, state) {
+  if (!actor.projects.includes(row.project_id) || state.projects.find(project=>project.id===row.project_id)?.deleted_at || row.archived_at) return false;
+  if (row.author_id === actor.id) return supportCanCreate(actor,row.project_id,row.area_id,state);
+  if (row.share_scope === 'private') return false;
+  if (row.share_scope === 'assignment') {
+    const linked = state.tasks.find(task => task.id === row.linked_task_id);
+    return Boolean(linked && demoPermissions(actor,linked.project_id,linked.area_id,linked)['task.read']);
+  }
+  const permissions = demoPermissions(actor,row.project_id,row.area_id);
+  const assignedToArea = actor.area === row.area_id || (!actor.area && ['gimg_direction','gimg_project_director','gimg_workspace_coordinator'].includes(actor.role));
+  return Boolean(permissions['content.read'] || (permissions['reference.read'] && assignedToArea));
+}
 export function workflowDemoData(state, actor, projectId) {
   const projects = state.projects.filter(project => !project.deleted_at && actor.projects.includes(project.id));
   const visibleProjects = projects.map(project=>project.id);
   const tasks = state.tasks.filter(task => visibleProjects.includes(task.project_id) && demoPermissions(actor, task.project_id, task.area_id, task)['task.read']);
   const taskIds = new Set(tasks.map(task => task.id));
   const areas = state.areas.filter(area => actor.projects.includes(area.project_id));
-  return { ...state, projects, tasks, areas, versions: state.versions.filter(version => taskIds.has(version.deliverable_id)), comments: state.comments.filter(comment => taskIds.has(comment.deliverable_id)), events: state.events.filter(event => actor.projects.includes(event.project_id) && (!event.deliverable_id || taskIds.has(event.deliverable_id))), dependencies: (state.dependencies || []).filter(item => taskIds.has(item.deliverable_id) && taskIds.has(item.depends_on_id)),
+  // Drafts are fetched through their own permission-checked actions. Keeping
+  // them out of the general bundle also prevents private converted work from
+  // appearing in a teammate's workspace preview.
+  const { supportDocuments = [], supportHistory = {}, drafts: _drafts, ...visibleState } = state;
+  const supportAreas = areas.filter(area => area.project_id === projectId && supportCanCreate(actor,projectId,area.id,state));
+  const teamAreas = areas.filter(area => area.project_id === projectId && demoPermissions(actor,projectId,area.id)['unit.members.read'] && (!actor.area || actor.area === area.id));
+  const demoRole = actor => {
+    const area = areas.find(item => item.id === actor.area);
+    if (actor.role === 'gimg_direction' || actor.role === 'gimg_project_director') return 'direction';
+    if (actor.role === 'gimg_workspace_coordinator') return 'coordination';
+    if (actor.role === 'gimg_production_lead') return 'production';
+    if (actor.role === 'gimg_quality_manager') return 'qa';
+    return ({research:'research',text:'writing',art:'illustration',integration:'design'})[area?.specialty] || 'contributor';
+  };
+  const teamMembers = teamAreas.length ? Object.values(DEMO_ACTORS).filter(person => person.projects.includes(projectId) && (!person.area || teamAreas.some(area => area.id === person.area))).map(person => ({ user_id:person.id, display_name:person.name, handle:person.id, area_ids:person.area && teamAreas.some(area => area.id === person.area) ? [person.area] : [], assignment_roles:[demoRole(person)] })) : [];
+  return { ...visibleState, projects, tasks, areas, versions: state.versions.filter(version => taskIds.has(version.deliverable_id)), comments: state.comments.filter(comment => taskIds.has(comment.deliverable_id)), events: state.events.filter(event => actor.projects.includes(event.project_id) && (!event.deliverable_id || taskIds.has(event.deliverable_id))), dependencies: (state.dependencies || []).filter(item => taskIds.has(item.deliverable_id) && taskIds.has(item.depends_on_id)),
     referencePermissions: demoPermissions(actor, projectId),
     references: (state.references || []).filter(reference => reference.project_id === projectId && actor.projects.includes(projectId) && (!reference.area_id || !actor.area || reference.area_id === actor.area)).map(reference => ({...reference, area_name:areas.find(area => area.id === reference.area_id)?.name, can_edit: Boolean(demoPermissions(actor, projectId, reference.area_id)[referencePermission(reference.kind)])})),
     approvedDocuments: state.approvedDocuments.filter(document => state.tasks.find(task => task.id === document.deliverable_id)?.project_id === projectId && (() => { const task = state.tasks.find(item => item.id === document.deliverable_id); const permissions = demoPermissions(actor, projectId, task.area_id, task); return !task.qa_blocked && (permissions['content.read'] || permissions['reference.read']); })()),
     areaPermissions: Object.fromEntries(areas.filter(area => area.project_id === projectId).map(area => [area.id, demoPermissions(actor, projectId, area.id)])),
-    taskPermissions: Object.fromEntries(tasks.filter(task => task.project_id === projectId).map(task => [task.id, demoPermissions(actor, projectId, task.area_id, task)])) };
+    taskPermissions: Object.fromEntries(tasks.filter(task => task.project_id === projectId).map(task => [task.id, demoPermissions(actor, projectId, task.area_id, task)])),
+    support:{ documents:supportDocuments.filter(row => supportCanRead(actor,row,state) && !row.archived_at).map(row => ({...row,can_edit:row.author_id===actor.id && supportCanCreate(actor,row.project_id,row.area_id,state),can_convert:row.author_id===actor.id && supportCanCreate(actor,row.project_id,row.area_id,state),history:undefined})), creation_areas:supportAreas.map(area=>area.id) },
+    team:{ members:teamMembers, areas:teamAreas } };
 }
 export function runWorkflowDemo(state, actor, action, payload, revision) {
   const next = clone(state);
@@ -81,6 +121,62 @@ export function runWorkflowDemo(state, actor, action, payload, revision) {
       next.mentionNotices.push({id:uid('mention'),recipient_id:person.id,event_type:'mention',title:actor.name+' te mencionó',body:resource.title,project_id:resource.project_id,deliverable_id:kind==='reference'?null:resource.id,reference_id:kind==='reference'?resource.id:null,created_at:date,snapshot:{title:resource.title,document:clone(document),kind,project_id:resource.project_id,deliverable_id:kind==='reference'?null:resource.id,reference_id:kind==='reference'?resource.id:null,anchor_id:mention.anchorId,created_at:date,edition_title:next.projects.find(row=>row.id===resource.project_id)?.title}});
     }
   };
+  if (action.startsWith('support.')) {
+    next.supportDocuments ||= [];
+    next.supportHistory ||= {};
+    const old = next.supportDocuments.find(row => row.id === payload.id);
+    const projectId = payload.project_id || old?.project_id;
+    const areaId = payload.area_id || old?.area_id;
+    const expectedRevision = revision ?? payload.revision;
+    const canEdit = row => row?.author_id === actor.id && supportCanCreate(actor,row.project_id,row.area_id,next);
+    const record = row => { next.supportHistory[row.id] = [{revision:row.revision,created_at:row.updated_at,snapshot:clone(row)},...(next.supportHistory[row.id] || [])]; };
+    const kinds = ['interview','notes','source','transcript','working'];
+    if (action === 'support.history') {
+      if (!old || !canEdit(old)) throw Error('El historial privado sólo está disponible para su autor.');
+      return { state:next, result:clone(next.supportHistory[old.id] || []) };
+    }
+    if (action === 'support.save') {
+      if (old && !canEdit(old)) throw Error('No puedes editar este documento.');
+      if (old && old.revision !== expectedRevision) throw Error('El documento cambió; el borrador se conserva para que revises la actualización.');
+      if (old && old.area_id !== areaId) throw Error('El área del documento no se puede cambiar.');
+      if (!old && !supportCanCreate(actor,projectId,areaId,next)) throw Error('No puedes crear documentos en esta área.');
+      if (!kinds.includes(payload.document_kind || 'notes')) throw Error('Tipo de documento no válido.');
+      const row = { ...old, ...payload, id:old?.id || uid('support'), project_id:projectId, area_id:old?.area_id || areaId, author_id:old?.author_id || actor.id, document_kind:payload.document_kind || old?.document_kind || 'notes', content_markdown:payload.content_document ? documentMarkdown(payload.content_document) : payload.content_markdown || '', revision:(old?.revision || 0)+1, updated_at:new Date().toISOString(), share_scope:old?.share_scope || 'private', linked_task_id:old?.linked_task_id || null, converted_task_id:old?.converted_task_id || null, archived_at:null, originals:old?.originals || [], can_edit:true };
+      record(row); next.supportDocuments = [...next.supportDocuments.filter(item=>item.id!==row.id),row]; return {state:next,result:row};
+    }
+    if (!old || !canEdit(old)) throw Error('No puedes modificar este documento.');
+    if (old.revision !== expectedRevision) throw Error('El documento cambió; vuelve a cargarlo antes de modificar el acceso.');
+    let row = old;
+    if (action === 'support.share') {
+      if (!['private','area'].includes(payload.share_scope)) throw Error('Selecciona privado o compartir con el área.');
+      row = {...old,share_scope:payload.share_scope,linked_task_id:null,revision:old.revision+1,updated_at:new Date().toISOString()};
+    } else if (action === 'support.link') {
+      const target = next.tasks.find(item=>item.id===payload.linked_task_id);
+      const targetPerms = target && demoPermissions(actor,target.project_id,target.area_id,target);
+      if (!target || target.project_id!==old.project_id || target.area_id!==old.area_id || !['pending','assigned','in_progress','changes_requested'].includes(target.state) || !(targetPerms['content.edit_assigned'] || targetPerms['task.assign'])) throw Error('Sólo puedes vincular a una asignación abierta y accesible de la misma área.');
+      if (old.linked_task_id) throw Error('Este documento ya tiene una copia vinculada.');
+      next.taskReferences ||= {};
+      const references = next.taskReferences[target.id] ||= [];
+      if (references.length >= 30) throw Error('Este encargo ya tiene 30 materiales vinculados.');
+      const referenceId = uid('support-copy');
+      const snapshot = {id:referenceId,project_id:old.project_id,area_id:old.area_id,kind:'instructions',title:old.title,content_document:clone(old.content_document),content_markdown:old.content_markdown,palette:clone(old.palette || []),revision:old.revision,support_id:old.id,support_revision:old.revision};
+      references.push({reference_id:referenceId,title:old.title,revision:old.revision,latest_revision:old.revision,latest_source_id:old.id,snapshot,originals:clone(old.originals || [])});
+      target.revision++;
+      row = {...old,linked_task_id:target.id,revision:old.revision+1,updated_at:new Date().toISOString()};
+    } else if (action === 'support.convert') {
+      if (old.converted_task_id) throw Error('Este documento ya se convirtió en una entrega.');
+      if (!supportCanCreate(actor,old.project_id,old.area_id,next)) throw Error('No puedes crear una entrega en esta área.');
+      const target = {id:uid('support-task'),unit_id:'gimg-demo',project_id:old.project_id,area_id:old.area_id,title:old.title,created_by:actor.id,description:'',responsible_id:actor.id,collaborator_ids:[],priority:'normal',state:'assigned',current_version:0,revision:1,round:0,extra_rounds:0};
+      next.tasks.push(target);
+      next.drafts ||= {};
+      next.drafts[`${target.id}:${actor.id}`] = {content_document:clone(old.content_document),content_markdown:old.content_markdown,credits:old.credits || '',asset_url:'',deliverable_id:target.id,author_id:actor.id,revision:1,base_version:0,updated_at:new Date().toISOString()};
+      row = {...old,converted_task_id:target.id,revision:old.revision+1,updated_at:new Date().toISOString()};
+      record(row);next.supportDocuments=next.supportDocuments.map(item=>item.id===row.id?row:item);return {state:next,result:target};
+    } else if (action === 'support.archive') {
+      row = {...old,archived_at:new Date().toISOString(),share_scope:'private',linked_task_id:null,revision:old.revision+1,updated_at:new Date().toISOString()};
+    } else throw Error('Esta acción no está incluida en la demostración.');
+    record(row);next.supportDocuments=next.supportDocuments.map(item=>item.id===row.id?row:item);return {state:next,result:row};
+  }
   if (action.startsWith('reference.')) {
     const old = next.references.find(reference => reference.id === payload.id);
     require(referencePermission(payload.kind || old?.kind));
