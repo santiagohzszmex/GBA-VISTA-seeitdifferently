@@ -39,3 +39,7 @@ Primera entrega local para Mac: debe estar encendida al transferir. Windows nece
 `npm test` comprueba protocolo MCP, conversión editable, confinamiento de rutas, archivos modificados, respuestas perdidas y reconciliación de originales. `tests/workspace-connector.test.mjs` usa la matriz y controles reales en PGlite: token inválido, alcance insuficiente, operaciones administrativas, revocación, expiración y reintentos sin duplicar tareas, referencias, eventos o borradores. No envía avisos a personas reales.
 
 Documentación: [Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli), [SDK oficial](https://github.com/modelcontextprotocol/typescript-sdk), [Supabase sesiones](https://supabase.com/docs/guides/auth/sessions).
+
+## Documentos de apoyo (Workspace 1.6.5)
+
+`workspace_support_documents` y `workspace_team` consultan únicamente el alcance autorizado del GBA ID. `workspace_prepare_support_documents` prepara TXT/Markdown como notas, entrevistas, fuentes, transcripciones o documentos de trabajo privados, sin generar entregas ni solicitudes de revisión. Consulta el contexto, elige un área incluida en `support.creation_areas` y ejecuta sólo lotes solicitados por el usuario. Las nuevas herramientas requieren la migración de servidor `workspace_support_and_team`; no reemplaces la instalación activa hasta que esa migración esté aceptada.

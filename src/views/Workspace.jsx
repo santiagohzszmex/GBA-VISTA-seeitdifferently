@@ -5,6 +5,7 @@ import KeynotesWorkspace from '../workspace/KeynotesWorkspace';
 import EditionDocuments from '../workspace/EditionDocuments';
 import { EditionCalendar, PersonalWork, AreaAssignments } from '../workspace/EditionWork';
 import EditionReviews from '../workspace/EditionReviews';
+import TeamWorkspace from '../workspace/TeamWorkspace';
 import { taskIsMine, canReviewTask, editionCapabilities, initialSection, hasReviewPermission } from '../workspace/documentModel';
 import WorkspaceSettings from '../workspace/WorkspaceSettings';
 import DraftExitDialog from '../workspace/DraftExitDialog';
@@ -34,6 +35,7 @@ export default function Workspace({ previewMode = false }) {
   const [unitId, setUnitId] = useState('');
   const [projectId, setProjectId] = useState('');
   const [selectedId, setSelectedId] = useState('');
+  const [selectedSupportId, setSelectedSupportId] = useState('');
   const [data, setData] = useState(EMPTY);
   const [removedEditions,setRemovedEditions] = useState([]);
   const [notificationTarget,setNotificationTarget] = useState(null);
@@ -88,19 +90,21 @@ export default function Workspace({ previewMode = false }) {
       const id = next.projects.find(item => item.id === projectId)?.id || next.projects[0]?.id || '';
       const contextualTask = next.tasks.find(item => item.id === selectedId && item.project_id === id) || next.tasks.find(item => item.project_id === id);
       const area = contextualTask?.area_id || next.areas.find(item => item.project_id === id)?.id || null;
-      const [unitPerm, directoryPerm, workPermissions, approvedDocuments, referenceBundle, removed, opal] = await Promise.all([
+      const [unitPerm, directoryPerm, workPermissions, approvedDocuments, referenceBundle, removed, opal, support, team] = await Promise.all([
         rpc('workspace_permissions', { p_unit: unit }),
         rpc('workspace_permissions', { p_unit: unit, p_project: id || null, p_area: area, p_deliverable: contextualTask?.id || null }),
         id ? rpc('workspace_work_permissions', { p_project_id: id }) : { project: {}, areas: {}, tasks: {}, version_documents: {} },
         id ? rpc('workspace_edition_documents', { p_project_id: id }) : [],
         id ? rpc('workspace_reference_bundle', { p_project_id: id }) : { references: [], storage: {} },
         rpc('workspace_removed_editions', {p_unit_id:unit}),
-        id ? rpc('workspace_opal_bundle', {p_project_id:id}) : {task_references:{},private_references:[],originals:[]}
+        id ? rpc('workspace_opal_bundle', {p_project_id:id}) : {task_references:{},private_references:[],originals:[]},
+        id ? rpc('workspace_support_bundle',{p_project_id:id}) : {documents:[],creation_areas:[]},
+        id ? rpc('workspace_team_bundle',{p_project_id:id}) : {members:[],areas:[]}
       ]);
       if (seq !== generation.current) return;
       const perm = { ...workPermissions.project, 'directory.unit_wide': Boolean(unitPerm['unit.members.read']), 'unit.members.read': Boolean(directoryPerm['unit.members.read']) };
       for (const [key, value] of Object.entries(unitPerm)) if ((key.startsWith('unit.') && key !== 'unit.members.read') || key === 'project.create') perm[key] = value;
-      next.referencePermissions = workPermissions.project || {}; next.areaPermissions = workPermissions.areas || {}; next.taskPermissions = workPermissions.tasks || {}; next.approvedDocuments = approvedDocuments; next.references = referenceBundle.references; next.referenceStorage = referenceBundle.storage; next.taskReferences = opal.task_references; next.privateTaskReferences = opal.private_references; next.documentOriginals = opal.originals;
+      next.referencePermissions = workPermissions.project || {}; next.areaPermissions = workPermissions.areas || {}; next.taskPermissions = workPermissions.tasks || {}; next.approvedDocuments = approvedDocuments; next.references = referenceBundle.references; next.referenceStorage = referenceBundle.storage; next.taskReferences = opal.task_references; next.privateTaskReferences = opal.private_references; next.documentOriginals = opal.originals; next.support = support; next.team = team;
       next.members = directoryPerm['unit.members.read'] ? await rpc('workspace_directory', { p_unit: unit, p_project: id || null, p_area: area, p_deliverable: contextualTask?.id || null }) : [];
       const ids = next.tasks.map(item => item.id);
       const contents = await Promise.all([['versions', 'workspace_versions'], ['comments', 'workspace_comments'], ['dependencies', 'workspace_dependencies']].map(async ([key, table]) => {
@@ -143,6 +147,7 @@ export default function Workspace({ previewMode = false }) {
     setLoading(true);
     setPermissions({});
     setSelectedId('');
+    setSelectedSupportId('');
     setNotificationTarget(null);
     setNotice('');
     setProjectId(id);
@@ -161,6 +166,7 @@ export default function Workspace({ previewMode = false }) {
     setData(EMPTY);
     setProjectId('');
     setSelectedId('');
+    setSelectedSupportId('');
     setNotificationTarget(null);
     setNotice('');
     setUnitId(id);
@@ -207,6 +213,30 @@ export default function Workspace({ previewMode = false }) {
       return result;
     } finally { if (mutation && !quiet) setBusy(false); }
   }
+  async function supportApi(action, value, revision = 0) {
+    action=action.replace(/^support\./,'');
+    if (busy || loading) throw Error('Espera a que termine el guardado actual.');
+    if (action === 'history' && !previewMode) return rpc('workspace_support_history',{p_id:value.id});
+    setBusy(true);setNotice('');
+    try {
+      let result;
+      if(previewMode){
+        const out=runWorkflowDemo(demoState.current,actor,`support.${action}`,{...value,project_id:projectId},revision);
+        demoState.current=out.state;setData(workflowDemoData(out.state,actor,projectId));result=out.result;
+      } else {
+        if(action==='upload'){
+          const reference=await rpc('workspace_prepare_support_original',{p_id:value.id,p_title:value.file.name.slice(0,180)});
+          const uploaded=await uploadReferenceOriginal(data.referenceStorage.gateway_url,reference,value.file);
+          result=await rpc('workspace_original_descriptor',{p_id:uploaded.id});
+        } else result=action==='save' ? await rpc('workspace_save_support',{p_project_id:projectId,p_data:value,p_revision:revision})
+          : action==='prepare' ? await rpc('workspace_prepare_support_original',{p_id:value.id,p_title:value.title})
+          : await rpc('workspace_support_action',{p_id:value.id,p_action:action,p_data:value,p_revision:revision});
+        if(action!=='history' && action!=='prepare')await load(true);
+      }
+      setNotice(({save:'Documento de apoyo guardado. Compartirlo o convertirlo en entrega son acciones separadas.',share:value.share_scope==='private'?'Documento privado. Las copias vinculadas se conservan.':'Documento compartido con tu área.',link:'Copia vinculada a la asignación. Los cambios posteriores no alteran esa copia.',convert:'Entrega creada con borrador privado. No se envió a revisión.',archive:'Documento archivado. Se conservan originales e historial.',upload:'Original guardado sin compresión ni cambios de calidad.'})[action] || '');
+      return result;
+    } catch(error){setNotice(error.message);throw error;}finally{setBusy(false);}
+  }
   async function referenceApi(action, value, revisionOrFile) {
     if (busy || loading) return null;
     setBusy(true); setNotice('');
@@ -249,6 +279,7 @@ export default function Workspace({ previewMode = false }) {
       if(target.project_id!==projectId)changeProject(target.project_id);
       setScreen('editions');setNotificationTarget(target);
       if(item.event_type==='mention'){setNotificationTarget({...target,id:item.id});setSection('mention');return;}
+      if(target.support_id){setSelectedSupportId(target.support_id);setSection('work');return;}
       if(target.reference_id || ['document.accepted','reference.updated','publication.completed'].includes(item.event_type)){setSection('documents');return;}
       if(item.event_type==='calendar.updated'){setSection('calendar');return;}
       const t=data.tasks.find(row=>row.id===target.deliverable_id);
@@ -276,7 +307,7 @@ export default function Workspace({ previewMode = false }) {
       if (previewMode) return Object.values(DEMO_ACTORS).filter(person=>person.projects.includes(projectId) && (!scope.taskId || demoPermissions(person,projectId,data.tasks.find(item=>item.id===scope.taskId)?.area_id,data.tasks.find(item=>item.id===scope.taskId))['task.read'])).map(person=>({user_id:person.id,display_name:person.name || person.label,handle:person.key}));
       const key=JSON.stringify([userId,projectId,scope]);const cached=candidateCache.current.get(key);
       if(cached && Date.now()-cached.time<30000)return cached.rows;
-      const rows=await rpc('workspace_mention_candidates',{p_project_id:scope.projectId || projectId,p_deliverable_id:scope.taskId || null,p_reference_id:scope.referenceId || null,p_area_id:scope.areaId || null,p_kind:scope.kind || 'reference'});
+      const rows=await rpc('workspace_mention_candidates',{p_project_id:scope.projectId || projectId,p_deliverable_id:scope.taskId || null,p_reference_id:scope.referenceId || null,p_area_id:scope.areaId || null,p_kind:scope.kind==='support'?'reference':scope.kind || 'reference'});
       candidateCache.current.set(key,{time:Date.now(),rows});return rows;
     },
     uploadImage:async(scope,file)=>{
@@ -285,7 +316,7 @@ export default function Workspace({ previewMode = false }) {
       if(!originalMime(file).startsWith('image/'))throw Error('Elige una imagen original. Los PDF se añaden como material de referencia.');
       setBusy(true);
       try {
-        const reference = scope.taskId ? await rpc('workspace_prepare_task_reference',{p_deliverable_id:scope.taskId,p_title:file.name.slice(0,180),p_purpose:scope.kind==='assignment'?'assignment':'document_image'}) : data.references.find(row=>row.id===scope.referenceId);
+        const reference = scope.supportId ? await rpc('workspace_prepare_support_original',{p_id:scope.supportId,p_title:file.name.slice(0,180)}) : scope.taskId ? await rpc('workspace_prepare_task_reference',{p_deliverable_id:scope.taskId,p_title:file.name.slice(0,180),p_purpose:scope.kind==='assignment'?'assignment':'document_image'}) : data.references.find(row=>row.id===scope.referenceId);
         if(!reference)throw Error('Guarda esta referencia y vuelve a editarla para insertar imágenes.');
         const uploaded=await uploadReferenceOriginal(data.referenceStorage.gateway_url,reference,file);
         const asset=await rpc('workspace_original_descriptor',{p_id:uploaded.id});
@@ -294,7 +325,8 @@ export default function Workspace({ previewMode = false }) {
     }
   };
   const { canAssign, canReview } = editionCapabilities(data);
-  const canWork = data.tasks.some(item => item.project_id === projectId && taskIsMine(item, userId)) || Object.values(data.areaPermissions || {}).some(item => item['content.create'] || item['task.create']);
+  const canTeam = Boolean(data.team?.areas?.length);
+  const canWork = Boolean(data.support?.creation_areas?.length || data.support?.documents?.length) || data.tasks.some(item => item.project_id === projectId && taskIsMine(item, userId)) || Object.values(data.areaPermissions || {}).some(item => item['content.create'] || item['task.create']);
   const defaultSection = initialSection(data, projectId, userId);
   const visibleSection = section === 'auto' || section === 'assignments' && !canAssign || section === 'reviews' && !canReview ? defaultSection : section;
   const unitName = context?.units?.find(unit => unit.id === unitId)?.name || 'GBA';
@@ -306,8 +338,9 @@ export default function Workspace({ previewMode = false }) {
       {screen === 'keynotes' && context?.keynotes_access ? <KeynotesWorkspace previewMode={previewMode} /> : screen === 'settings' ? <WorkspaceSettings context={context} data={data} permissions={permissions} command={command} busy={disabled || previewMode} loading={loading} unitId={unitId} projectId={projectId} onUnitChange={selectUnit} onProjectChange={selectProject} previewMode={previewMode} onNotice={setNotice} actorId={userId} peopleCommand={peopleCommand} removedEditions={removedEditions} onRemoveEdition={(...args)=>changeEditionRemoval('project.remove',...args)} onRestoreEdition={item=>changeEditionRemoval('project.restore',item)} /> : <>
         {data.projects.length > 0 && <EditionTabs projects={data.projects} selectedId={projectId} onSelect={selectProject} busy={busy} />}
         {loading ? <p className="gw-loading" role="status">Abriendo edición…</p> : !context?.units?.length ? <div className="gw-empty"><h2>Tu equipo está por comenzar.</h2><p>Dirección debe incorporar tu GBA ID y asignarte permisos para una unidad. Una licencia de escritorio no concede acceso editorial.</p></div> : !project ? <div className="gw-empty"><h2>Todavía no hay ediciones disponibles.</h2><p>Las ediciones aparecerán aquí cuando tengas acceso a ellas.</p>{permissions['project.create'] && <button type="button" onClick={() => setScreen('settings')}>Ir a Configuración</button>}</div> : <section role="tabpanel" id="workspace-edition-panel" aria-labelledby={`workspace-edition-${projectId}`} tabIndex={0}>
-          <EditionNavigation section={visibleSection} onSelect={selectSection} canAssign={canAssign} canReview={canReview} canWork={canWork} />
-          {visibleSection === 'work' && <PersonalWork project={project} data={data} task={task} actorId={userId} command={command} api={workApi} previewMode={previewMode} busy={disabled} onPick={item => pick(item, 'work')} onDirtyChange={setHasDraft} onReference={() => selectSection('documents')} referenceApi={referenceApi} />}
+          <EditionNavigation section={visibleSection} onSelect={selectSection} canAssign={canAssign} canReview={canReview} canWork={canWork} canTeam={canTeam} />
+          {visibleSection === 'work' && <PersonalWork key={`${project.id}-${userId}`} initialSupportId={selectedSupportId} supportApi={supportApi} project={project} data={data} task={task} actorId={userId} command={command} api={workApi} previewMode={previewMode} busy={disabled} onPick={item => pick(item, 'work')} onDirtyChange={setHasDraft} onReference={() => selectSection('documents')} referenceApi={referenceApi} />}
+          {visibleSection === 'team' && <TeamWorkspace project={project} data={data} actorId={userId} onOpenTask={item=>pick(item,taskIsMine(item,userId)?'work':data.taskPermissions?.[item.id]?.['task.assign']?'assignments':'reviews')} onOpenDocument={item=>navigate(()=>{if(item.document_kind){setSelectedSupportId(item.id);setSection('work');}else{setNotificationTarget({reference_id:item.id});setSection('documents');}})}/>}
           {visibleSection === 'assignments' && <AreaAssignments project={project} data={data} task={task} command={command} busy={disabled} onPick={item => pick(item, 'assignments')} onReview={item => pick(item, 'reviews')} referenceApi={referenceApi} />}
           {visibleSection === 'reviews' && <EditionReviews actorId={userId} previewMode={previewMode} project={project} data={data} task={section === 'auto' ? undefined : task} command={command} busy={disabled} onPick={item => pick(item, 'reviews')} />}
           {visibleSection === 'documents' && <EditionDocuments initialTaskId={notificationTarget?.deliverable_id || selectedId} initialReferenceId={notificationTarget?.reference_id} key={`${project.id}-${notificationTarget?.reference_id || notificationTarget?.deliverable_id || selectedId}`} project={project} data={data} actorId={userId} permissions={permissions} referenceApi={referenceApi} onDirtyChange={setHasDraft} busy={disabled} onOpenTask={item => pick(item, 'work')} />}

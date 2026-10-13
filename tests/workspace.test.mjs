@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { runOpalAcceptance } from './workspace-opal.test.mjs';
+import { runSupportAcceptance } from './workspace-support.test.mjs';
 import { runConnectorAcceptance } from './workspace-connector.test.mjs';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 const db = new PGlite({ extensions: { pgcrypto } });
@@ -344,5 +345,7 @@ eq(referenceAcceptance.checks,26);eq(referenceAcceptance.credentials_preserved,t
 await db.exec('rollback');
 checks += await runOpalAcceptance(db);
 checks += await runConnectorAcceptance(db);
+await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261013040243_workspace_support_and_team.sql',import.meta.url),'utf8'));
+checks += await runSupportAcceptance(db);
 console.log(`PASS: ${checks} Workspace assertions: direct API denial, scopes, full editorial cycle, suspension, delegation expiry, immutable versions, self approval, licenses, recovery and session revocation.`);
 }catch(error){console.error(error.stack,error.where||'',error.params||'');process.exitCode=1;}finally{await db.close();}

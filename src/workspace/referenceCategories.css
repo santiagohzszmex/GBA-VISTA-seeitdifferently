@@ -1,0 +1,7 @@
+.gw-reference-filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}
+.gw-reference-filters label{display:block;min-width:0;font-size:10px;color:#756b7c}
+.gw-reference-filters select{min-width:0;width:100%;margin-top:4px;padding:7px 8px;font-size:11px}
+.gw-reference-filter-note{margin:8px 0;padding:7px 9px;border-radius:6px;background:#f5f1f8;color:#6e6179!important;font-size:10px;line-height:1.45}
+.gw-document-category{display:inline-block;margin:0 0 10px;padding:4px 9px;border:1px solid #e1dae8;border-radius:999px;background:#f8f5fa;color:#685879!important;font-size:11px;font-weight:600}
+.gw-reference-editor #gw-reference-category-help{display:block;margin-top:6px;color:#756b7c;font-size:10px;font-weight:400;line-height:1.5}
+@media(max-width:520px){.gw-reference-filters{grid-template-columns:1fr}}
