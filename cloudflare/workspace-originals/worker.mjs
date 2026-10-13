@@ -57,8 +57,12 @@ export function createGateway(fetcher = fetch, logger = console, fixedLength = l
       if (!env.ORIGINALS || !env.GATEWAY_KEY || !env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({error:'Almacenamiento privado pendiente de conexión.'},503);
       const bearer = request.headers.get('authorization');
       if (!bearer?.startsWith('Bearer ')) return json({error:'Inicia sesión para acceder a los archivos.'},401);
+      const connector = /^Bearer wsc_[a-f0-9]{64}$/.test(bearer);
       async function rpc(name, args) {
-        const result = await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/${name}`, {method:'POST', headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:bearer,'Content-Type':'application/json'},body:JSON.stringify({...args,p_gateway_key:env.GATEWAY_KEY})});
+        const payload = {...args,p_gateway_key:env.GATEWAY_KEY};
+        const requestId = request.headers.get('x-import-request');
+        if (connector && name==='workspace_original_begin' && !new RegExp(`^${UUID}$`,'i').test(requestId||'')) throw problem('Falta la clave de reanudación de la subida.');
+        const result = await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/${connector ? 'workspace_connector_call' : name}`, {method:'POST', headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,...(!connector ? {Authorization:bearer} : {}),'Content-Type':'application/json'},body:JSON.stringify(connector ? {p_token:bearer.slice(7),p_method:name,p_args:payload,p_request_id:name==='workspace_original_begin'?requestId:null} : payload)});
         const body = await result.json();
         if (!result.ok) throw problem(body.message || 'No se pudo autorizar el archivo.', result.status === 401 || result.status === 403 ? 403 : 400);
         return body;
@@ -85,6 +89,14 @@ export function createGateway(fetcher = fetch, logger = console, fixedLength = l
           if (!name || name.length > 240) throw problem('Usa un nombre de archivo de hasta 240 caracteres.');
           const digest = Uint8Array.from(sha256.match(/.{2}/g),value => parseInt(value,16)).buffer;
           const reservation = await rpc('workspace_original_begin',{p_reference_id,p_name:name,p_mime:mime,p_size:size,p_sha256:sha256});
+          if (connector) {
+            const existing = reservation.status==='ready' ? null : await env.ORIGINALS.head(reservation.object_key);
+            if (reservation.status==='ready' || existing && existing.size===size && hex(existing.checksums?.sha256)===sha256) {
+              if (reservation.status!=='ready') await rpc('workspace_original_finish',{p_id:reservation.id,p_success:true});
+              await incoming.stream.cancel();
+              return json({id:reservation.id,verified:true,sha256,size_bytes:size},200);
+            }
+          }
           let written = false, pumping;const abort = new AbortController();
           try {
             const fixed = fixedLength(size);

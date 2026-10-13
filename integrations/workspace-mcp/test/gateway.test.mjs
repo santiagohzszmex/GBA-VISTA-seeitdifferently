@@ -1,0 +1,9 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createGateway} from '../../../cloudflare/workspace-originals/worker.mjs';
+const id='90000000-0000-4000-a000-000000000001',requestId='90000000-0000-4000-a000-000000000002',token=`wsc_${'a'.repeat(64)}`,sha256='b'.repeat(64);
+for(const status of ['ready','reserved'])test(`connector retry reconciles ${status} original without another R2 write`,async()=>{
+ const calls=[];const gateway=createGateway(async(url,options)=>{const body=JSON.parse(options.body);assert.ok(url.endsWith('/workspace_connector_call'));assert.equal(options.headers.Authorization,undefined);assert.equal(body.p_token,token);assert.equal(body.p_args.p_gateway_key,'private-gateway');calls.push(body.p_method);if(body.p_method==='workspace_original_gate')return Response.json({limit:26214400});if(body.p_method==='workspace_original_begin'){assert.equal(body.p_request_id,requestId);return Response.json({id,object_key:'private-key',status});}return Response.json({id,verified:true});},{error(){throw Error('unexpected gateway failure');}});
+ const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'public',GATEWAY_KEY:'private-gateway',ORIGINALS:{async head(){return {size:8,checksums:{sha256:Uint8Array.from({length:32},()=>0xbb).buffer}};},async put(){throw Error('duplicate R2 write');}}};
+ const response=await gateway.fetch(new Request(`https://gateway.test/references/${id}`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/pdf','X-File-Name':'test.pdf','X-File-Size':'8','X-File-Sha256':sha256,'X-Import-Request':requestId},body:'%PDF-1.7'}),env);assert.equal(response.status,200);assert.equal((await response.json()).id,id);assert.equal(calls.includes('workspace_original_finish'),status==='reserved');
+});
