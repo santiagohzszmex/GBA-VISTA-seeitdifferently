@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { runOpalAcceptance } from './workspace-opal.test.mjs';
+import { runConnectorAcceptance } from './workspace-connector.test.mjs';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 const db = new PGlite({ extensions: { pgcrypto } });
 let checks=0;
@@ -342,5 +343,6 @@ const referenceAcceptance=(await db.query('select * from workspace_reference_acc
 eq(referenceAcceptance.checks,26);eq(referenceAcceptance.credentials_preserved,true);eq(referenceAcceptance.keynotes_preserved,true);
 await db.exec('rollback');
 checks += await runOpalAcceptance(db);
+checks += await runConnectorAcceptance(db);
 console.log(`PASS: ${checks} Workspace assertions: direct API denial, scopes, full editorial cycle, suspension, delegation expiry, immutable versions, self approval, licenses, recovery and session revocation.`);
 }catch(error){console.error(error.stack,error.where||'',error.params||'');process.exitCode=1;}finally{await db.close();}

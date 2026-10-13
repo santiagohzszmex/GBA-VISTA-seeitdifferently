@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import EditionRemoval from './EditionRemoval';
 import LicensePanel from './LicensePanel';
 import TeamPanel from './TeamPanel';
+import ConnectorSessions from './ConnectorSessions';
 import { Activity, CommandForm, rpc } from './ui';
 import { dateLabel } from './gimgModel';
 
 export default function WorkspaceSettings({ context, data, permissions, command, busy, loading, unitId, projectId, onUnitChange, onProjectChange, previewMode, onNotice, actorId, peopleCommand, removedEditions = [], onRemoveEdition, onRestoreEdition }) {
   const [section, setSection] = useState('general');
-  const sections = { general: 'General' };
+  const sections = { general: 'General', connections: 'Conexiones' };
   if (permissions['unit.members.read']) sections.team = 'Integrantes y permisos';
   if (permissions['project.create'] || permissions['project.update'] || permissions['project.archive'] || removedEditions.length) sections.projects = 'Administrar ediciones';
   if (permissions['audit.read_scoped'] || permissions['audit.export_full']) sections.audit = 'Actividad';
@@ -42,6 +43,7 @@ export default function WorkspaceSettings({ context, data, permissions, command,
         </>}
         {currentSection === 'audit' && <><h2>Actividad de Workspace</h2>{permissions['audit.export_full'] && <button type="button" disabled={busy} onClick={() => void exportAudit()}>Exportar auditoría completa</button>}<p>Últimas 200 acciones visibles según tu alcance.</p><Activity rows={data.audit} /></>}
         {currentSection === 'licenses' && context?.platform_owner && <LicensePanel previewMode={previewMode} />}
+        {currentSection === 'connections' && <ConnectorSessions previewMode={previewMode} onNotice={onNotice} />}
         </>}
       </div>
     </div>

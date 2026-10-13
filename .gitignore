@@ -57,3 +57,6 @@ supabase/.temp/
 # Private Cloudflare development state and gateway credentials.
 .wrangler/
 .dev.vars*
+
+# Local connector journals contain private editorial inventories.
+.workspace-connector-state/
