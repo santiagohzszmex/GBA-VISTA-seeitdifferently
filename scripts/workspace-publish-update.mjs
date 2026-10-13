@@ -9,11 +9,12 @@ import {buildReleaseManifest} from './workspace-release-manifest.mjs';
 import {verifyPresentationAcceptance} from './workspace-identity-acceptance.mjs';
 import {toNativeVersion} from '../src/workspace/releaseVersion.mjs';
 import {CONNECTOR_BASELINE,verifyConnectorMaintenanceAcceptance} from './workspace-connector-maintenance-acceptance.mjs';
+import {WORKSPACE_165_BASELINE,verifyWorkspace165Acceptance} from './workspace-165-release-acceptance.mjs';
 
 async function main() {
 const args=process.argv.slice(2),option=name=>{const i=args.indexOf(name);return i<0?null:args[i+1];};
-const runId=option('--run'),notesPath=option('--notes'),databaseProofPath=option('--database-acceptance'),identityProofPath=option('--identity-acceptance'),maintenanceProofPath=option('--maintenance-acceptance'),publish=args.includes('--publish');
-if(!/^\d+$/.test(runId||'')||!notesPath)throw Error('Usage: npm run desktop:publish -- --run RUN_ID --notes NOTES_FILE [--database-acceptance PROOF_FILE] [--publish]');
+const runId=option('--run'),notesPath=option('--notes'),databaseProofPath=option('--database-acceptance'),identityProofPath=option('--identity-acceptance'),maintenanceProofPath=option('--maintenance-acceptance'),workspace165ProofPath=option('--workspace-1-6-5-acceptance'),publish=args.includes('--publish');
+if(!/^\d+$/.test(runId||'')||!notesPath)throw Error('Usage: npm run desktop:publish -- --run RUN_ID --notes NOTES_FILE [--database-acceptance PROOF_FILE | --workspace-1-6-5-acceptance PROOF_FILE | --maintenance-acceptance PROOF_FILE] [--publish]');
 const gh=args=>execFileSync('gh',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:180000});
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const config=JSON.parse(await fs.readFile('src-tauri/tauri.conf.json','utf8'));
@@ -72,7 +73,19 @@ try {
     priorIdentityAcceptance:'docs/workspace-activation.md',nativeInstalledAcceptanceRun:info.url,interactiveWindowsUpdateVerified:false};
   // Earlier identity/database acceptance is reusable only when that code is unchanged.
   const baseline='033686bfdd8e2bcd6223d8515fcad6d5b839eaf4';
-  if(maintenanceProofPath){
+  if(workspace165ProofPath){
+    if(maintenanceProofPath||databaseProofPath||identityProofPath)throw Error('The 1.6.5 chained acceptance cannot be combined with other acceptance proofs');
+    const published=JSON.parse(gh(['release','view',WORKSPACE_165_BASELINE.tag,'--repo',REPOSITORY,'--json','tagName,isDraft,targetCommitish']));
+    if(published.tagName!==WORKSPACE_165_BASELINE.tag||published.isDraft||published.targetCommitish!==WORKSPACE_165_BASELINE.commit)throw Error('Workspace 1.6.0.2 must be the exact public acceptance baseline');
+    const priorDirectory=path.join(folder,'prior-1.6.0.2-acceptance');await fs.mkdir(priorDirectory,{recursive:true});
+    gh(['release','download',WORKSPACE_165_BASELINE.tag,'--repo',REPOSITORY,'--pattern','acceptance.json','--dir',priorDirectory,'--clobber']);
+    const priorBytes=await fs.readFile(path.join(priorDirectory,'acceptance.json'));
+    const previous=JSON.parse(priorBytes.toString('utf8'));
+    execFileSync('git',['fetch','--depth=1','origin',WORKSPACE_165_BASELINE.commit],{stdio:['ignore','pipe','pipe'],timeout:60000});
+    const changedDatabaseFiles=execFileSync('git',['diff','--name-only',`${WORKSPACE_165_BASELINE.commit}..${commit}`,'--','supabase'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
+    const changedIdentityFiles=execFileSync('git',['diff','--name-only',`${WORKSPACE_165_BASELINE.commit}..${commit}`,'--','api','src/auth','src/context/AuthContext.jsx','src/workspace/WorkspaceAuth.jsx','cloudflare'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
+    proof.workspace165Acceptance=await verifyWorkspace165Acceptance(JSON.parse(await fs.readFile(workspace165ProofPath,'utf8')),previous,{commit,projectRef:'wgihpztgwsovhykboyru',changedDatabaseFiles,changedIdentityFiles,previousBytes:priorBytes,expectedCiRun:{runId,url:info.url,headSha:commit,conclusion:info.conclusion}});
+  }else if(maintenanceProofPath){
     const published=JSON.parse(gh(['release','view',CONNECTOR_BASELINE.tag,'--repo',REPOSITORY,'--json','isDraft,targetCommitish']));
     if(published.isDraft||published.targetCommitish!==CONNECTOR_BASELINE.commit)throw Error('Connector baseline must be the exact public release');
     const priorDirectory=path.join(folder,'prior-acceptance');await fs.mkdir(priorDirectory,{recursive:true});

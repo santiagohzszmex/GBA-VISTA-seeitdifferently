@@ -1,6 +1,6 @@
 # Workspace 1.6.5 Ópalo · Mi trabajo y equipo
 
-Estado: implementación y candidatos locales; migración de producción pendiente de autorización. La revisión automática rechazó aplicar `workspace_support_and_team` por su alcance sobre tablas, funciones y permisos. No se modifica el feed de actualización hasta aplicarla y comprobarla. La base pública de descarga 1.5.0 se conserva.
+Estado: migración `workspace_support_and_team` autorizada y aplicada en producción. Pasaron 38 comprobaciones de apoyo/equipo y 2 de categorías mediante transacciones revertidas, sin conservar cuentas ni ediciones de prueba. Se prepara la publicación del canal de actualización; la base pública de descarga 1.5.0 se conserva.
 
 ## Uso
 
@@ -21,6 +21,6 @@ El MCP añade `workspace_support_documents`, `workspace_team` y `workspace_prepa
 
 ## Validación
 
-Pruebas locales de permisos, compartir/retirar, versiones congeladas, conversión, originales y categorías; flujo de navegador para crear una entrevista vacía y guardarla en privado; compilación web y candidato nativo. Los resultados locales no sustituyen las comprobaciones pendientes en Supabase y R2 de producción.
+Pruebas locales de permisos, compartir/retirar, versiones congeladas, conversión, originales y categorías; flujo de navegador para crear una entrevista vacía y guardarla en privado; compilación web y candidatos nativos. En Supabase se comprobó privacidad, permisos de originales, compartir/revocar, copias congeladas, conversión, menciones, equipo e idempotencia del conector. Las pruebas de originales ejercitaron autorización y registro de metadatos sin crear objetos en R2; el Worker que conserva los bytes no cambió desde la versión publicada anterior.
 
 La versión visible es 1.6.5 y la versión nativa compatible con el actualizador es 1.6.500. No se publican paquetes ni se actualiza el feed antes de completar la aceptación de servidor.
