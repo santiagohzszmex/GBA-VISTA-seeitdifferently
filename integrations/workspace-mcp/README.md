@@ -43,3 +43,9 @@ Documentación: [Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cl
 ## Documentos de apoyo (Workspace 1.6.5)
 
 `workspace_support_documents` y `workspace_team` consultan únicamente el alcance autorizado del GBA ID. `workspace_prepare_support_documents` prepara TXT/Markdown como notas, entrevistas, fuentes, transcripciones o documentos de trabajo privados, sin generar entregas ni solicitudes de revisión. Consulta el contexto, elige un área incluida en `support.creation_areas` y ejecuta sólo lotes solicitados por el usuario. Las nuevas herramientas requieren la migración de servidor `workspace_support_and_team`; no reemplaces la instalación activa hasta que esa migración esté aceptada.
+
+## Edición de documentos (Workspace 1.6.5.1)
+
+`workspace_document` consulta contenido, revisión y permiso de edición por UUID y tipo (`reference`, `support` o `draft`). `workspace_prepare_edit_document` prepara cambios sobre `expected_revision`, devuelve una vista previa y un `batch_id`; no escribe hasta ejecutar el lote solicitado. Permite título, créditos y paleta según el tipo, contenido estructurado, sustituciones de texto o reemplazo completo por Markdown. Las sustituciones conservan marcas, imágenes, tablas y menciones; comprueban el número esperado de coincidencias. Si una frase atraviesa formatos, se edita mediante el documento estructurado.
+
+Los originales adjuntos se conservan. Cambios concurrentes requieren consultar de nuevo y preparar otro lote; no se actualiza la revisión automáticamente. Las versiones aceptadas siguen inmutables y los cambios no envían entregas a revisión. La sesión de GBA ID y el RBAC del servidor determinan qué puede editar cada persona.

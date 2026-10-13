@@ -1,9 +1,9 @@
 {
-  "version": "1.6.5",
-  "nativeVersion": "1.6.500",
+  "version": "1.6.5.1",
+  "nativeVersion": "1.6.501",
   "codename": "Ópalo",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Tu trabajo y tu equipo",
-  "notice": "Workspace 1.6.5 Ópalo separa tus entregas de los documentos de apoyo. Guarda entrevistas, notas y fuentes en privado; compártelas con tu área o vincula una copia a una asignación. Consulta tu equipo y organiza las referencias por área y categoría."
+  "noticeTitle": "Documentos más claros",
+  "notice": "Workspace 1.6.5.1 Ópalo simplifica Documentos con un único filtro por área y alinea el editor arriba. Codex puede consultar y preparar cambios en referencias, documentos de apoyo y borradores privados, conservando los permisos y las revisiones."
 }
