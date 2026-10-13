@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {CONNECTOR_BASELINE,CONNECTOR_CHECKS,CONNECTOR_DELTA,verifyConnectorMaintenanceAcceptance} from '../scripts/workspace-connector-maintenance-acceptance.mjs';
+const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+const sources=new Map([...CONNECTOR_DELTA.map(file=>[file,Buffer.from(file)]),['src/context/AuthContext.jsx',Buffer.from('unchanged identity')],['supabase/migrations/legacy.sql',Buffer.from('unchanged database')]]);
+const accepted=(file)=>({file,sha256:hash(sources.get(file))});
+const previous={commit:CONNECTOR_BASELINE.commit,channel:'beta',betaDistributionAuthorized:true,identityAcceptance:{commit:CONNECTOR_BASELINE.commit,changes:[accepted('src/context/AuthContext.jsx')]},databaseAcceptance:{commit:CONNECTOR_BASELINE.commit,changes:[accepted('supabase/migrations/legacy.sql')]}};
+const proof={commit:'a'.repeat(40),baselineCommit:CONNECTOR_BASELINE.commit,projectRef:'fixture',verifiedAt:new Date().toISOString(),changes:CONNECTOR_DELTA.map(accepted),checks:Object.fromEntries(CONNECTOR_CHECKS.map(key=>[key,true])),capacityBytes:10000000000,actorVerified:true,evidence:{nativeValidationRun:'native-run'}};
+const options={commit:proof.commit,projectRef:proof.projectRef,changedFiles:CONNECTOR_DELTA,read:file=>sources.get(file),readBaseline:file=>sources.get(file)};
+await verifyConnectorMaintenanceAcceptance(proof,previous,options);
+await assert.rejects(verifyConnectorMaintenanceAcceptance(proof,previous,{...options,changedFiles:[...CONNECTOR_DELTA,'api/gba-id.js']}),/Full acceptance/);
+await assert.rejects(verifyConnectorMaintenanceAcceptance(proof,{...previous,commit:'b'.repeat(40)},options),/exact published baseline/);
+await assert.rejects(verifyConnectorMaintenanceAcceptance({...proof,verifiedAt:'2020-01-01'},previous,options),/Fresh/);
+for(const key of CONNECTOR_CHECKS)await assert.rejects(verifyConnectorMaintenanceAcceptance({...proof,checks:{...proof.checks,[key]:false}},previous,options),/Missing/);
+await assert.rejects(verifyConnectorMaintenanceAcceptance(proof,previous,{...options,read:file=>file==='src/context/AuthContext.jsx'?Buffer.from('modified authentication'):sources.get(file)}),/full acceptance/);
+await assert.rejects(verifyConnectorMaintenanceAcceptance(proof,previous,{...options,read:file=>file===CONNECTOR_DELTA[0]?Buffer.from('modified config'):sources.get(file)}),/source bytes/);
+console.log('PASS: maintenance acceptance rejects changed legacy security code, unreviewed server changes, missing checks, stale evidence and mixed source commits.');

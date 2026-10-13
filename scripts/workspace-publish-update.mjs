@@ -8,10 +8,11 @@ import {verifyDatabaseAcceptance} from './workspace-database-acceptance.mjs';
 import {buildReleaseManifest} from './workspace-release-manifest.mjs';
 import {verifyPresentationAcceptance} from './workspace-identity-acceptance.mjs';
 import {toNativeVersion} from '../src/workspace/releaseVersion.mjs';
+import {CONNECTOR_BASELINE,verifyConnectorMaintenanceAcceptance} from './workspace-connector-maintenance-acceptance.mjs';
 
 async function main() {
 const args=process.argv.slice(2),option=name=>{const i=args.indexOf(name);return i<0?null:args[i+1];};
-const runId=option('--run'),notesPath=option('--notes'),databaseProofPath=option('--database-acceptance'),identityProofPath=option('--identity-acceptance'),publish=args.includes('--publish');
+const runId=option('--run'),notesPath=option('--notes'),databaseProofPath=option('--database-acceptance'),identityProofPath=option('--identity-acceptance'),maintenanceProofPath=option('--maintenance-acceptance'),publish=args.includes('--publish');
 if(!/^\d+$/.test(runId||'')||!notesPath)throw Error('Usage: npm run desktop:publish -- --run RUN_ID --notes NOTES_FILE [--database-acceptance PROOF_FILE] [--publish]');
 const gh=args=>execFileSync('gh',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:180000});
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -71,6 +72,16 @@ try {
     priorIdentityAcceptance:'docs/workspace-activation.md',nativeInstalledAcceptanceRun:info.url,interactiveWindowsUpdateVerified:false};
   // Earlier identity/database acceptance is reusable only when that code is unchanged.
   const baseline='033686bfdd8e2bcd6223d8515fcad6d5b839eaf4';
+  if(maintenanceProofPath){
+    const published=JSON.parse(gh(['release','view',CONNECTOR_BASELINE.tag,'--repo',REPOSITORY,'--json','isDraft,targetCommitish']));
+    if(published.isDraft||published.targetCommitish!==CONNECTOR_BASELINE.commit)throw Error('Connector baseline must be the exact public release');
+    const priorDirectory=path.join(folder,'prior-acceptance');await fs.mkdir(priorDirectory,{recursive:true});
+    gh(['release','download',CONNECTOR_BASELINE.tag,'--repo',REPOSITORY,'--pattern','acceptance.json','--dir',priorDirectory,'--clobber']);
+    execFileSync('git',['fetch','--depth=1','origin',CONNECTOR_BASELINE.commit],{stdio:['ignore','pipe','pipe'],timeout:60000});
+    const changedFiles=execFileSync('git',['diff','--name-only',CONNECTOR_BASELINE.commit,commit,'--','api','src/auth','src/context/AuthContext.jsx','src/workspace/WorkspaceAuth.jsx','supabase','cloudflare'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
+    proof.connectorMaintenanceAcceptance=await verifyConnectorMaintenanceAcceptance(JSON.parse(await fs.readFile(maintenanceProofPath,'utf8')),JSON.parse(await fs.readFile(path.join(priorDirectory,'acceptance.json'),'utf8')),{commit,projectRef:'wgihpztgwsovhykboyru',changedFiles});
+    if(proof.connectorMaintenanceAcceptance.evidence.nativeValidationRun!==info.url)throw Error('Connector acceptance must use the same completed native CI run');
+  }else{
   const identityChanges=execFileSync('git',['diff','--name-only',baseline,commit,'--','api','src/auth','src/context/AuthContext.jsx'],{encoding:'utf8'}).trim();
   if(identityChanges) {
     if(!identityProofPath)throw Error('Identity code changed; fresh identity acceptance is required before public distribution');
@@ -80,6 +91,7 @@ try {
   if(databaseChanges.length) {
     if(!databaseProofPath) throw Error('Database code changed; explicit live database acceptance is required');
     proof.databaseAcceptance=await verifyDatabaseAcceptance(JSON.parse(await fs.readFile(databaseProofPath,'utf8')),{commit,files:databaseChanges,projectRef:'wgihpztgwsovhykboyru'});
+  }
   }
   await fs.writeFile(path.join(folder,'acceptance.json'),JSON.stringify(proof,null,2)+'\n');
   const releaseNotes=path.join(folder,'release-notes.md');
