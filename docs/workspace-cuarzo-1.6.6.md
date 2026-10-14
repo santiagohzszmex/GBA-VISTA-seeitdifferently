@@ -1,6 +1,6 @@
 # Workspace 1.6.6 · Cuarzo — documentos y bandeja
 
-Estado: implementación local, pendiente de autorización de publicación. La versión instalada y los manifiestos públicos siguen en 1.6.5.1. La base de descarga 1.5.0 no cambia. Trabajo en `codex/workspace-1-6-6-cuarzo`.
+Estado: publicación 1.6.6 Cuarzo autorizada; migración aplicada, instaladores y despliegue en preparación. Versión nativa 1.6.600. La base de descarga 1.5.0 no cambia. Trabajo en `codex/workspace-1-6-6-cuarzo`.
 
 ## Uso
 

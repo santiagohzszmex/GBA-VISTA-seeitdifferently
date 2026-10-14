@@ -10,10 +10,12 @@ import {verifyPresentationAcceptance} from './workspace-identity-acceptance.mjs'
 import {toNativeVersion} from '../src/workspace/releaseVersion.mjs';
 import {CONNECTOR_BASELINE,verifyConnectorMaintenanceAcceptance} from './workspace-connector-maintenance-acceptance.mjs';
 import {WORKSPACE_165_BASELINE,verifyWorkspace165Acceptance} from './workspace-165-release-acceptance.mjs';
+import {CUARZO_BASELINE,verifyCuarzoAcceptance} from './workspace-cuarzo-release-acceptance.mjs';
 
 async function main() {
 const args=process.argv.slice(2),option=name=>{const i=args.indexOf(name);return i<0?null:args[i+1];};
 const runId=option('--run'),notesPath=option('--notes'),databaseProofPath=option('--database-acceptance'),identityProofPath=option('--identity-acceptance'),maintenanceProofPath=option('--maintenance-acceptance'),workspace165ProofPath=option('--workspace-1-6-5-acceptance'),publish=args.includes('--publish');
+const cuarzoProofPath=option('--cuarzo-acceptance');
 if(!/^\d+$/.test(runId||'')||!notesPath)throw Error('Usage: npm run desktop:publish -- --run RUN_ID --notes NOTES_FILE [--database-acceptance PROOF_FILE | --workspace-1-6-5-acceptance PROOF_FILE | --maintenance-acceptance PROOF_FILE] [--publish]');
 const gh=args=>execFileSync('gh',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:180000});
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -73,7 +75,16 @@ try {
     priorIdentityAcceptance:'docs/workspace-activation.md',nativeInstalledAcceptanceRun:info.url,interactiveWindowsUpdateVerified:false};
   // Earlier identity/database acceptance is reusable only when that code is unchanged.
   const baseline='033686bfdd8e2bcd6223d8515fcad6d5b839eaf4';
-  if(workspace165ProofPath){
+  if(cuarzoProofPath){
+    if(workspace165ProofPath||maintenanceProofPath||databaseProofPath||identityProofPath)throw Error('Cuarzo chained acceptance cannot be combined with other proofs');
+    const published=JSON.parse(gh(['release','view',CUARZO_BASELINE.tag,'--repo',REPOSITORY,'--json','isDraft,targetCommitish']));
+    if(published.isDraft||published.targetCommitish!==CUARZO_BASELINE.commit)throw Error('Cuarzo must inherit the exact public 1.6.5.1 release');
+    const priorDirectory=path.join(folder,'prior-1.6.5.1-acceptance');await fs.mkdir(priorDirectory,{recursive:true});
+    gh(['release','download',CUARZO_BASELINE.tag,'--repo',REPOSITORY,'--pattern','acceptance.json','--dir',priorDirectory,'--clobber']);
+    const previousBytes=await fs.readFile(path.join(priorDirectory,'acceptance.json'));
+    const changedProtectedFiles=execFileSync('git',['diff','--name-only',CUARZO_BASELINE.commit,commit,'--','supabase','api','src/auth','src/context/AuthContext.jsx','src/workspace/WorkspaceAuth.jsx','cloudflare'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
+    proof.cuarzoAcceptance=await verifyCuarzoAcceptance(JSON.parse(await fs.readFile(cuarzoProofPath,'utf8')),JSON.parse(previousBytes),{commit,projectRef:'wgihpztgwsovhykboyru',changedProtectedFiles,previousBytes,expectedCiRun:{runId,url:info.url,headSha:commit,conclusion:info.conclusion}});
+  }else if(workspace165ProofPath){
     if(maintenanceProofPath||databaseProofPath||identityProofPath)throw Error('The 1.6.5 chained acceptance cannot be combined with other acceptance proofs');
     const published=JSON.parse(gh(['release','view',WORKSPACE_165_BASELINE.tag,'--repo',REPOSITORY,'--json','tagName,isDraft,targetCommitish']));
     if(published.tagName!==WORKSPACE_165_BASELINE.tag||published.isDraft||published.targetCommitish!==WORKSPACE_165_BASELINE.commit)throw Error('Workspace 1.6.0.2 must be the exact public acceptance baseline');

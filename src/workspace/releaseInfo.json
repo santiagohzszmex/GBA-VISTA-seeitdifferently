@@ -1,9 +1,9 @@
 {
-  "version": "1.6.5.1",
-  "nativeVersion": "1.6.501",
-  "codename": "Ópalo",
+  "version": "1.6.6",
+  "nativeVersion": "1.6.600",
+  "codename": "Cuarzo",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Documentos más claros",
-  "notice": "Workspace 1.6.5.1 Ópalo simplifica Documentos con un único filtro por área y alinea el editor arriba. Codex puede consultar y preparar cambios en referencias, documentos de apoyo y borradores privados, conservando los permisos y las revisiones."
+  "noticeTitle": "Documentos y bandeja de entrada",
+  "notice": "Workspace 1.6.6 Cuarzo permite crear documentos desde Mi trabajo y enviarlos a integrantes de GIMG, incluso de otras ediciones, sin convertirlos en entregas. Añade bandeja de entrada, autoguardado y recuperación de documentos; corrige las menciones y conserva tus permisos."
 }
