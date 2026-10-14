@@ -82,8 +82,13 @@ try {
     const priorDirectory=path.join(folder,'prior-1.6.5.1-acceptance');await fs.mkdir(priorDirectory,{recursive:true});
     gh(['release','download',CUARZO_BASELINE.tag,'--repo',REPOSITORY,'--pattern','acceptance.json','--dir',priorDirectory,'--clobber']);
     const previousBytes=await fs.readFile(path.join(priorDirectory,'acceptance.json'));
+    const cuarzoProof=JSON.parse(await fs.readFile(cuarzoProofPath,'utf8'));
+    let roleTestedSchema;
+    if(cuarzoProof.method==='read-only-schema-parity'){
+      roleTestedSchema=JSON.parse(await fs.readFile(path.join(folder,'darwin-aarch64','workspace-schema.json'),'utf8'));
+    }
     const changedProtectedFiles=execFileSync('git',['diff','--name-only',CUARZO_BASELINE.commit,commit,'--','supabase','api','src/auth','src/context/AuthContext.jsx','src/workspace/WorkspaceAuth.jsx','cloudflare'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
-    proof.cuarzoAcceptance=await verifyCuarzoAcceptance(JSON.parse(await fs.readFile(cuarzoProofPath,'utf8')),JSON.parse(previousBytes),{commit,projectRef:'wgihpztgwsovhykboyru',changedProtectedFiles,previousBytes,expectedCiRun:{runId,url:info.url,headSha:commit,conclusion:info.conclusion}});
+    proof.cuarzoAcceptance=await verifyCuarzoAcceptance(cuarzoProof,JSON.parse(previousBytes),{commit,projectRef:'wgihpztgwsovhykboyru',changedProtectedFiles,previousBytes,roleTestedSchema,expectedCiRun:{runId,url:info.url,headSha:commit,conclusion:info.conclusion}});
   }else if(workspace165ProofPath){
     if(maintenanceProofPath||databaseProofPath||identityProofPath)throw Error('The 1.6.5 chained acceptance cannot be combined with other acceptance proofs');
     const published=JSON.parse(gh(['release','view',WORKSPACE_165_BASELINE.tag,'--repo',REPOSITORY,'--json','tagName,isDraft,targetCommitish']));

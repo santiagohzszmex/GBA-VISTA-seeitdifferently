@@ -38,7 +38,7 @@ Migración preparada por el CLI: `20261014013712_workspace_cuarzo_documents.sql`
 
 Añade tabla privada document_deliveries, snapshots, destinatarios, revisiones, originales permitidos, índices, notificaciones.delivery_id y el tipo research. RLS habilitada; sin lectura directa para anon/authenticated. Las RPC exigen sesión y permisos vigentes. No elimina documentos, columnas, categorías ni originales; no cambia JSON/Markdown/schemaVersion 2.
 
-El conector conserva sus nombres de herramientas para compatibilidad y admite el tipo Investigación en sus importaciones. Esta entrega no instala el conector ni aplica la migración en producción.
+El conector conserva sus nombres de herramientas para compatibilidad y admite el tipo Investigación en sus importaciones. La migración ya se aplicó en producción con autorización expresa.
 
 ## Validación y publicación
 
@@ -48,7 +48,7 @@ Estas comprobaciones no sustituyen una prueba final en web y escritorio con la m
 
 Resultado final: **577 comprobaciones de Workspace aprobadas**, incluidas **60 de la bandeja de Cuarzo**; pruebas de colocación/recuperación aprobadas y compilación de Workspace correcta. Sin cambios en autenticación GBA ID, licencias, límites R2 o manifiestos de la base pública.
 
-Para publicar, después de autorización: aplicar la migración, probar la interfaz con una cuenta de prueba y documentos descartables autorizados, asignar número final, preparar instaladores/actualizador manual y desplegar. No modificar la base pública 1.5.0.
+La publicación fue autorizada expresamente. El usuario rechazó crear registros de prueba en producción, incluso dentro de rollback. La aceptación usa sólo consultas de lectura: comparación exacta de 22 funciones, columnas, restricciones y 230 permisos RBAC con el esquema exportado por las 577 comprobaciones locales en CI; seis rechazos de acceso en una transacción READ ONLY y conservación del recuento de referencias. No se afirma haber realizado envíos positivos de prueba en producción. Los instaladores se instalan y abren en los tres corredores nativos; sus bytes y firmas se comprueban antes de promover el actualizador. La base pública 1.5.0 permanece intacta.
 
 Reversión conservadora: volver al código anterior y revocar ejecución de las nuevas RPC; conservar document_deliveries y sus datos. Las filas antiguas y el esquema previo permanecen. No purgar originales ni usar DROP/CASCADE. Antes de revertir wrappers de notificaciones/originales, decidir si se conservan o retiran las comparticiones explícitas existentes; no restaurar funciones a ciegas con entregas ya creadas.
 

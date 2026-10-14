@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {createHash} from 'node:crypto';
-import {CUARZO_BASELINE,CUARZO_MIGRATION,CUARZO_LIVE_SQL,verifyCuarzoAcceptance} from '../scripts/workspace-cuarzo-release-acceptance.mjs';
+import {CUARZO_BASELINE,CUARZO_MIGRATION,CUARZO_LIVE_SQL,CUARZO_READ_ONLY_SOURCE,verifyCuarzoAcceptance} from '../scripts/workspace-cuarzo-release-acceptance.mjs';
+import {schemaFingerprint} from '../scripts/workspace-cuarzo-schema-evidence.mjs';
 import {WORKSPACE_165_LIVE_CHECKS} from '../scripts/workspace-165-release-acceptance.mjs';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const gates=['backupRestoreVerified','stagingAuthVerified','gatewayVerified','membershipRlsVerified','activationExpiryRevocationVerified','installedMacosVerified','installedWindowsVerified'];
@@ -18,3 +19,17 @@ for(const invalid of [{...proof,liveResult:{...proof.liveResult,checks:0}},{...p
 await assert.rejects(verifyCuarzoAcceptance(proof,previous,{...options,changedProtectedFiles:[CUARZO_MIGRATION,'api/identity.js']}));
 await assert.rejects(verifyCuarzoAcceptance(proof,{...previous,commit:'b'.repeat(40)},options));
 console.log('PASS: Cuarzo publication rejects missing live checks, rollback, mixed commits, changed migrations, failed CI and changed protected sources.');
+const evidence={rls:true,direct_authenticated:false,direct_anon:false,anonymous_send:false,functions:Array.from({length:22},(_,i)=>({name:`function${i}`,definition:'guarded'})),columns:[],constraints:[],role_permissions:[]};
+const readOnlyProof={...proof,method:'read-only-schema-parity',liveResult:undefined,transactionRollbackVerified:undefined,
+ readOnlySource:{file:CUARZO_READ_ONLY_SOURCE,sha256:sha(await fs.readFile(CUARZO_READ_ONLY_SOURCE))},
+ readOnlyResult:{readOnly:true,denials:6,migrationApplied:true,referencesTotal:20},referencesBefore:20,productionSchema:evidence,schemaFingerprint:schemaFingerprint(evidence)};
+const readOnlyOptions={...options,roleTestedSchema:{sourceCommit:commit,assertions:577,evidence}};
+assert.match((await verifyCuarzoAcceptance(readOnlyProof,previous,readOnlyOptions)).inheritedEvidence.method,/without fixture records/);
+for(const bad of [{...readOnlyProof,readOnlyResult:{...readOnlyProof.readOnlyResult,readOnly:false}},
+ {...readOnlyProof,productionSchema:{...evidence,direct_authenticated:true}},
+ {...readOnlyProof,productionSchema:{...evidence,functions:[]}},
+ {...readOnlyProof,productionSchema:{...evidence,functions:evidence.functions.map((f,i)=>i?f:{...f,definition:'unguarded'})}},
+ {...readOnlyProof,readOnlySource:{...readOnlyProof.readOnlySource,sha256:'bad'}}])await assert.rejects(verifyCuarzoAcceptance(bad,previous,readOnlyOptions));
+await assert.rejects(verifyCuarzoAcceptance(readOnlyProof,previous,{...readOnlyOptions,roleTestedSchema:{...readOnlyOptions.roleTestedSchema,sourceCommit:'b'.repeat(40)}}));
+await assert.rejects(verifyCuarzoAcceptance(readOnlyProof,previous,{...readOnlyOptions,roleTestedSchema:{...readOnlyOptions.roleTestedSchema,assertions:0}}));
+console.log('PASS: Read-only publication requires exact CI schema/functions/RBAC parity, denied access and unchanged references; rejects widened privileges, altered functions and mixed evidence.');
