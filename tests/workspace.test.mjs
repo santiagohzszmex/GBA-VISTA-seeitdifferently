@@ -5,6 +5,7 @@ import { runOpalAcceptance } from './workspace-opal.test.mjs';
 import { runSupportAcceptance } from './workspace-support.test.mjs';
 import { runCuarzoAcceptance } from './workspace-cuarzo.test.mjs';
 import {CUARZO_SCHEMA_QUERY} from '../scripts/workspace-cuarzo-schema-evidence.mjs';
+import {runWorkspaceAuthAcceptance} from './workspace-auth.test.mjs';
 import { runConnectorAcceptance } from './workspace-connector.test.mjs';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 const db = new PGlite({ extensions: { pgcrypto } });
@@ -351,6 +352,7 @@ await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261013040243_wor
 checks += await runSupportAcceptance(db);
 await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261014013712_workspace_cuarzo_documents.sql',import.meta.url),'utf8'));
 checks += await runCuarzoAcceptance(db);
-if(process.env.WORKSPACE_SCHEMA_PROOF){await db.exec('reset role');fs.writeFileSync(process.env.WORKSPACE_SCHEMA_PROOF,JSON.stringify({sourceCommit:process.env.GITHUB_SHA,assertions:checks,evidence:(await db.query(CUARZO_SCHEMA_QUERY)).rows[0].evidence}));}
+const authUi=await runWorkspaceAuthAcceptance();
+if(process.env.WORKSPACE_SCHEMA_PROOF){await db.exec('reset role');fs.writeFileSync(process.env.WORKSPACE_SCHEMA_PROOF,JSON.stringify({sourceCommit:process.env.GITHUB_SHA,assertions:checks,authUi,evidence:(await db.query(CUARZO_SCHEMA_QUERY)).rows[0].evidence}));}
 console.log(`PASS: ${checks} Workspace assertions: direct API denial, scopes, full editorial cycle, suspension, delegation expiry, immutable versions, self approval, licenses, recovery and session revocation.`);
 }catch(error){console.error(error.stack,error.where||'',error.params||'');process.exitCode=1;}finally{await db.close();}

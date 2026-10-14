@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {createHash} from 'node:crypto';
-import {CUARZO_BASELINE,CUARZO_MIGRATION,CUARZO_LIVE_SQL,CUARZO_READ_ONLY_SOURCE,verifyCuarzoAcceptance} from '../scripts/workspace-cuarzo-release-acceptance.mjs';
+import {CUARZO_BASELINE,CUARZO_MIGRATION,CUARZO_LIVE_SQL,CUARZO_READ_ONLY_SOURCE,CUARZO_AUTH_UI_FILES,verifyCuarzoAcceptance} from '../scripts/workspace-cuarzo-release-acceptance.mjs';
 import {schemaFingerprint} from '../scripts/workspace-cuarzo-schema-evidence.mjs';
 import {WORKSPACE_165_LIVE_CHECKS} from '../scripts/workspace-165-release-acceptance.mjs';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -33,3 +33,13 @@ for(const bad of [{...readOnlyProof,readOnlyResult:{...readOnlyProof.readOnlyRes
 await assert.rejects(verifyCuarzoAcceptance(readOnlyProof,previous,{...readOnlyOptions,roleTestedSchema:{...readOnlyOptions.roleTestedSchema,sourceCommit:'b'.repeat(40)}}));
 await assert.rejects(verifyCuarzoAcceptance(readOnlyProof,previous,{...readOnlyOptions,roleTestedSchema:{...readOnlyOptions.roleTestedSchema,assertions:0}}));
 console.log('PASS: Read-only publication requires exact CI schema/functions/RBAC parity, denied access and unchanged references; rejects widened privileges, altered functions and mixed evidence.');
+const authFiles=await Promise.all(CUARZO_AUTH_UI_FILES.map(async file=>({file,sha256:sha(await fs.readFile(file))})));
+const authUi={files:authFiles,localFormNavigationVerified:true,existingLoginAndRecoveryUiVerified:true,gatewayMockRegistrationVerified:true,noProductionAccountsCreated:true};
+const authProof={...readOnlyProof,authUi};
+const authOptions={...readOnlyOptions,changedProtectedFiles:[CUARZO_MIGRATION,...CUARZO_AUTH_UI_FILES],roleTestedSchema:{...readOnlyOptions.roleTestedSchema,authUi:{sourceCommit:commit,assertions:21,files:authFiles}}};
+assert.match((await verifyCuarzoAcceptance(authProof,previous,authOptions)).inheritedEvidence.method,/Access-form-only/);
+await assert.rejects(verifyCuarzoAcceptance(authProof,previous,{...authOptions,changedProtectedFiles:[...authOptions.changedProtectedFiles,'api/gba-id.js']}));
+await assert.rejects(verifyCuarzoAcceptance({...authProof,authUi:{...authUi,noProductionAccountsCreated:false}},previous,authOptions));
+await assert.rejects(verifyCuarzoAcceptance({...authProof,authUi:{...authUi,files:authFiles.map(f=>({...f,sha256:'bad'}))}},previous,authOptions));
+await assert.rejects(verifyCuarzoAcceptance(authProof,previous,{...authOptions,roleTestedSchema:{...authOptions.roleTestedSchema,authUi:{...authOptions.roleTestedSchema.authUi,assertions:0}}}));
+console.log('PASS: Access-form release requires exact reviewed/CI-tested sources and refuses any server/auth transport change or missing local evidence.');

@@ -9,6 +9,11 @@
 .wa-eyebrow { margin: 0 0 10px; font-size: 10px; font-weight: 600; letter-spacing: 1.7px; text-align: center; color: #747480; }
 .wa h1 { margin: 0; font-size: clamp(26px, 4vw, 30px); font-weight: 650; line-height: 1.2; letter-spacing: -.9px; text-align: center; }
 .wa-intro { margin: 14px auto 28px; max-width: 340px; font-size: 14px; line-height: 1.65; color: #686875; text-align: center; }
+.wa-modes { display: flex; gap: 4px; padding: 4px; margin-bottom: 18px; border: 1px solid #e0e0e8; border-radius: 9px; background: #eaeaf1; }
+.wa-modes button { flex: 1; min-height: 38px; padding: 8px 12px; border: 0; border-radius: 6px; background: transparent; color: #686875; font: inherit; font-size: 12px; cursor: pointer; }
+.wa-modes button[aria-pressed="true"] { background: #fff; color: #272733; font-weight: 600; box-shadow: 0 1px 4px #2424320b; }
+.wa-check { display: flex; align-items: flex-start; gap: 9px; margin-top: 16px; color: #686875; font-size: 12px; line-height: 1.6; cursor: pointer; }
+.wa .wa-check input { flex: 0 0 auto; width: 16px; height: 16px; margin: 2px 0 0; padding: 0; accent-color: #343444; }
 .wa form { border: 1px solid #e0e0e8; border-radius: 12px; padding: 26px; background: #fff; box-shadow: 0 5px 20px #24243204; }
 .wa fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .wa-field { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; font-size: 12px; font-weight: 600; }

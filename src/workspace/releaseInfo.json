@@ -1,9 +1,9 @@
 {
-  "version": "1.6.6.1",
-  "nativeVersion": "1.6.601",
+  "version": "1.6.6.2",
+  "nativeVersion": "1.6.602",
   "codename": "Cuarzo",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Un solo botón para crear documentos",
-  "notice": "Workspace 1.6.6.1 Cuarzo elimina los botones repetidos de Nuevo documento y mantiene una sola opción de creación en la sección Documentos."
+  "noticeTitle": "Crea tu GBA ID desde Workspace",
+  "notice": "Workspace 1.6.6.2 Cuarzo añade la opción Crear GBA ID junto al inicio de sesión. Puedes crear tu cuenta sin correo, con un PIN y una frase de recuperación; tu equipo sigue autorizando el acceso a las ediciones."
 }

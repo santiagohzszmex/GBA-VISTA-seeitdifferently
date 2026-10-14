@@ -6,11 +6,11 @@ import { requestIdentity } from '../src/auth/identityRequest.mjs';
 let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++;};
 const env={SUPABASE_URL:'https://project.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'service',SUPABASE_ANON_KEY:'anon',VERCEL:'1'};
 function setup({answer={user_id:'user-1',email:'person@gba.com'},rpcError=null,sessionError=null,linkUser='user-1',createError=null,environment=env}={}){
- const calls=[],deleted=[];const client={rpc:async(name,args)=>{calls.push(args);return args.p_action==='prepare'?{data:{prepared:true},error:rpcError}:{data:answer,error:rpcError};},auth:{admin:{createUser:async()=>({data:{user:{id:'user-1'}},error:createError}),deleteUser:async id=>deleted.push(id),generateLink:async()=>({data:{properties:{hashed_token:'hash'},user:{id:linkUser}},error:null})},verifyOtp:async()=>({data:{session:{access_token:'access',refresh_token:'refresh'}},error:sessionError})}};
+ const calls=[],deleted=[],created=[];const client={rpc:async(name,args)=>{calls.push(args);return args.p_action==='prepare'?{data:{prepared:true},error:rpcError}:{data:answer,error:rpcError};},auth:{admin:{createUser:async body=>{created.push(body);return {data:{user:{id:'user-1'}},error:createError};},deleteUser:async id=>deleted.push(id),generateLink:async()=>({data:{properties:{hashed_token:'hash'},user:{id:linkUser}},error:null})},verifyOtp:async()=>({data:{session:{access_token:'access',refresh_token:'refresh'}},error:sessionError})}};
  const handler=createIdentityHandler({env:environment,makeClient:()=>client,random:()=>Buffer.alloc(32,1)});
  async function run(body={action:'login',handle:'person',pin:'1234',device:'12345678-1234-1234'},headers={origin:'https://gba.software','x-vercel-forwarded-for':'10.0.0.1','x-forwarded-for':'spoofed'},method='POST'){
   const result={headers:{},status:0,body:null};const response={setHeader(k,v){result.headers[k]=v;},status(s){result.status=s;return response;},json(b){result.body=b;return response;},end(){return response;}};await handler({method,body,headers,socket:{remoteAddress:'127.0.0.1'}},response);return result;
- }return {run,calls,deleted};
+ }return {run,calls,deleted,created};
 }
 {
  const t=setup();const r=await t.run();eq(r.status,200);eq(r.body.session,{access_token:'access',refresh_token:'refresh'});eq(t.calls[0].p_origin.includes('spoofed'),false);eq(r.headers['Cache-Control'],'no-store');eq('email' in r.body,false);
@@ -26,6 +26,7 @@ function setup({answer={user_id:'user-1',email:'person@gba.com'},rpcError=null,s
 }
 {
  const t=setup();eq((await t.run({action:'register',handle:'person',pin:'1234',device:'12345678-1234-1234',recovery:'a long private phrase'})).status,200);eq(t.calls.map(x=>x.p_action),['prepare','register']);eq(t.calls[1].p_user_id,'user-1');
+ eq(t.created[0].user_metadata,{nombre:'person',gimg_candidate:false});eq(t.created[0].app_metadata,undefined);
 }
 {
  const t=setup({answer:{error:'Initialization failed'}});eq((await t.run({action:'register',handle:'person',pin:'1234',device:'12345678-1234-1234',recovery:'private phrase'})).status,401);eq(t.deleted,['user-1']);
