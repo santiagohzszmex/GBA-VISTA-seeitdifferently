@@ -1,4 +1,23 @@
 .gw-support{display:grid;gap:16px;min-width:0}
+.gw-mywork-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.gw-wk-empty .gw-mywork-actions{justify-content:center}
+.gw-document-send-entry{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:18px 0;padding:16px;border:1px solid #ddd6e6;border-radius:10px;background:#f8f6fb}
+.gw-document-send-entry h4,.gw-document-send h4{margin:0;font-size:14px}
+.gw-document-send-entry small{flex-basis:100%;color:#77657e}
+.gw-document-send{padding:18px;border:1px solid #d8d1e3;border-radius:12px;background:#fff}
+.gw-document-send>header,.gw-document-send footer{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.gw-document-send>header{align-items:flex-start;margin-bottom:14px}
+.gw-document-send form{display:grid;gap:12px}
+.gw-document-recipient-search{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid #ded9e6;border-radius:8px;color:#80758a}
+.gw-document-recipient-search input{flex:1;border:0!important;margin:0!important;min-width:0;outline:none}
+.gw-document-recipients{max-height:280px;overflow:auto;border:1px solid #e4dfeb;border-radius:9px;padding:6px}
+.gw-document-recipients>label{display:flex;align-items:center;gap:10px;padding:10px;border-radius:6px;cursor:pointer}
+.gw-document-recipients>label:hover,.gw-document-recipients>label:focus-within{background:#f6f2fa}
+.gw-document-recipients input{width:auto!important;margin:0!important;accent-color:#77638d}
+.gw-document-recipients strong,.gw-document-recipients small{display:block}
+.gw-document-recipients small{font-weight:400;color:#807588;margin-top:3px}
+.gw-document-send footer{font-size:12px;color:#71647c}
+@media(max-width:640px){.gw-mywork-actions{justify-content:flex-start}.gw-document-send-entry{align-items:flex-start}.gw-document-send{padding:12px}.gw-document-send footer{flex-wrap:wrap}}
 .gw-support-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .gw-support-heading h2{margin:0;font-size:18px;color:var(--wk-ink,#302d38)}
 .gw-support-heading p,.gw-support p{margin:4px 0 0;color:var(--wk-muted,#706a78);font-size:12px;line-height:1.55}

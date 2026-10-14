@@ -3,6 +3,7 @@ import { ReactRenderer } from '@tiptap/react';
 import { exitSuggestion } from '@tiptap/suggestion';
 import { PluginKey } from '@tiptap/pm/state';
 import Mention from '@tiptap/extension-mention';
+import { editorVisibleBounds, placeEditorMenu } from './editorPlacement';
 
 const MentionList = forwardRef(function MentionList({ items, command }, ref) {
   const [selected, setSelected] = useState(0);
@@ -33,19 +34,36 @@ export function mentionExtension(contextRef) {
         catch { return [{ error: 'No pudimos consultar los integrantes. Vuelve a intentarlo.' }]; }
       },
       render: () => {
-        let component, latest;
-        const position = props => {
-          const rect = props.clientRect?.(); if (!rect || !component) return;
+        let component, latest, observer, frame;
+        const position = () => {
+          if (!component || !latest || latest.editor.isDestroyed) return;
           const element = component.element;
-          element.style.position = 'fixed'; element.style.zIndex = '120';
-          element.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - 310))}px`;
-          element.style.top = `${Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - element.offsetHeight - 12))}px`;
+          let anchor;
+          try { anchor=latest.editor.view.coordsAtPos(latest.range.to); } catch { element.style.visibility='hidden'; return; }
+          const bounds=editorVisibleBounds(latest.editor.view.dom);
+          const placement=placeEditorMenu(anchor,{width:290,height:Math.min(300,element.scrollHeight || 300)},bounds);
+          if (!placement) { element.style.visibility='hidden'; exitSuggestion(latest.editor.view,pluginKey); return; }
+          Object.assign(element.style,{position:'fixed',zIndex:'120',visibility:'visible',
+            left:`${placement.left}px`,top:`${placement.top}px`,maxHeight:`${placement.maxHeight}px`,maxWidth:`${placement.maxWidth}px`,overflowY:'auto'});
+        };
+        const schedule=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(position);};
+        const cleanup=()=>{
+          cancelAnimationFrame(frame);observer?.disconnect();
+          window.removeEventListener('scroll',schedule,true);window.removeEventListener('resize',schedule);
+          window.visualViewport?.removeEventListener('resize',schedule);window.visualViewport?.removeEventListener('scroll',schedule);
+          component?.element.remove();component?.destroy();component=null;latest=null;
         };
         return {
-          onStart: props => { latest = props; component = new ReactRenderer(MentionList, { props, editor: props.editor }); document.body.appendChild(component.element); position(props); },
-          onUpdate: props => { latest = props; component?.updateProps(props); position(props); },
-          onKeyDown: props => { if (props.event.key === 'Escape') { exitSuggestion(latest.editor,pluginKey); return true; } return component?.ref?.onKeyDown(props.event) || false; },
-          onExit: () => { component?.element.remove(); component?.destroy(); component = null; latest = null; }
+          onStart: props => {
+            latest=props;component=new ReactRenderer(MentionList,{props,editor:props.editor});
+            Object.assign(component.element.style,{position:'fixed',visibility:'hidden'});document.body.appendChild(component.element);
+            window.addEventListener('scroll',schedule,true);window.addEventListener('resize',schedule);
+            window.visualViewport?.addEventListener('resize',schedule);window.visualViewport?.addEventListener('scroll',schedule);
+            observer=new ResizeObserver(schedule);observer.observe(component.element);schedule();
+          },
+          onUpdate: props => { latest=props;component?.updateProps(props);schedule(); },
+          onKeyDown: props => { if (props.event.key === 'Escape') { exitSuggestion(latest.editor.view,pluginKey); return true; } return component?.ref?.onKeyDown(props.event) || false; },
+          onExit: cleanup
         };
       }
     }

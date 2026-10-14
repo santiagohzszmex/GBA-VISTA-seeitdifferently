@@ -45,6 +45,10 @@ if(platform==='macos') {
   if(binary.subarray(pe,pe+4).toString('hex')!=='50450000' || binary.readUInt16LE(pe+4)!==0x8664) throw Error('Expected Windows x64 PE');
 }
 await fs.mkdir(out,{recursive:true});
+// Export the role-tested schema with the Apple Silicon artifact. This remains
+// an isolated local database; no production credentials or records are used.
+if(platform==='macos'&&architecture==='aarch64')execFileSync(process.execPath,['tests/workspace.test.mjs'],{
+ env:{...process.env,WORKSPACE_SCHEMA_PROOF:path.resolve(out,'workspace-schema.json')},stdio:'inherit'});
 const packages=(await files(root)).filter(f=>platform==='macos'?f.endsWith('.dmg'):/\.(exe|msi)$/.test(f));
 if(!packages.length) throw Error('No native installers were generated');
 const downloads=[];
