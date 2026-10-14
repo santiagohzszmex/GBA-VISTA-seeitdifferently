@@ -9,6 +9,7 @@ import { taskIsMine, canReviewTask, nextStep, hasReviewPermission } from './docu
 import TaskMaterials from './TaskMaterials';
 import ReferenceSplit from './ReferenceSplit';
 import SupportDocuments from './SupportDocuments';
+import DocumentInbox from './DocumentInbox';
 import DraftExitDialog from './DraftExitDialog';
 import { Avatar, CLOSED_STATES, DueLabel, Status, dateShort, dueInfo } from './workView';
 
@@ -47,11 +48,12 @@ const WORK_GROUPS = [
 ];
 const groupOf = state => (WORK_GROUPS.find(([, , states]) => states.includes(state))?.[0]) || 'closed';
 
-export function PersonalWork({ project, data, task, actorId, command, api, busy, onPick, previewMode, onDirtyChange, onReference, referenceApi, supportApi, initialSupportId }) {
+export function PersonalWork({ project, data, task, actorId, command, api, busy, onPick, previewMode, onDirtyChange, onReference, referenceApi, supportApi, inboxApi, unitId, initialSupportId, initialDeliveryId, initialAnchorId }) {
   const [filter, setFilter] = useState(() => task && CLOSED_STATES.includes(task.state) ? 'all' : 'active');
   const [focus, setFocus] = useState(false);
   const [split, setSplit] = useState(false);
-  const [view, setView] = useState(() => initialSupportId ? 'support' : 'deliveries');
+  const [view, setView] = useState(() => initialDeliveryId ? 'inbox' : initialSupportId ? 'support' : 'deliveries');
+  const [createRequest,setCreateRequest]=useState(0);
   const [workDirty, setWorkDirty] = useState(false);
   const [supportDirty, setSupportDirty] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
@@ -66,14 +68,19 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
   useEffect(() => { onDirtyChange?.(anyDirty); }, [anyDirty, onDirtyChange]);
   useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
   useEffect(() => { if (initialSupportId) changeView('support'); }, [initialSupportId]);
+  useEffect(() => { if (initialDeliveryId) changeView('inbox'); }, [initialDeliveryId]);
+  function newDocument() {
+    if(view==='support'){setCreateRequest(n=>n+1);return;}
+    requestNavigation(() => { setView('support');setCreateRequest(n=>n+1); });
+  }
   function requestNavigation(action) { if (anyDirty) setPendingNavigation(() => action); else action(); }
   function openTask(target) { if (target?.id !== task?.id) requestNavigation(() => onPick?.(target)); }
   function changeView(next) { if (next === view) return; requestNavigation(() => setView(next)); }
   return <section className="gw-wk gw-wk-mine" data-focus={selected && focus || undefined} data-split={selected && split || undefined} data-compact={selected && (focus || split) || undefined}>
     {focus && <h1 className="gw-sr-only">Mi trabajo</h1>}
-    <div className="gw-wk-head"><div><h1>Mi trabajo</h1><p>Tus entregas y documentos de apoyo para esta edición.</p></div>{view === 'deliveries' && <CreateWork project={project} data={data} actorId={actorId} personal command={command} busy={busy} onCreated={openTask} />}</div>
-    <div className="gw-opal-inbox-tabs" role="group" aria-label="Cambiar vista de Mi trabajo"><button type="button" aria-pressed={view === 'deliveries'} onClick={() => changeView('deliveries')}>Entregas</button><button type="button" aria-pressed={view === 'support'} onClick={() => changeView('support')}>Documentos de apoyo <span>{data.support?.documents?.filter(row => row.author_id === actorId || row.share_scope !== 'private').length || 0}</span></button></div>
-    {view === 'support' ? <SupportDocuments project={project} data={data} actorId={actorId} supportApi={supportApi} busy={busy} onDirtyChange={setSupportDirty} onOpenTask={openTask} initialSupportId={initialSupportId} /> : <div className="gw-wk-mine-layout">
+    <div className="gw-wk-head"><div><h1>Mi trabajo</h1><p>Crea documentos, continúa tus entregas y consulta lo que te enviaron.</p></div><div className="gw-mywork-actions"><button type="button" className="gw-wk-btn gw-wk-btn-primary" disabled={busy || !data.support?.creation_areas?.length} onClick={newDocument}><Plus size={16}/>Nuevo documento</button>{view === 'deliveries' && <CreateWork project={project} data={data} actorId={actorId} personal command={command} busy={busy} onCreated={openTask} />}</div></div>
+    <div className="gw-opal-inbox-tabs" role="group" aria-label="Cambiar vista de Mi trabajo"><button type="button" aria-pressed={view === 'deliveries'} onClick={() => changeView('deliveries')}>Entregas</button><button type="button" aria-pressed={view === 'support'} onClick={() => changeView('support')}>Documentos <span>{data.support?.documents?.filter(row => row.author_id === actorId || row.share_scope !== 'private').length || 0}</span></button><button type="button" aria-pressed={view === 'inbox'} onClick={() => changeView('inbox')}>Bandeja de entrada</button></div>
+    {view === 'inbox' ? <DocumentInbox unitId={unitId} inboxApi={inboxApi} initialDeliveryId={initialDeliveryId} anchorId={initialAnchorId} /> : view === 'support' ? <SupportDocuments createRequest={createRequest} inboxApi={inboxApi} initialAnchorId={initialAnchorId} project={project} data={data} actorId={actorId} supportApi={supportApi} busy={busy} onDirtyChange={setSupportDirty} onOpenTask={openTask} initialSupportId={initialSupportId} /> : <div className="gw-wk-mine-layout">
       <aside className="gw-wk-rail" aria-label="Lista de mi trabajo">
         <div className="gw-wk-seg" role="group" aria-label="Mostrar mi trabajo">
           <button type="button" aria-pressed={filter === 'active'} onClick={() => setFilter('active')}>Pendiente <span>{pending}</span></button>
@@ -87,11 +94,11 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
             {item.block_reason && <span className="gw-wk-work-reason">{item.block_reason}</span>}
           </button></li>)}</ul>
         </div>)}
-        {!tasks.length && <p className="gw-wk-rail-empty">{filter === 'active' && mine.length ? 'No tienes trabajo pendiente. Cambia a «Todo» para ver lo aceptado.' : 'Aquí aparecerá tu trabajo.'}</p>}
+        {!tasks.length && <p className="gw-wk-rail-empty">{filter === 'active' && mine.length ? 'No tienes entregas pendientes. Cambia a «Todo» para ver lo aceptado.' : 'Aquí aparecerán tus entregas asignadas.'}</p>}
       </aside>
       {selected
         ? <WorkEditor key={selected.id} task={selected} data={data} actorId={actorId} api={api} command={command} previewMode={previewMode} busy={busy} onDirtyChange={setWorkDirty} onReference={onReference} focus={focus} onFocusChange={setFocus} onSplitChange={setSplit} referenceApi={referenceApi} />
-        : <div className="gw-wk-empty"><FileText size={30} aria-hidden="true" /><h2>No tienes trabajo pendiente en esta edición.</h2><p>Cuando el responsable de tu área te asigne trabajo, podrás abrirlo aquí, preparar el documento y enviarlo a revisión.</p><button type="button" className="gw-wk-btn" onClick={onReference}>Consultar documentos de la edición</button></div>}
+        : <div className="gw-wk-empty"><FileText size={30} aria-hidden="true" /><h2>No tienes entregas pendientes en esta edición.</h2><p>Puedes crear un documento ahora, escribir en privado y enviarlo a otra persona. Tus asignaciones aparecerán en esta pestaña cuando las recibas.</p><div className="gw-mywork-actions"><button type="button" className="gw-wk-btn gw-wk-btn-primary" disabled={busy || !data.support?.creation_areas?.length} onClick={newDocument}><Plus size={16}/>Nuevo documento</button><button type="button" className="gw-wk-btn" onClick={onReference}>Consultar referencias de la edición</button></div></div>}
     </div>}{pendingNavigation && <DraftExitDialog onStay={() => setPendingNavigation(null)} onDiscard={() => { const navigate=pendingNavigation; setPendingNavigation(null); setWorkDirty(false); setSupportDirty(false); onDirtyChange?.(false); navigate(); }} />}
   </section>;
 }

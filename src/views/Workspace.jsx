@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import KeynotesWorkspace from '../workspace/KeynotesWorkspace';
@@ -217,6 +217,8 @@ export default function Workspace({ previewMode = false }) {
     action=action.replace(/^support\./,'');
     if (busy || loading) throw Error('Espera a que termine el guardado actual.');
     if (action === 'history' && !previewMode) return rpc('workspace_support_history',{p_id:value.id});
+    // Background saves keep the live editor mounted and do not replace its selection.
+    if(action==='save' && value.id && !previewMode) return rpc('workspace_save_support',{p_project_id:value.project_id || projectId,p_data:value,p_revision:revision});
     setBusy(true);setNotice('');
     try {
       let result;
@@ -233,10 +235,17 @@ export default function Workspace({ previewMode = false }) {
           : await rpc('workspace_support_action',{p_id:value.id,p_action:action,p_data:value,p_revision:revision});
         if(action!=='history' && action!=='prepare')await load(true);
       }
-      setNotice(({save:'Documento de apoyo guardado. Compartirlo o convertirlo en entrega son acciones separadas.',share:value.share_scope==='private'?'Documento privado. Las copias vinculadas se conservan.':'Documento compartido con tu área.',link:'Copia vinculada a la asignación. Los cambios posteriores no alteran esa copia.',convert:'Entrega creada con borrador privado. No se envió a revisión.',archive:'Documento archivado. Se conservan originales e historial.',upload:'Original guardado sin compresión ni cambios de calidad.'})[action] || '');
       return result;
-    } catch(error){setNotice(error.message);throw error;}finally{setBusy(false);}
+    } catch(error){throw error;}finally{setBusy(false);}
   }
+  const inboxApi = useCallback(async(action,value)=>{
+    if(previewMode)throw Error('La bandeja requiere una sesión real de GBA ID.');
+    if(action==='recipients')return rpc('workspace_document_recipients',{p_id:value.id});
+    if(action==='send')return rpc('workspace_send_document',{p_id:value.id,p_recipients:value.recipients,p_revision:value.revision});
+    if(action==='list')return rpc('workspace_document_inbox',{p_unit:value.unitId,p_sent:value.sent,p_before:value.before || null,p_before_id:value.beforeId || null});
+    if(action==='read')return rpc('workspace_read_document_delivery',{p_id:value.id});
+    throw Error('Operación de documento no disponible.');
+  },[previewMode]);
   async function referenceApi(action, value, revisionOrFile) {
     if (busy || loading) return null;
     setBusy(true); setNotice('');
@@ -275,6 +284,7 @@ export default function Workspace({ previewMode = false }) {
   function openNotification(resolveTarget, item) {
     navigate(()=>void (async()=>{
       const target=await resolveTarget();if(!target)return;
+      if(target.delivery_id){setScreen('editions');setNotificationTarget(target);setSection('work');return;}
       if(!target.project_id){setScreen('settings');return;}
       if(target.project_id!==projectId)changeProject(target.project_id);
       setScreen('editions');setNotificationTarget(target);
@@ -307,7 +317,7 @@ export default function Workspace({ previewMode = false }) {
       if (previewMode) return Object.values(DEMO_ACTORS).filter(person=>person.projects.includes(projectId) && (!scope.taskId || demoPermissions(person,projectId,data.tasks.find(item=>item.id===scope.taskId)?.area_id,data.tasks.find(item=>item.id===scope.taskId))['task.read'])).map(person=>({user_id:person.id,display_name:person.name || person.label,handle:person.key}));
       const key=JSON.stringify([userId,projectId,scope]);const cached=candidateCache.current.get(key);
       if(cached && Date.now()-cached.time<30000)return cached.rows;
-      const rows=await rpc('workspace_mention_candidates',{p_project_id:scope.projectId || projectId,p_deliverable_id:scope.taskId || null,p_reference_id:scope.referenceId || null,p_area_id:scope.areaId || null,p_kind:scope.kind==='support'?'reference':scope.kind || 'reference'});
+      const rows=scope.supportId ? await rpc('workspace_support_mention_candidates',{p_id:scope.supportId}) : await rpc('workspace_mention_candidates',{p_project_id:scope.projectId || projectId,p_deliverable_id:scope.taskId || null,p_reference_id:scope.referenceId || null,p_area_id:scope.areaId || null,p_kind:scope.kind || 'reference'});
       candidateCache.current.set(key,{time:Date.now(),rows});return rows;
     },
     uploadImage:async(scope,file)=>{
@@ -326,7 +336,7 @@ export default function Workspace({ previewMode = false }) {
   };
   const { canAssign, canReview } = editionCapabilities(data);
   const canTeam = Boolean(data.team?.areas?.length);
-  const canWork = Boolean(data.support?.creation_areas?.length || data.support?.documents?.length) || data.tasks.some(item => item.project_id === projectId && taskIsMine(item, userId)) || Object.values(data.areaPermissions || {}).some(item => item['content.create'] || item['task.create']);
+  const canWork = Boolean(context?.units?.length) || Boolean(data.support?.creation_areas?.length || data.support?.documents?.length) || data.tasks.some(item => item.project_id === projectId && taskIsMine(item, userId)) || Object.values(data.areaPermissions || {}).some(item => item['content.create'] || item['task.create']);
   const defaultSection = initialSection(data, projectId, userId);
   const visibleSection = section === 'auto' || section === 'assignments' && !canAssign || section === 'reviews' && !canReview ? defaultSection : section;
   const unitName = context?.units?.find(unit => unit.id === unitId)?.name || 'GBA';
@@ -339,7 +349,7 @@ export default function Workspace({ previewMode = false }) {
         {data.projects.length > 0 && <EditionTabs projects={data.projects} selectedId={projectId} onSelect={selectProject} busy={busy} />}
         {loading ? <p className="gw-loading" role="status">Abriendo edición…</p> : !context?.units?.length ? <div className="gw-empty"><h2>Tu equipo está por comenzar.</h2><p>Dirección debe incorporar tu GBA ID y asignarte permisos para una unidad. Una licencia de escritorio no concede acceso editorial.</p></div> : !project ? <div className="gw-empty"><h2>Todavía no hay ediciones disponibles.</h2><p>Las ediciones aparecerán aquí cuando tengas acceso a ellas.</p>{permissions['project.create'] && <button type="button" onClick={() => setScreen('settings')}>Ir a Configuración</button>}</div> : <section role="tabpanel" id="workspace-edition-panel" aria-labelledby={`workspace-edition-${projectId}`} tabIndex={0}>
           <EditionNavigation section={visibleSection} onSelect={selectSection} canAssign={canAssign} canReview={canReview} canWork={canWork} canTeam={canTeam} />
-          {visibleSection === 'work' && <PersonalWork key={`${project.id}-${userId}`} initialSupportId={selectedSupportId} supportApi={supportApi} project={project} data={data} task={task} actorId={userId} command={command} api={workApi} previewMode={previewMode} busy={disabled} onPick={item => pick(item, 'work')} onDirtyChange={setHasDraft} onReference={() => selectSection('documents')} referenceApi={referenceApi} />}
+          {visibleSection === 'work' && <PersonalWork key={`${project.id}-${userId}`} initialSupportId={selectedSupportId} initialDeliveryId={notificationTarget?.delivery_id} initialAnchorId={notificationTarget?.anchor_id} inboxApi={previewMode ? undefined : inboxApi} unitId={unitId} supportApi={supportApi} project={project} data={data} task={task} actorId={userId} command={command} api={workApi} previewMode={previewMode} busy={disabled} onPick={item => pick(item, 'work')} onDirtyChange={setHasDraft} onReference={() => selectSection('documents')} referenceApi={referenceApi} />}
           {visibleSection === 'team' && <TeamWorkspace project={project} data={data} actorId={userId} onOpenTask={item=>pick(item,taskIsMine(item,userId)?'work':data.taskPermissions?.[item.id]?.['task.assign']?'assignments':'reviews')} onOpenDocument={item=>navigate(()=>{if(item.document_kind){setSelectedSupportId(item.id);setSection('work');}else{setNotificationTarget({reference_id:item.id});setSection('documents');}})}/>}
           {visibleSection === 'assignments' && <AreaAssignments project={project} data={data} task={task} command={command} busy={disabled} onPick={item => pick(item, 'assignments')} onReview={item => pick(item, 'reviews')} referenceApi={referenceApi} />}
           {visibleSection === 'reviews' && <EditionReviews actorId={userId} previewMode={previewMode} project={project} data={data} task={section === 'auto' ? undefined : task} command={command} busy={disabled} onPick={item => pick(item, 'reviews')} />}
