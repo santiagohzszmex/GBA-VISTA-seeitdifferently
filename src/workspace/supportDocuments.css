@@ -26,6 +26,7 @@
 .gw-support-create label,.gw-support-document label,.gw-support-actions label{font-size:11px;font-weight:600;color:#615b69}
 .gw-support-create input,.gw-support-create select,.gw-support-document input,.gw-support-document select,.gw-support-document textarea,.gw-support-actions select{display:block;width:100%;min-width:0;margin-top:5px;padding:8px 9px;border:1px solid #d8d4df;border-radius:7px;background:#fff;color:#302d38;font:inherit}
 .gw-support-create small{grid-column:1/-1;color:#77717c;font-size:10px}
+.gw-support-create-buttons{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .gw-support-layout{display:grid;grid-template-columns:minmax(210px,280px) minmax(0,1fr);gap:14px;align-items:start}
 .gw-support-list{position:sticky;top:12px;display:grid;gap:5px;max-height:calc(100vh - 270px);overflow:auto;padding:8px;border:1px solid var(--wk-line,#dfdce6);border-radius:10px;background:#fff}
 .gw-support-list>button{display:flex;align-items:flex-start;gap:9px;width:100%;padding:10px;border:1px solid transparent;border-radius:8px;background:transparent;text-align:left;color:#34303a}
@@ -35,6 +36,7 @@
 .gw-support-list>button strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
 .gw-support-list>button small{margin-top:3px;color:#77717c;font-size:10px;line-height:1.4}
 .gw-support-list>p{padding:15px 10px;text-align:center;font-size:11px}
+.gw-support-create-action{padding:8px 2px 2px}.gw-support-create-action button{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%}
 .gw-support-document{min-width:0;border:1px solid var(--wk-line,#dfdce6);border-radius:11px;background:#fff;overflow:hidden}
 .gw-support-document>header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;border-bottom:1px solid #ece9f0}
 .gw-support-heading-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
