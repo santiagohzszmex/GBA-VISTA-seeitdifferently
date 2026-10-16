@@ -34,3 +34,21 @@ El binding tiene `remote: true`: esto sí llama a Cloudflare Images y requiere u
 `validate-layered.mjs` reconoce cabeceras PSD/TIFF clásicos y un manifiesto ZIP KRA acotado (directorio 256 KiB, 2000 entradas, mimetype almacenado sin compresión). ZIP64/multidisco, cifrado y otras variantes no quedan validados por este prototipo. PROCREATE/AFPHOTO/CLIP devuelven explícitamente `unverified`; no se abren ni se representan.
 
 Fecha de compatibilidad del spike: 2026-10-13, máxima admitida por el workerd instalado con Wrangler 4.149.0. No se actualizó el runtime de producción.
+
+## Repetir el ensayo de Fase 2
+
+No usar originales privados. Las muestras se crean fuera del repositorio y tienen píxeles sintéticos, GPS 0,0 y padding auxiliar para alcanzar exactamente cada peso. **No representan la complejidad de un exportado real.**
+
+```sh
+node spikes/lapis/generate-synthetic.mjs /private/tmp/workspace-lapis-fixtures
+python3 spikes/lapis/phase2-fixtures.py
+npx wrangler dev --config spikes/lapis/wrangler.jsonc --port 8797 --inspector-port 9297
+```
+
+Con el Worker listo, en otra terminal:
+
+```sh
+node spikes/lapis/run-phase2-binding.mjs /private/tmp/workspace-lapis-phase2-fixtures http://localhost:8797
+```
+
+No editar el procesador durante el ensayo: el recargador reinicia las solicitudes POST en curso. Se guardan `provider.webp` y `clean.webp` junto a las muestras; verificar con Pillow `getexif()` y `get_ifd(34853)` que el original sí tenga EXIF/GPS y ambos derivados no. `getchannel('A').getextrema()` permite comprobar que queda un canal alfa variable. Detener Wrangler al finalizar. El binding es remoto y usa transformaciones de desarrollo, sin bucket ni identidades de Workspace. Los datos medidos están en `results-phase2-2026-10-16.json`; el límite de 100 MB por URL remoto **no se probó ni se usa**.

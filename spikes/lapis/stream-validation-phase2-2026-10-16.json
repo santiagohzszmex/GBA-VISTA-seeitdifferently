@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "runtime": "v26.4.0",
+  "platform": "darwin",
+  "bytes": 5726086,
+  "width": 4000,
+  "height": 5000,
+  "alpha": true,
+  "elapsed_ms": 480,
+  "process_cpu_ms": 554.789,
+  "max_rss_kib": 73984,
+  "note": "Node macOS one process; not a Cloudflare production CPU/memory measurement or guarantee."
+}
