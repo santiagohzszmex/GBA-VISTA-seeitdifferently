@@ -1,4 +1,3 @@
-const MAX_BYTES = 25 * 1024 * 1024;
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 export function detectMime(bytes) {
   const text = String.fromCharCode(...bytes.subarray(0, 32));
@@ -78,7 +77,8 @@ export function createGateway(fetcher = fetch, logger = console, fixedLength = l
           const size = Number(request.headers.get('x-file-size'));
           const sha256 = request.headers.get('x-file-sha256') || '';
           const declared = Number(request.headers.get('content-length'));
-          if (!Number.isInteger(size) || size < 1 || size > Math.min(MAX_BYTES,gate.limit) || declared > MAX_BYTES) throw problem('El archivo supera los 25 MB o no declara su tamaño.',413);
+          if (!Number.isSafeInteger(gate.limit) || gate.limit < 1) throw problem('Límite de almacenamiento no disponible.',503);
+          if (!Number.isSafeInteger(size) || size < 1 || size > gate.limit || declared > gate.limit) throw problem('El archivo supera el límite configurado o no declara su tamaño.',413);
           if (!/^[a-f0-9]{64}$/.test(sha256)) throw problem('Falta la huella de integridad del original.');
           incoming = await peekAndStream(request,size);
           const mime = detectMime(incoming.head);
