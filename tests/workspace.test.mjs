@@ -4,6 +4,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { runOpalAcceptance } from './workspace-opal.test.mjs';
 import { runSupportAcceptance } from './workspace-support.test.mjs';
 import { runCuarzoAcceptance } from './workspace-cuarzo.test.mjs';
+import { runCoordinationScopeAcceptance } from './workspace-coordination-scope.test.mjs';
 import {CUARZO_SCHEMA_QUERY} from '../scripts/workspace-cuarzo-schema-evidence.mjs';
 import {runWorkspaceAuthAcceptance} from './workspace-auth.test.mjs';
 import { runConnectorAcceptance } from './workspace-connector.test.mjs';
@@ -352,6 +353,7 @@ await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261013040243_wor
 checks += await runSupportAcceptance(db);
 await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261014013712_workspace_cuarzo_documents.sql',import.meta.url),'utf8'));
 checks += await runCuarzoAcceptance(db);
+checks += await runCoordinationScopeAcceptance(db);
 const authUi=await runWorkspaceAuthAcceptance();
 if(process.env.WORKSPACE_SCHEMA_PROOF){await db.exec('reset role');fs.writeFileSync(process.env.WORKSPACE_SCHEMA_PROOF,JSON.stringify({sourceCommit:process.env.GITHUB_SHA,assertions:checks,authUi,evidence:(await db.query(CUARZO_SCHEMA_QUERY)).rows[0].evidence}));}
 console.log(`PASS: ${checks} Workspace assertions: direct API denial, scopes, full editorial cycle, suspension, delegation expiry, immutable versions, self approval, licenses, recovery and session revocation.`);
