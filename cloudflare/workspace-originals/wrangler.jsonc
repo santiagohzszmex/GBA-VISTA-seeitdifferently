@@ -10,5 +10,7 @@
     "SUPABASE_URL": "https://wgihpztgwsovhykboyru.supabase.co",
     "ALLOWED_ORIGINS": "https://gba.software,https://www.gba.software,https://vista.gba.software,http://tauri.localhost,https://tauri.localhost,tauri://localhost,null"
   },
-  "observability": {"enabled":true,"logs":{"enabled":true,"head_sampling_rate":0.1},"traces":{"enabled":true,"head_sampling_rate":0.01}}
+  "images": {"binding":"IMAGES"},
+  "triggers": {"crons":["*/15 * * * *"]},
+  "observability": {"enabled":true,"redact_query_string":true,"logs":{"enabled":true,"invocation_logs":false,"head_sampling_rate":0.1},"traces":{"enabled":false,"head_sampling_rate":0.01}}
 }

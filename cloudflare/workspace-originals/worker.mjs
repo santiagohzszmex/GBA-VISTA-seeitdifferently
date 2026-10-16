@@ -1,3 +1,4 @@
+import {createImageGateway} from './images/gateway.mjs';
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 export function detectMime(bytes) {
   const text = String.fromCharCode(...bytes.subarray(0, 32));
@@ -44,8 +45,11 @@ async function peekAndStream(request, expectedSize) {
 }
 const hex = buffer => buffer ? [...new Uint8Array(buffer)].map(byte => byte.toString(16).padStart(2,'0')).join('') : '';
 export function createGateway(fetcher = fetch, logger = console, fixedLength = length => new FixedLengthStream(length)) {
+  const images=createImageGateway({fetcher,logger,fixedLength});
   return {
+    scheduled:(controller,env,ctx)=>images.scheduled(controller,env,ctx),
     async fetch(request, env) {
+      if(/^\/(images|image-downloads)(\/|$)/.test(new URL(request.url).pathname))return images.fetch(request,env);
       const origin = request.headers.get('origin');
       const origins = (env.ALLOWED_ORIGINS || '').split(',').map(value => value.trim());
       const cors = origin && origins.includes(origin) ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-File-Name, X-File-Size, X-File-Sha256', 'Access-Control-Expose-Headers': 'X-Original-Sha256', 'Access-Control-Max-Age': '600' } : {};

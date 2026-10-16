@@ -8,13 +8,35 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 const directory=await fs.mkdtemp(path.join(os.tmpdir(),'workspace-r2-runtime-'));
 const reference='11111111-1111-4111-8111-111111111111';
-const originals=new Map();let sequence=0,kind='moodboard';
+const originals=new Map(),sessions=new Map();let sequence=0,kind='moodboard';
+const descriptor=row=>({...row,policy:{part_bytes:8388608,png_max_bytes:18874368,max_pixels:40000000,max_dimension:32768},parts:row.parts||[],received_bytes:row.received_bytes||0});
 const backend=createServer(async(request,response)=>{
  try {
   let input='';for await(const chunk of request)input+=chunk;
   const data=JSON.parse(input);response.setHeader('Content-Type','application/json');
-  if(request.headers.authorization!=='Bearer local-runtime-user' || data.p_gateway_key!=='local-runtime-gateway'){response.writeHead(403);response.end(JSON.stringify({message:'Sin permiso'}));return;}
+  if((request.headers.authorization!=='Bearer local-runtime-user' && !['workspace_image_file','workspace_image_maintenance'].includes(request.url.split('/').pop())) || data.p_gateway_key!=='local-runtime-gateway'){response.writeHead(403);response.end(JSON.stringify({message:'Sin permiso'}));return;}
   const rpc=request.url.split('/').pop();
+  if(rpc==='workspace_image_storage'){
+   const d=data.p_data;let row=sessions.get(d.session_id);
+   if(data.p_action==='open'){const id=`33333333-3333-4333-8333-${String(++sequence).padStart(12,'0')}`;row={id,state:'reserved',parts:[],expires_at:new Date(Date.now()+86400000).toISOString(),asset:{id,deliverable_id:d.deliverable_id,object_key:`runtime-images/${id}`,mime_type:d.format==='png'?'image/png':'application/octet-stream',...d}};sessions.set(id,row);}
+   if(!row)throw Error('Unknown session');
+   if(data.p_action==='lock'){row.lease_id=crypto.randomUUID();if(d.operation==='cancel')row.state='cleaning';}
+   if(data.p_action==='attach'){row.upload_id=d.upload_id;row.state='receiving';}
+   if(data.p_action==='part'){row.parts=row.parts.filter(p=>p.partNumber!==d.part_number);row.parts.push({partNumber:d.part_number,etag:d.etag,size_bytes:d.size_bytes,sha256:d.sha256});row.parts.sort((a,b)=>a.partNumber-b.partNumber);row.received_bytes=row.parts.reduce((n,p)=>n+p.size_bytes,0);}
+   if(data.p_action==='verified'){row.state='ready';row.asset.verification=d.verification;}
+   if(data.p_action==='failed')row.state='failed';
+   response.end(JSON.stringify(descriptor(row)));return;
+  }
+  if(rpc==='workspace_image_maintenance'){
+   if(data.p_action==='cleanup.claim'){const row=[...sessions.values()].find(x=>x.state==='failed'&&(!data.p_data.session_id||x.id===data.p_data.session_id));response.end(JSON.stringify(row?descriptor(row):null));return;}
+   if(data.p_action==='cleanup.confirm'){sessions.get(data.p_data.session_id).state='cancelled';response.end('{"cleaned":true}');return;}
+   if(data.p_action==='preview.claim'){response.end('null');return;}
+   throw Error('Unknown image machine action');
+  }
+  if(rpc==='workspace_image_file'){
+   const d=data.p_data,row=[...sessions.values()].find(x=>x.asset.id===d.asset_id&&x.state==='ready');if(!row){response.writeHead(403);response.end('{"message":"No access"}');return;}
+   response.end(JSON.stringify({available:true,asset_id:row.asset.id,file_id:row.asset.id,operation:d.operation,object_key:row.asset.object_key,file_name:row.asset.file_name,mime_type:row.asset.mime_type,size_bytes:row.asset.size_bytes,sha256:row.asset.sha256,user_id:'fixture',session_id:'fixture',ttl:300}));return;
+  }
   if(rpc==='workspace_original_gate'){response.end(JSON.stringify({kind,limit:26214400}));return;}
   if(rpc==='workspace_original_begin'){
    const id=`22222222-2222-4222-8222-${String(++sequence).padStart(12,'0')}`;
@@ -48,6 +70,20 @@ try {
  const invalid=await fetch(`${host}/references/${reference}`,{method:'POST',headers:{Authorization:'Bearer local-runtime-user','Content-Type':'image/png','X-File-Name':'checksum-failure','X-File-Size':String(png.length),'X-File-Sha256':'f'.repeat(64)},body:png});
  assert.equal(invalid.status,502);assert.equal([...originals.values()].at(-1).status,'failed');
  assert.equal((await fetch(`${host}/originals/${[...originals.keys()][0]}`)).status,401);
+ // Real workerd + R2 multipart, native DigestStream and PNG DecompressionStream.
+ for(const [bytes,format]of [[png,'png'],[Buffer.alloc(8388608+333,7),'afphoto']]){
+  const digest=createHash('sha256').update(bytes).digest('hex'),headers={Authorization:'Bearer local-runtime-user'};
+  const open=await fetch(`${host}/images/uploads`,{method:'POST',headers,body:JSON.stringify({request_id:crypto.randomUUID(),deliverable_id:reference,file_name:`synthetic.${format}`,format,role:format==='png'?'png':'layered',size_bytes:bytes.length,sha256:digest})});const session=await open.json();assert.equal(open.status,201,JSON.stringify(session));assert.equal(JSON.stringify(session).includes('object_key'),false);
+  for(let n=1;n<=Math.ceil(bytes.length/8388608);n++){const r=await fetch(`${host}/images/uploads/${session.id}/parts/${n}`,{method:'PUT',headers,body:bytes.subarray((n-1)*8388608,n*8388608)});assert.equal(r.status,200,await r.text());}
+  const finish=await fetch(`${host}/images/uploads/${session.id}/complete`,{method:'POST',headers}),done=await finish.json();assert.equal(finish.status,200,JSON.stringify(done));assert.equal(done.verification,format==='png'?'decoded':'unverified');
+  const signed=await fetch(`${host}/images/files/${session.asset_id}/original/link`,{method:'POST',headers}).then(x=>x.json());const dl=await fetch(signed.url);assert.equal(dl.status,200,await dl.clone().text());assert.deepEqual(Buffer.from(await dl.arrayBuffer()),bytes);
+ }
+ const corruptOpen=await fetch(`${host}/images/uploads`,{method:'POST',headers:{Authorization:'Bearer local-runtime-user'},body:JSON.stringify({request_id:crypto.randomUUID(),deliverable_id:reference,file_name:'corrupt.png',format:'png',role:'png',size_bytes:png.length,sha256:'f'.repeat(64)})}).then(r=>r.json());
+ await fetch(`${host}/images/uploads/${corruptOpen.id}/parts/1`,{method:'PUT',headers:{Authorization:'Bearer local-runtime-user'},body:png});
+ const corruptFinish=await fetch(`${host}/images/uploads/${corruptOpen.id}/complete`,{method:'POST',headers:{Authorization:'Bearer local-runtime-user'}});assert.equal(corruptFinish.status,400,await corruptFinish.text());assert.equal(sessions.get(corruptOpen.id).state,'cancelled','Completed multipart abort must allow confirmed invalid-file cleanup');
+ const cancel=await fetch(`${host}/images/uploads`,{method:'POST',headers:{Authorization:'Bearer local-runtime-user'},body:JSON.stringify({request_id:crypto.randomUUID(),deliverable_id:reference,file_name:'cancel.afphoto',format:'afphoto',role:'layered',size_bytes:100,sha256:'a'.repeat(64)})}).then(r=>r.json());
+ const cancelled=await fetch(`${host}/images/uploads/${cancel.id}`,{method:'DELETE',headers:{Authorization:'Bearer local-runtime-user'}});assert.equal(cancelled.status,200,await cancelled.text());
+ console.log('PASS: actual workerd multipart 8 MiB + final part, SHA-256 DigestStream, PNG decode, opaque layers, signed download and invalid/cancelled multipart cleanup.');
  console.log('PASS: actual workerd + private local R2 preserve exact PNG/PDF bytes, validate service SHA-256, reject corruption and deny anonymous reads. No production files or paid resources were used.');
 }finally{
  cli.kill('SIGTERM');backend.closeAllConnections();await new Promise(resolve=>backend.close(resolve));
