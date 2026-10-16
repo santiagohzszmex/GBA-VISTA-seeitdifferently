@@ -1,0 +1,9 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "workspace-lapis-spike",
+  "main": "binding-worker.mjs",
+  "compatibility_date": "2026-10-13",
+  "account_id": "4334afb560574c76fa5054127dcd9b0b",
+  "images": { "binding": "IMAGES", "remote": true },
+  "observability": { "enabled": false }
+}
