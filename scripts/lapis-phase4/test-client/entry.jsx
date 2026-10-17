@@ -6,6 +6,7 @@ history.replaceState(null,'','?workspace-preview=1&lapis-preview=1');
 const originalFetch=window.fetch.bind(window),records=JSON.parse(localStorage.getItem('lapis-test-metrics')||'[]');
 window.fetch=async(input,options={})=>{
  const url=new URL(typeof input==='string'?input:input.url,location.href);
+ if(url.protocol==='ipc:'||url.origin==='http://ipc.localhost')return originalFetch(input,options);
  if(url.origin!==location.origin)throw Error('La prueba aislada bloquea conexiones externas.');
  if(url.pathname==='/__lapis/metrics'){
   const event=JSON.parse(options.body);records.push({...event,timestamp:new Date().toISOString(),network:localStorage.getItem('lapis-slow')==='1'?'limited-5.24Mbps':'local-bundle'});
