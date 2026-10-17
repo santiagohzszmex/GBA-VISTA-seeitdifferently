@@ -62,6 +62,8 @@ El PNG de 90 bytes con IHDR válida y zlib dañado pasó correctamente sólo la 
 
 En el navegador, `onload` llegó a aceptar ese raster y mostrar una imagen vacía. Se corrigió el visor con verificación estricta del flujo PNG en un Worker del navegador, memoria por filas y cancelación. Ahora muestra **«No se pudo mostrar la imagen; descarga el original para revisarlo»**, ofrece descarga y permite pedir cambios con motivo. Se comprobó también que el PNG válido sigue visible. La garantía del servidor sigue siendo **cabecera**, no raster certificado. Animación completa, archivos nativos reales y conservación de EXIF/GPS real siguen pendientes de las muestras de ilustradores.
 
+La misma comprobación se aplica antes de marcar «Decodificación local» al seleccionar un PNG, para evitar un falso «Cumplido» de un decoder permisivo. Una prueba dirigida pasó: raster inválido, archivos sin SHA comprobados por separado, caché de SHA validado, cancelación y ausencia de la afirmación falsa de decodificación. Sigue permitiéndose conservar/subir el original con aviso para revisión; no se modifica su contenido.
+
 Los ocho ajustes visuales solicitados quedaron aplicados: ayuda concreta, metadatos comprensibles, sin v0, explicación de capas, zona de archivo con vista local, interruptor claro, espaciado uniforme y nota breve con barra sólo al enfocarla. Las notas no ofrecen imagen ni tabla. Guardar la hidratación del editor ya no marca cambios falsos.
 
 ## E. CPU y decisión de infraestructura

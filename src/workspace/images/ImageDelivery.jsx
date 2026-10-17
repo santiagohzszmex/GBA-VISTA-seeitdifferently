@@ -14,7 +14,7 @@ function UploadSlot({role,task,policy,spec,api,actorId,asset,onAsset,onClient,on
  useEffect(()=>{alive.current=true;api('plan.get',task,{role}).then(setResume).catch(()=>{});return()=>{alive.current=false;controller.current?.abort();};},[task.id,actorId,role]);
  async function send(selected=file){if(!selected)return;controller.current=new AbortController();setWorking(true);onWorking(true);setError('');setProgress({received:0,total:selected.size,state:'checking'});last.current=selected;
   try{
-   const format=validateSelection(selected,role,policy,spec),client=role==='png'?await inspectClientPng(selected,policy):null;
+   const format=validateSelection(selected,role,policy,spec),client=role==='png'?await inspectClientPng(selected,policy,{signal:controller.current.signal}):null;
    if(controller.current.signal.aborted)throw new DOMException('Pausado','AbortError');
    if(role==='png'){onClient(client);onLocal(selected);}
    const result=await api('upload',task,{file:selected,role,format,client,signal:controller.current.signal,onProgress:p=>{if(alive.current)setProgress(p);}});

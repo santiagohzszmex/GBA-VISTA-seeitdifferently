@@ -2,7 +2,7 @@ name: Lapislazuli isolated Windows test
 on:
   push:
     branches: [codex/workspace-1-7-0-phase-4]
-    paths: ['.github/workflows/workspace-lapis-test.yml', 'scripts/lapis-phase4/test-client/**', 'src-tauri/tauri.lapis-test.json']
+    paths: ['.github/workflows/workspace-lapis-test.yml', 'scripts/lapis-phase4/test-client/**', 'src-tauri/tauri.lapis-test.json', 'src/workspace/images/**']
   workflow_dispatch:
 permissions:
   contents: read

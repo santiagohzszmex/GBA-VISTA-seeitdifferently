@@ -1,4 +1,5 @@
 import {inspectPngHeader} from '../../../cloudflare/workspace-originals/images/pngHeader.mjs';
+import {verifyDisplayPng} from './displayPng.mjs';
 export const LAYER_FORMATS={psd:'PSD',tiff:'TIFF',kra:'KRA',procreate:'PROCREATE',afphoto:'AFPHOTO',clip:'CLIP'};
 export const emptyNote=()=>({type:'doc',attrs:{schemaVersion:2},content:[{type:'paragraph'}]});
 export const fileSize=n=>n>=1048576?`${(n/1048576).toLocaleString('es-MX',{maximumFractionDigits:1})} MiB`:`${Math.ceil((n||0)/1024)} KiB`;
@@ -24,11 +25,12 @@ export async function hashFile(file,{signal,onProgress=()=>{}}={}){
   worker.onmessage=({data})=>{if(data.error)finish(reject,Error(data.error));else if(data.sha256)finish(resolve,data.sha256);else onProgress(data);};worker.onerror=()=>finish(reject,Error('No se pudo calcular la huella del original.'));worker.postMessage({file});
  });hashes.set(file,value);return value;
 }
-export async function inspectClientPng(file,policy){
+export async function inspectClientPng(file,policy,{signal}={}){
  const header=await inspectPngHeader(file,policy);let decoded=false,has_transparency=null,color_profile='sin perfil declarado',url;
  // Only recognize the presence/type of a color declaration; never read EXIF/GPS.
  for(let at=33,count=0;at+8<file.size&&count++<1024;){const b=new Uint8Array(await file.slice(at,at+8).arrayBuffer()),v=new DataView(b.buffer),type=new TextDecoder().decode(b.subarray(4));if(['IDAT','IEND'].includes(type))break;if(type==='sRGB')color_profile='sRGB';if(type==='iCCP')color_profile='perfil incorporado (sin interpretar)';const size=v.getUint32(0);if(size>file.size-at-12)break;at+=12+size;}
  try{
+  await verifyDisplayPng(file,null,{signal});
   url=URL.createObjectURL(file);const image=new Image();image.src=url;await new Promise((yes,no)=>{image.onload=yes;image.onerror=no;});
   if(image.naturalWidth!==header.width||image.naturalHeight!==header.height)throw Error('Dimensiones locales distintas');
   const canvas=document.createElement('canvas');canvas.width=header.width;canvas.height=Math.min(128,header.height);const context=canvas.getContext('2d',{willReadFrequently:true});if(!context)throw Error('Canvas no disponible');has_transparency=false;
