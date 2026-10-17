@@ -1,5 +1,7 @@
 # Workspace 1.7.0 Lapislázuli · Fase 4
 
+> Continuación del 17 octubre: [A/B, lista permitida, memoria y red real](../phase4-followup/INFORME.md). E sigue bloqueada por las partes; las cifras de este informe son la evidencia histórica original.
+
 Verificación: 16 de octubre de 2026; compilación Windows e informe final: 17 de octubre, America/Mexico_City. Trabajo en `codex/workspace-1-7-0-phase-4`, checkout temporal. Esta fase no publica cambios en producción, las descargas ni la base pública 1.5.0. **El piloto todavía no debe activarse.**
 
 | Compuerta | Estado | Evidencia y límite |

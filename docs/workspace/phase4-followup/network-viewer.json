@@ -1,0 +1,81 @@
+{
+  "source": "WKWebView native isolated app; signed links from deployed test Worker and original bytes fetched directly from R2 through Worker, no loopback image proxy",
+  "assets": [
+    {
+      "id": "feeb0862-a732-493a-8070-77fea2d89e33",
+      "file_name": "SYNTHETIC-original.png",
+      "size_bytes": 5726086,
+      "sha256": "9cf329c273d4268f51d6ac573653129068bbaa86bb4ab37bc839fc1912ae48fb",
+      "width": 4000,
+      "height": 5000
+    },
+    {
+      "id": "54815404-f45e-44bf-bd25-293f2e8c0cec",
+      "file_name": "SYNTHETIC-distinct.png",
+      "size_bytes": 11156699,
+      "sha256": "95da33d1e715ce2a691a1d98c1bac589f04ce4f236f65167eb1eb06a4d83e15c",
+      "width": 4000,
+      "height": 5000
+    }
+  ],
+  "events": [
+    {
+      "platform": "macos-native",
+      "asset": "feeb0862-a732-493a-8070-77fea2d89e33",
+      "bytes": 5726086,
+      "width": 4000,
+      "height": 5000,
+      "event": "visible",
+      "milliseconds": 1795,
+      "firstByte": 664,
+      "cached": false,
+      "memory": null,
+      "network": "deployed-R2",
+      "timestamp": "2026-10-17T12:29:27.044Z"
+    },
+    {
+      "platform": "macos-native",
+      "asset": "54815404-f45e-44bf-bd25-293f2e8c0cec",
+      "bytes": 11156699,
+      "width": 4000,
+      "height": 5000,
+      "event": "visible",
+      "milliseconds": 1953,
+      "firstByte": 578,
+      "cached": false,
+      "memory": null,
+      "network": "deployed-R2",
+      "timestamp": "2026-10-17T12:29:45.791Z"
+    },
+    {
+      "platform": "macos-native",
+      "asset": "feeb0862-a732-493a-8070-77fea2d89e33",
+      "bytes": 5726086,
+      "width": 4000,
+      "height": 5000,
+      "event": "visible",
+      "milliseconds": 595,
+      "firstByte": null,
+      "cached": true,
+      "memory": null,
+      "network": "deployed-R2",
+      "timestamp": "2026-10-17T12:32:09.434Z"
+    },
+    {
+      "platform": "macos-native",
+      "asset": "feeb0862-a732-493a-8070-77fea2d89e33",
+      "bytes": 5726086,
+      "width": 4000,
+      "height": 5000,
+      "event": "visible",
+      "milliseconds": 10129,
+      "firstByte": 808,
+      "cached": false,
+      "memory": null,
+      "network": "deployed-R2+stream-limit-5.24Mbps",
+      "timestamp": "2026-10-17T12:33:02.251Z"
+    }
+  ],
+  "limits": "Limited test paces the real response stream at 65536 bytes/100ms in the test client; not OS traffic shaping. SHA validation remains enabled; the raster-validity cache for the same SHA was warm in limited and cache measurements. 16GiB debug only.",
+  "approx_transfer_floor_ms": 8737
+}

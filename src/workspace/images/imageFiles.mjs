@@ -26,18 +26,18 @@ export async function hashFile(file,{signal,onProgress=()=>{}}={}){
  });hashes.set(file,value);return value;
 }
 export async function inspectClientPng(file,policy,{signal}={}){
- const header=await inspectPngHeader(file,policy);let decoded=false,has_transparency=null,color_profile='sin perfil declarado',url;
+ const header=await inspectPngHeader(file,policy);let decoded=false,has_transparency=null,color_profile='sin perfil declarado',animation='none',url;
  // Only recognize the presence/type of a color declaration; never read EXIF/GPS.
  for(let at=33,count=0;at+8<file.size&&count++<1024;){const b=new Uint8Array(await file.slice(at,at+8).arrayBuffer()),v=new DataView(b.buffer),type=new TextDecoder().decode(b.subarray(4));if(['IDAT','IEND'].includes(type))break;if(type==='sRGB')color_profile='sRGB';if(type==='iCCP')color_profile='perfil incorporado (sin interpretar)';const size=v.getUint32(0);if(size>file.size-at-12)break;at+=12+size;}
  try{
-  await verifyDisplayPng(file,null,{signal});
+  const info=await verifyDisplayPng(file,null,{signal});animation=info?.animation||'none';
   url=URL.createObjectURL(file);const image=new Image();image.src=url;await new Promise((yes,no)=>{image.onload=yes;image.onerror=no;});
   if(image.naturalWidth!==header.width||image.naturalHeight!==header.height)throw Error('Dimensiones locales distintas');
   const canvas=document.createElement('canvas');canvas.width=header.width;canvas.height=Math.min(128,header.height);const context=canvas.getContext('2d',{willReadFrequently:true});if(!context)throw Error('Canvas no disponible');has_transparency=false;
   for(let y=0;y<header.height;y+=canvas.height){const rows=Math.min(canvas.height,header.height-y);context.clearRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,y,header.width,rows,0,0,header.width,rows);const rgba=context.getImageData(0,0,header.width,rows).data;for(let i=3;i<rgba.length;i+=4)if(rgba[i]<255){has_transparency=true;break;}if(has_transparency)break;await new Promise(resolve=>setTimeout(resolve,0));}
   canvas.width=canvas.height=0;decoded=true;
  }catch{has_transparency=null;}finally{if(url)URL.revokeObjectURL(url);}
- return {...header,decoded,has_transparency,color_profile};
+ return {...header,decoded,has_transparency,color_profile,animation};
 }
 export function qualityChecks(asset,spec,client){
  const checks=[

@@ -15,7 +15,7 @@
     "test:session": "node tests/session.test.mjs",
     "test:home": "node tests/home.test.mjs",
     "test:recruitment": "node tests/recruitment.test.mjs",
-    "test:workspace": "node tests/workspace.test.mjs && node tests/identity-gateway.test.mjs && node tests/editor-compatibility.test.mjs && node tests/workflow-demo.test.mjs && node tests/people-model.test.mjs && node tests/reference-originals.test.mjs && node tests/lapis-layered.test.mjs && node tests/lapis-png.test.mjs && node tests/lapis-image-client.test.mjs && node tests/lapis-zip.test.mjs && node tests/lapis-phase4-files.test.mjs && node tests/lapis-display.test.mjs && node tests/support-demo.test.mjs && node tests/reference-categories.test.mjs && node tests/editor-placement.test.mjs",
+    "test:workspace": "node tests/workspace.test.mjs && node tests/identity-gateway.test.mjs && node tests/editor-compatibility.test.mjs && node tests/workflow-demo.test.mjs && node tests/people-model.test.mjs && node tests/reference-originals.test.mjs && node tests/lapis-layered.test.mjs && node tests/lapis-png.test.mjs && node tests/lapis-image-client.test.mjs && node tests/lapis-zip.test.mjs && node tests/lapis-phase4-files.test.mjs && node tests/lapis-display.test.mjs && node tests/lapis-cpu-ab.test.mjs && node tests/support-demo.test.mjs && node tests/reference-categories.test.mjs && node tests/editor-placement.test.mjs",
     "workspace:dev": "vite --config vite.workspace.config.js",
     "workspace:build": "vite build --config vite.workspace.config.js",
     "desktop:dev": "tauri dev",

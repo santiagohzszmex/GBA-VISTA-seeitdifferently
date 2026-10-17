@@ -1,0 +1,68 @@
+{
+  "tool": "macOS footprint, physical footprint bytes / 1048576",
+  "closed_app": {
+    "attributable_MiB": 0,
+    "confirmation": "Host, WebContent and GPU PIDs all exited; other apps unchanged."
+  },
+  "pid_assignment": "Processes present immediately after launching the isolated bundle and absent from the process inventory with that app closed.",
+  "samples": [
+    {
+      "state": "empty",
+      "processes": [
+        {
+          "name": "gba-workspace",
+          "MiB": 44.89
+        },
+        {
+          "name": "com.apple.WebKit.WebContent",
+          "MiB": 37.95
+        },
+        {
+          "name": "com.apple.WebKit.GPU",
+          "MiB": 14.47
+        }
+      ],
+      "sum_MiB": 97.32,
+      "footprint_deduplicated_MiB": 97.07
+    },
+    {
+      "state": "one",
+      "processes": [
+        {
+          "name": "com.apple.WebKit.WebContent",
+          "MiB": 125.66
+        },
+        {
+          "name": "gba-workspace",
+          "MiB": 51.14
+        },
+        {
+          "name": "com.apple.WebKit.GPU",
+          "MiB": 42.61
+        }
+      ],
+      "sum_MiB": 219.41,
+      "footprint_deduplicated_MiB": 219.16
+    },
+    {
+      "state": "two",
+      "processes": [
+        {
+          "name": "com.apple.WebKit.WebContent",
+          "MiB": 167.99
+        },
+        {
+          "name": "gba-workspace",
+          "MiB": 60.59
+        },
+        {
+          "name": "com.apple.WebKit.GPU",
+          "MiB": 54.02
+        }
+      ],
+      "sum_MiB": 282.6,
+      "footprint_deduplicated_MiB": 282.35
+    }
+  ],
+  "scope": "Isolated debug app, production ImageViewer/cache/raster-validation components. 16 GiB Mac, not whole Workspace shell nor 8 GiB qualification."
+}

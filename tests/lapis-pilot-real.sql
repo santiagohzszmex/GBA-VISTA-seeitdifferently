@@ -1,0 +1,42 @@
+-- ISOLATED SUPABASE ONLY, all additions and policy/key changes roll back.
+begin;
+create temp table lapis_pilot_result(checks integer);
+do $$declare p constant uuid:='3ce22cdc-0fb7-4daa-abbd-4da77f39e5d9';other constant uuid:='06b1a72c-c851-4f25-903e-ffda9e81251a';
+ direction constant uuid:='86000000-0000-4000-8000-000000000001';contributor constant uuid:='86000000-0000-4000-8000-000000000002';
+ claims jsonb;area uuid;foreign_area uuid;unit uuid;fresh jsonb;foreign_task jsonb;upload jsonb;b jsonb;before_b jsonb;asset uuid;checks integer:=0;
+begin
+ select unit_id into unit from public.workspace_projects where id=p;
+ select id into area from public.workspace_areas where project_id=p and specialty='art';
+ select id into foreign_area from public.workspace_areas where project_id=other and specialty='art';
+ update workspace_private.upload_policy set images_enabled=true,image_project_ids=array[p] where singleton;
+ select jsonb_build_object('sub',direction,'session_id',id) into claims from auth.sessions where user_id=direction order by created_at desc limit 1;
+ perform set_config('request.jwt.claims',claims::text,true);execute 'set local role authenticated';
+ fresh:=public.workspace_command('task.create',jsonb_build_object('unit_id',unit,'project_id',p,'area_id',area,'title','SYNTHETIC allowlist transaction','responsible_id',contributor),null);
+ foreign_task:=public.workspace_command('task.create',jsonb_build_object('unit_id',unit,'project_id',other,'area_id',foreign_area,'title','SYNTHETIC denied edition','responsible_id',direction),null);
+ begin perform public.workspace_image_command('spec.save',(foreign_task->>'id')::uuid,'{}',(foreign_task->>'revision')::integer);raise exception 'Wrong edition accepted';exception when insufficient_privilege then checks:=checks+1;end;
+ fresh:=public.workspace_image_command('spec.save',(fresh->>'id')::uuid,'{}',(fresh->>'revision')::integer);
+ if fresh->>'kind'<>'image' then raise exception 'Allowed edition rejected';end if;checks:=checks+1;
+ execute 'reset role';
+ -- Known test-only key scoped to this transaction; no persistent credential change.
+ update workspace_private.original_limits set gateway_key_hash=encode(extensions.digest('transaction-only-pilot-test','sha256'),'hex') where singleton;
+ select jsonb_build_object('sub',contributor,'session_id',id) into claims from auth.sessions where user_id=contributor order by created_at desc limit 1;
+ perform set_config('request.jwt.claims',claims::text,true);execute 'set local role authenticated';
+ upload:=public.workspace_image_storage('open',jsonb_build_object('deliverable_id',fresh->>'id','request_id',gen_random_uuid(),'format','png','role','png','file_name','SYNTHETIC.png','size_bytes',100,'sha256',repeat('c',64)),'transaction-only-pilot-test');
+ if upload->>'id' is null then raise exception 'Open rejected';end if;checks:=checks+1;
+ before_b:=public.workspace_image_bundle(p);
+ execute 'reset role';update workspace_private.upload_policy set image_project_ids='{}' where singleton;execute 'set local role authenticated';
+ begin perform public.workspace_image_storage('open',jsonb_build_object('deliverable_id',fresh->>'id'),'transaction-only-pilot-test');raise exception 'Open after removal allowed';exception when insufficient_privilege then checks:=checks+1;end;
+ begin perform public.workspace_image_storage('lock',jsonb_build_object('session_id',upload->>'id','operation','part'),'transaction-only-pilot-test');raise exception 'Resume after removal allowed';exception when insufficient_privilege then checks:=checks+1;end;
+ begin perform public.workspace_image_storage('verified',jsonb_build_object('session_id',upload->>'id'),'transaction-only-pilot-test');raise exception 'Finish after removal allowed';exception when insufficient_privilege then checks:=checks+1;end;
+ begin perform public.workspace_image_command('draft.save',(fresh->>'id')::uuid,'{}',0);raise exception 'Draft after removal allowed';exception when insufficient_privilege then checks:=checks+1;end;
+ b:=public.workspace_image_bundle(p);
+ if (b->>'uploads_enabled')::boolean or not (b->>'enabled')::boolean or b->'versions'<>before_b->'versions' or b->'assets'<>before_b->'assets' or b->'drafts'<>before_b->'drafts' then raise exception 'Retained read changed';end if;checks:=checks+1;
+ select key::uuid into asset from jsonb_each(b->'assets') where value->>'status'='validated' limit 1;
+ if not (public.workspace_image_file(jsonb_build_object('asset_id',asset,'operation','original'),'transaction-only-pilot-test')->>'available')::boolean then raise exception 'Original read rejected';end if;checks:=checks+1;
+ execute 'reset role';update workspace_private.upload_policy set images_enabled=false where singleton;execute 'set local role authenticated';
+ b:=public.workspace_image_bundle(p);
+ if (b->>'uploads_enabled')::boolean or b->'assets'<>before_b->'assets' or b->'versions'<>before_b->'versions' then raise exception 'Global pause lost reads';end if;checks:=checks+1;
+ execute 'reset role';insert into lapis_pilot_result values(checks);
+end;$$;
+select checks,'Postgres real, test project only; rolled back' as scope from lapis_pilot_result;
+rollback;

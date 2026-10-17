@@ -9,7 +9,7 @@ const un64=s=>Uint8Array.from(atob(s.replaceAll('-','+').replaceAll('_','/')),x=
 function publicSession(s){return {id:s.id,asset_id:s.asset.id,deliverable_id:s.asset.deliverable_id,state:s.state,size_bytes:s.asset.size_bytes,sha256:s.asset.sha256,file_name:s.asset.file_name,format:s.asset.format,role:s.asset.role,verification:s.asset.verification,width:s.asset.width,height:s.asset.height,received_bytes:s.received_bytes,parts:s.parts.map(({partNumber,size_bytes,sha256})=>({partNumber,size_bytes,sha256})),expires_at:s.expires_at,part_bytes:s.policy.part_bytes,preview_state:s.preview_state||'pending'};}
 function rangeFile(bucket,asset){return {size:asset.size_bytes,slice(start,end){start=Math.max(0,Math.min(start,asset.size_bytes));end=Math.max(start,Math.min(end,asset.size_bytes));return {async arrayBuffer(){const size=end-start;if(size<=0)return new ArrayBuffer(0);const obj=await bucket.get(asset.object_key,{range:{offset:start,length:size}});if(!obj?.body)throw problem('Original no disponible.',502);const bytes=await obj.arrayBuffer();if(bytes.byteLength!==size)throw problem('Original truncado.',502);return bytes;}};}};}
 function missingUpload(error){return error?.code==='NoSuchUpload'||/NoSuchUpload|multipart upload (does not exist|has been aborted|was not found)/i.test(error?.message||'');}
-export function createImageGateway({fetcher=fetch,logger=console,processorFactory=env=>cloudflareProcessor(env.IMAGES),digestFactory=()=>new crypto.DigestStream('SHA-256'),fixedLength=n=>new FixedLengthStream(n),now=()=>Date.now()}={}){
+export function createImageGateway({completionHash=null,fetcher=fetch,logger=console,processorFactory=env=>cloudflareProcessor(env.IMAGES),digestFactory=()=>new crypto.DigestStream('SHA-256'),fixedLength=n=>new FixedLengthStream(n),now=()=>Date.now()}={}){
  async function hashStream(stream,expected){const digest=digestFactory(),writer=digest.getWriter(),reader=stream.getReader();let size=0;digest.digest.catch(()=>{});
   try{while(true){const n=await reader.read();if(n.done)break;size+=n.value.length;if(size>expected)throw problem('El tamaño del original no coincide.');await writer.write(n.value);}if(size!==expected)throw problem('El tamaño del original no coincide.');await writer.close();return hex(await digest.digest);}catch(error){await writer.abort(error).catch(()=>{});await reader.cancel().catch(()=>{});throw error;}}
  function rpcFor(env,bearer){return async(name,data)=>{
@@ -121,8 +121,8 @@ export function createImageGateway({fetcher=fetch,logger=console,processorFactor
     let object=await env.ORIGINALS.head(s.asset.object_key);
     if(!object)object=await env.ORIGINALS.resumeMultipartUpload(s.asset.object_key,s.upload_id).complete(s.parts.map(({partNumber,etag})=>({partNumber,etag})));
     if(object.size!==s.asset.size_bytes)throw problem('El tamaño del original no coincide.');
-    const original=await env.ORIGINALS.get(s.asset.object_key);if(!original?.body)throw problem('Original no disponible.',502);
-    const sha256=await hashStream(original.body,s.asset.size_bytes);if(sha256!==s.asset.sha256)throw problem('La integridad del original no coincide.');
+    const verifyFull=async()=>{const original=await env.ORIGINALS.get(s.asset.object_key);if(!original?.body)throw problem('Original no disponible.',502);return hashStream(original.body,s.asset.size_bytes);};
+    const sha256=completionHash?await completionHash({request,env,asset:s.asset,verifyFull}):await verifyFull();if(sha256!==s.asset.sha256)throw problem('La integridad del original no coincide.');
     let info;
     try{if(s.asset.role==='png')info=await inspectPngHeader(rangeFile(env.ORIGINALS,s.asset),s.policy);else info=await inspectLayered(rangeFile(env.ORIGINALS,s.asset),s.asset.format,s.policy);}
     catch(error){throw problem(error.message);}
