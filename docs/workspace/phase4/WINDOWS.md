@@ -6,6 +6,8 @@ Este paquete es una demostración sintética, sin inicio de sesión, conexión a
 
 Workflow `.github/workflows/workspace-lapis-test.yml`, rama de Fase 4. Se ejecuta al subir este workflow a esa rama y permite repetición manual. Sólo produce un artefacto de Actions durante siete días; no crea releases ni toca las descargas públicas. Santiago autorizó subir la rama y compilarlo. No declarar listo el paquete hasta comprobar el resultado del job y su SHA-256.
 
+**Paquete compilado el 17 de octubre de 2026:** [Actions, ejecución 39030323475](https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/actions/runs/39030323475), commit `edc550d8aee337b519e0af9d85e09b5959ff7908`, resultado `success`. Ejecutable de 28.088.320 bytes, SHA-256 comprobado tras descargarlo: `6fdfebdfb3dd80506c16c13ff072f0bc8951476e55cf3d561ee7b45c9178f38c`. El artefacto de GitHub caduca el 24 de octubre; la copia local se conserva. La ejecución y las mediciones en Windows todavía no están hechas.
+
 ## Prueba de Santiago
 
 1. Descarga y extrae `Workspace-Lapislazuli-Windows-TEST`. Comprueba `SHA256.txt` con `Get-FileHash .\Workspace-Lapis-Test.exe -Algorithm SHA256` en PowerShell.

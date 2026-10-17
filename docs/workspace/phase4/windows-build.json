@@ -1,0 +1,23 @@
+{
+  "run": 39030323475,
+  "url": "https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/actions/runs/39030323475",
+  "sourceCommit": "edc550d8aee337b519e0af9d85e09b5959ff7908",
+  "conclusion": "success",
+  "artifact": "Workspace-Lapislazuli-Windows-TEST",
+  "exeBytes": 28088320,
+  "exeSHA256": "6fdfebdfb3dd80506c16c13ff072f0bc8951476e55cf3d561ee7b45c9178f38c",
+  "manifestMatches": true,
+  "windowsExecution": "not performed",
+  "files": [
+    "LEEME.md",
+    "SHA256.txt",
+    "SYNTHETIC.afphoto",
+    "Workspace-Lapis-Test.exe",
+    "corrupt-raster.png",
+    "corrupt.png",
+    "hash-wasm-LICENSE.txt",
+    "original.png",
+    "too-large.png",
+    "unsupported.svg"
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "deviceRAMBytes": 17179869184,
+  "nativeApp": "software.gba.workspace.lapisdev",
+  "source": "DEV synthetic WKWebView observations; loopback, not Internet",
+  "limitations": [
+    "pre-fix slow-network sample",
+    "same PNG SHA reused in comparison",
+    "host RSS excludes WebKit/GPU",
+    "no conclusive pan sample",
+    "no 8 GiB device"
+  ],
+  "observations": [
+    {
+      "platform": "macos-native",
+      "asset": "lapis-original-2",
+      "bytes": 5726086,
+      "width": 4000,
+      "height": 5000,
+      "event": "visible",
+      "milliseconds": 9188,
+      "firstByte": 127,
+      "cached": false,
+      "memory": null,
+      "network": "limited-5.24Mbps",
+      "timestamp": "2026-10-17T02:25:43.193Z"
+    },
+    {
+      "platform": "macos-native",
+      "asset": "lapis-original-2",
+      "bytes": 5726086,
+      "width": 4000,
+      "height": 5000,
+      "event": "visible",
+      "milliseconds": 724,
+      "firstByte": null,
+      "cached": true,
+      "memory": null,
+      "network": "loopback-unlimited",
+      "timestamp": "2026-10-17T02:43:42.055Z"
+    },
+    {
+      "platform": "macos-native",
+      "asset": "lapis-original-2",
+      "bytes": 5726086,
+      "width": 4000,
+      "height": 5000,
+      "event": "visible",
+      "milliseconds": 466,
+      "firstByte": 20,
+      "cached": false,
+      "memory": null,
+      "network": "loopback-unlimited",
+      "timestamp": "2026-10-17T02:44:25.222Z"
+    },
+    {
+      "platform": "macos-native",
+      "asset": "lapis-original-1",
+      "bytes": 5726086,
+      "width": 4000,
+      "height": 5000,
+      "event": "visible",
+      "milliseconds": 4,
+      "firstByte": null,
+      "cached": true,
+      "memory": null,
+      "network": "loopback-unlimited",
+      "timestamp": "2026-10-17T02:44:32.742Z"
+    },
+    {
+      "platform": "macos-native",
+      "asset": "lapis-original-2",
+      "bytes": 5726086,
+      "width": 4000,
+      "height": 5000,
+      "event": "zoom",
+      "frames": 60,
+      "frameP95ms": 18,
+      "frameMaxMs": 28,
+      "framesOver33ms": 0,
+      "comparing": true,
+      "memory": null,
+      "network": "loopback-unlimited",
+      "timestamp": "2026-10-17T02:44:33.922Z"
+    }
+  ]
+}

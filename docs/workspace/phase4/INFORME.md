@@ -1,12 +1,12 @@
 # Workspace 1.7.0 Lapislázuli · Fase 4
 
-Fecha: 16 de octubre de 2026, America/Mexico_City. Trabajo en `codex/workspace-1-7-0-phase-4`, checkout temporal. Producción, las descargas y la base pública 1.5.0 permanecen sin cambios. **El piloto todavía no debe activarse.**
+Verificación: 16 de octubre de 2026; compilación Windows e informe final: 17 de octubre, America/Mexico_City. Trabajo en `codex/workspace-1-7-0-phase-4`, checkout temporal. Esta fase no publica cambios en producción, las descargas ni la base pública 1.5.0. **El piloto todavía no debe activarse.**
 
 | Compuerta | Estado | Evidencia y límite |
 |---|---|---|
 | A · entorno real | Superada | Supabase separado, Auth real, Worker desplegado y R2 privado de prueba. Sin contratar planes. |
 | B · migraciones y permisos | Superada para el alcance ejecutado | Cinco migraciones y una corrección adicional aplicadas en Postgres 17.11; 36 comprobaciones con JWT/PostgREST/R2 reales, más ensayo SQL de desactivación y cinco pasos de reversión. No equivale a ejecutar las 770 aserciones locales en Postgres remoto. |
-| C · dispositivos | Pendiente de datos | macOS medido; Windows aún por compilar/ejecutar, memoria total de WebKit y equipo de 8 GB sin medición completa. |
+| C · dispositivos | Pendiente de datos | macOS medido y Windows compilado; faltan su ejecución real, memoria total de WebKit y equipo de 8 GB. |
 | D · archivos | Pendiente de datos | Casos sintéticos y raster dañado comprobados; faltan archivos reales de ilustradores. Límites provisionales. |
 | E · CPU | **No superada** | Finalización del PNG típico: **47 ms CPU**; cercano al límite: **184 ms CPU**. Plan actual Free: 10 ms por solicitud. |
 
@@ -15,6 +15,7 @@ Fecha: 16 de octubre de 2026, America/Mexico_City. Trabajo en `codex/workspace-1
 Supabase `ojlcttpqkyktqpqybbdy` (`workspace-lapis-phase4-test`), organización GBA-SYSTEM, región us-east-2. Se verificó costo mensual 0 antes de crearlo. Se copiaron definiciones de 104 tablas, 274 funciones, índices, restricciones, RLS y permisos de los tres esquemas de aplicación, **sin usuarios, documentos ni contenido de producción**. Se sembraron únicamente la unidad GIMG, reglas estáticas y seis identidades ficticias. Los rangos GIMG siguen separados del rango general GBA; los perfiles ordinarios usan `rol = NULL`.
 
 Worker y bucket: `workspace-lapis-phase4-test`. Versión desplegada `d4c8b68a-ae84-44c0-aa1d-1534b3a2f0de`. El nombre «Production» que usa Cloudflare para su entorno predeterminado corresponde a **este Worker de prueba**, no al Worker operativo de Workspace. [Montaje y retirada](ENTORNO.md).
+
 
 ## B. Base real y diferencias con PGlite
 
@@ -52,7 +53,7 @@ La caché nativa realmente existe bajo el identificador de prueba y su archivo c
 
 Memoria observada del proceso anfitrión: **113.392 KiB RSS**, excluyendo procesos WebKit/GPU. WKWebView no expone `performance.memory`: **no hay cifra válida de memoria total ni de dos originales distintos**. El arrastre no produjo una muestra instrumentada concluyente. No se dispone de equipo de 8 GB.
 
-El cierre nativo durante preparación/subida mostró «¿Cerrar la entrega?» y «Seguir trabajando / Pausar y cerrar». Se comprobó continuar; no se declara probado cerrar, relanzar y reanudar una sesión real de red en macOS. [Capturas](../screenshots/phase4/README.md). [Paquete e instrucciones Windows](WINDOWS.md): identidad aparte, sin conexión externa ni actualizador; la simulación de subida no cuenta como prueba R2. Compilación pendiente de completar la autorización de GitHub CLI.
+El cierre nativo durante preparación/subida mostró «¿Cerrar la entrega?» y «Seguir trabajando / Pausar y cerrar». Se comprobó continuar; no se declara probado cerrar, relanzar y reanudar una sesión real de red en macOS. [Capturas](../screenshots/phase4/README.md). [Paquete e instrucciones Windows](WINDOWS.md): identidad aparte, sin conexión externa ni actualizador; la simulación de subida no cuenta como prueba R2. La [compilación del commit edc550d](https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/actions/runs/39030323475) terminó correctamente. Se descargaron diez archivos y se verificó el ejecutable de **28.088.320 bytes** contra su manifiesto SHA-256. [Resultado](windows-build.json). No se ejecutó Windows desde esta Mac.
 
 ## D. Archivos y fallos
 
