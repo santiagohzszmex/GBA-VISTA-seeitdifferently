@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {UPDATE_TARGETS,REPOSITORY,verifyCandidate,buildUpdateManifest} from './workspace-update-manifest.mjs';
+import {UPDATE_TARGETS,REPOSITORY,verifyCandidate,buildUpdateManifest,assertLegacyPublisherEndpoint} from './workspace-update-manifest.mjs';
 import {verifyDatabaseAcceptance} from './workspace-database-acceptance.mjs';
 import {buildReleaseManifest} from './workspace-release-manifest.mjs';
 import {verifyPresentationAcceptance} from './workspace-identity-acceptance.mjs';
@@ -20,6 +20,7 @@ if(!/^\d+$/.test(runId||'')||!notesPath)throw Error('Usage: npm run desktop:publ
 const gh=args=>execFileSync('gh',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:180000});
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const config=JSON.parse(await fs.readFile('src-tauri/tauri.conf.json','utf8'));
+assertLegacyPublisherEndpoint(config);
 const baseManifest=await fs.readFile('public/gba/workspace/releases.json','utf8');
 if(JSON.parse(baseManifest).version!=='1.5.0')throw Error('Public base must remain Workspace 1.5.0');
 const release=JSON.parse(await fs.readFile('src/workspace/releaseInfo.json','utf8'));

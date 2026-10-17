@@ -10,7 +10,7 @@ Fecha sin hora: 23:59 en America/Mexico_City; las horas explícitas existentes s
 
 Las imágenes están habilitadas en todas las ediciones no archivadas de GIMG y en las nuevas: `images_enabled=true`, `images_all_projects=true`, lista de piloto vacía, derivados apagados. No concede roles, membresías ni permiso de entrega por sí mismo. Los permisos existentes se siguen verificando en servidor. Límites provisionales: PNG 18 MiB, capas 250 MiB, 40 MP y capacidad de la aplicación de 10 GB. Workers Paid no elimina estos límites.
 
-Worker sin cambios respecto a 1.7.0: `937db032-73c4-43e2-87d7-4d218618cddc`, ruta B, SHA-256 completo, CPU máxima 1000 ms. La base pública 1.5.0 y el canal compartido de Cuarzo se conservan. Desde 1.7.0 macOS recibe 1.7.1 por su canal manual; desde Cuarzo el primer salto requiere instalar el DMG. Windows no se publica antes de la confirmación interactiva de Santiago.
+Worker sin cambios respecto a 1.7.0: `937db032-73c4-43e2-87d7-4d218618cddc`, ruta B, SHA-256 completo, CPU máxima 1000 ms. La base pública 1.5.0 y el canal compartido de Cuarzo se conservan. Desde 1.7.0 macOS recibe 1.7.1 por su canal manual. La corrección del canal anterior usa el puente 1.6.6.3 Cuarzo (PR #29): latest.json ofrece el puente y éste pasa a latest-{{target}}.json; Mac descubre entonces 1.7.1 y Windows conserva Cuarzo. Cada descarga e instalación requiere la acción del usuario. Windows no se publica antes de la confirmación interactiva de Santiago.
 
 Web: `dpl_DtYAuQsKpjjgwgJcwp7jRYqTyDCD`, https://gba.software/workspace/web/ . Cliente de fechas, GBA ID y manifiesto base verificados públicamente. No se crearon cuentas ni envíos ficticios en producción. No se generó acceso de bypass temporal para Vercel en esta actualización.
 
@@ -37,3 +37,5 @@ Conserva la migración aditiva y los datos; el cliente anterior sigue siendo com
 Pendientes humanos heredados de 1.7.0: recorrido real PNG → revisión y alerta de presupuesto de Cloudflare; comprobación interactiva Windows. No se declaran completados por el arranque de CI.
 
 macOS 1.7.1 publicado: https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/tag/workspace-v1.7.1-beta.1 . Canal `latest-darwin.json` verificado con versión nativa `1.7.100`, ARM e Intel; paquetes firmados para el actualizador y bytes públicos comprobados por el publicador. Instaladores beta sin notarización de Apple. CI de Windows correcta, pero su publicación sigue retenida hasta la prueba interactiva.
+
+Corrección de distribución: https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/pull/29 . El publicador general ahora rechaza configuraciones de canales por plataforma; latest.json queda reservado al puente para clientes antiguos. Esta corrección no reconstruye ni cambia los binarios publicados de 1.7.1.

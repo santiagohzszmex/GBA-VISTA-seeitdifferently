@@ -32,3 +32,7 @@ assert.deepEqual(Object.keys(macOnly.platforms),UPDATE_TARGETS.slice(0,2));
 assert.throws(()=>buildUpdateManifest({...input,requiredTargets:UPDATE_TARGETS.slice(0,2)}),/mismatched/);
 assert.throws(()=>buildUpdateManifest({...input,requiredTargets:['windows-x86_64']}),/scope/);
 console.log('PASS: separate macOS publication includes both architectures and excludes Windows.');
+const {assertLegacyPublisherEndpoint}=await import('../scripts/workspace-update-manifest.mjs');
+assert.doesNotThrow(()=>assertLegacyPublisherEndpoint({plugins:{updater:{endpoints:[`https://github.com/${REPOSITORY}/releases/download/workspace-updates/latest.json`]}}}));
+assert.throws(()=>assertLegacyPublisherEndpoint({plugins:{updater:{endpoints:[`https://github.com/${REPOSITORY}/releases/download/workspace-updates/latest-{{target}}.json`]}}}),/compatibility bridge/);
+console.log('PASS: platform releases cannot overwrite discovery for legacy clients.');
