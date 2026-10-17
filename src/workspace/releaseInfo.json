@@ -1,9 +1,9 @@
 {
-  "version": "1.6.6.2",
-  "nativeVersion": "1.6.602",
+  "version": "1.6.6.3",
+  "nativeVersion": "1.6.603",
   "codename": "Cuarzo",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Crea tu GBA ID desde Workspace",
-  "notice": "Workspace 1.6.6.2 Cuarzo añade la opción Crear GBA ID junto al inicio de sesión. Puedes crear tu cuenta sin correo, con un PIN y una frase de recuperación; tu equipo sigue autorizando el acceso a las ediciones."
+  "noticeTitle": "Actualizador conectado",
+  "notice": "Esta actualización conecta los canales de Workspace. En macOS, vuelve a buscar actualizaciones para descargar Lapislázuli 1.7.1 desde la app. En Windows continúas en Cuarzo. Cada descarga e instalación requiere tu acción; se conservan tus datos y tu sesión."
 }

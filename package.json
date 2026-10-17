@@ -20,7 +20,7 @@
     "workspace:build": "vite build --config vite.workspace.config.js",
     "desktop:dev": "tauri dev",
     "desktop:build": "node scripts/workspace-build.mjs",
-    "test:desktop": "node tests/license-clock.test.mjs && node tests/desktop-config.test.mjs && node tests/native-paths.test.mjs && node tests/native-build.test.mjs && node tests/release-manifest.test.mjs && node tests/manual-updates.test.mjs && node tests/update-manifest.test.mjs && node tests/database-acceptance.test.mjs && node tests/maintenance-updates.test.mjs && node tests/identity-acceptance.test.mjs && node tests/connector-maintenance-acceptance.test.mjs && node tests/workspace-165-release-acceptance.test.mjs && node tests/cuarzo-release-acceptance.test.mjs",
+    "test:desktop": "node tests/license-clock.test.mjs && node tests/desktop-config.test.mjs && node tests/native-paths.test.mjs && node tests/native-build.test.mjs && node tests/release-manifest.test.mjs && node tests/manual-updates.test.mjs && node tests/update-manifest.test.mjs && node tests/database-acceptance.test.mjs && node tests/maintenance-updates.test.mjs && node tests/identity-acceptance.test.mjs && node tests/connector-maintenance-acceptance.test.mjs && node tests/workspace-165-release-acceptance.test.mjs && node tests/cuarzo-release-acceptance.test.mjs && node tests/updater-bridge.test.mjs",
     "desktop:publish": "node scripts/workspace-publish-update.mjs",
     "test:r2-runtime": "node tests/reference-runtime.test.mjs",
     "r2:check": "wrangler deploy --config cloudflare/workspace-originals/wrangler.jsonc --dry-run"
