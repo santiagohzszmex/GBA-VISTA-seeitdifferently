@@ -57,7 +57,8 @@ async function main(){
   if(!publish){console.log(`Prepared ${tag}; no publication or installation.`);return;}
   assert.equal(sha(await get(FEED+'latest.json')),sha(previous),'Legacy feed changed during preparation');
   assert.equal(sha(await get(FEED+'latest-darwin.json')),sha(mac),'macOS feed changed during preparation');
-  gh(['release','create',tag,...files,path.join(folder,'packages.json'),path.join(folder,'acceptance.json'),'--repo',REPOSITORY,'--target',commit,'--draft','--prerelease','--title',`Workspace ${BRIDGE_DISPLAY} Cuarzo · puente del actualizador`,'--notes-file',path.join(folder,'release-notes.md')]);
+  // NSIS uses the same EXE for its installer and updater artifact.
+  gh(['release','create',tag,...new Set(files),path.join(folder,'packages.json'),path.join(folder,'acceptance.json'),'--repo',REPOSITORY,'--target',commit,'--draft','--prerelease','--title',`Workspace ${BRIDGE_DISPLAY} Cuarzo · puente del actualizador`,'--notes-file',path.join(folder,'release-notes.md')]);
   gh(['release','edit',tag,'--repo',REPOSITORY,'--draft=false']);
   for(const artifact of updates){const bytes=await get(artifact.url);assert.equal(bytes.length,artifact.size);assert.equal(sha(bytes),artifact.sha256);}
   gh(['release','upload','workspace-updates',path.join(folder,'latest-windows.json'),'--repo',REPOSITORY,'--clobber']);

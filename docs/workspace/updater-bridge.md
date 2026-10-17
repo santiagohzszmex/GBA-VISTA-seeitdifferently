@@ -11,3 +11,13 @@ Los dos pasos requieren las acciones Descargar e Instalar y reiniciar de la pers
 Operación: publicar primero los paquetes inmutables del puente y comprobar sus bytes públicos; luego latest-windows.json; por último latest.json. Preservar latest-darwin.json byte por byte. Mantener latest.json como puente para clientes anteriores y mantener canales por plataforma para futuros lanzamientos. Nunca elevar la versión global del canal antiguo conservando un binario Windows de versión menor.
 
 Reversión: volver a subir el latest.json previo conservado por el publicador; los paquetes publicados son inmutables y no se borran. No revertir latest-darwin.json ni datos de usuarios.
+
+## Publicación comprobada
+
+Publicado el 17 de octubre de 2026: https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/tag/workspace-v1.6.6.3-beta.1 . Fuente exacta de los tres binarios: 3e0b79c433b03c2b3cd8feb7ccb0aa8774e8dbcb; CI 39072360534 correcta (incluidas instalación y arranque). Este cierre posterior sólo corrige la deduplicación de rutas del publicador y documenta el resultado; no cambia los binarios ni la aplicación.
+
+Santiago autorizó expresamente publicar el puente en macOS y Windows sin la prueba interactiva previa de Windows, exclusivamente para este puente. Lapislázuli Windows sigue retenido.
+
+Los diez archivos del borrador se cotejaron con los candidatos y sus firmas; los binarios públicos con los hashes de CI. latest.json y latest-windows.json ofrecen 1.6.603; latest-darwin.json conserva 1.7.100 y la base pública permanece idéntica. Se comprobó en la app real instalada 1.6.6.2 que aparece Workspace 1.6.6.3 y el botón Descargar actualización. No se descargó ni instaló nada en esa app.
+
+El primer alta del borrador encontró el mismo EXE NSIS listado dos veces (instalador y actualizador); se verificó el borrador completo antes de publicarlo y se deduplicó el publicador. Tras sobrescribir latest.json una lectura HTTP vio un redirect anterior en caché; la API de releases y el actualizador nativo confirmaron el contenido nuevo. No se repitió la subida ni se degradó ninguna firma.
