@@ -4,13 +4,14 @@ const key=(owner,sha)=>`${owner}/${sha}`;
 const cacheName=owner=>`workspace-originals-v1-${owner}`;
 const cacheUrl=(owner,sha,partial=false)=>new URL(`/__workspace_private_images__/${encodeURIComponent(owner)}/${sha}${partial?'.partial':''}`,location.origin).href;
 const isDesktop=()=>Boolean(globalThis.__TAURI_INTERNALS__);
+const nativeProbe=(operation,error)=>{if(import.meta.env?.DEV&&new URLSearchParams(location.search).get('lapis-preview')==='1')void fetch('/__lapis/metrics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'native-cache',operation,error:String(error).slice(0,240)})}).catch(()=>{});};
 async function storage(owner){try{return await caches.open(cacheName(owner));}catch{return null;}}
 async function getStored(owner,sha,partial=false){
- if(!partial&&isDesktop()){try{const {invoke}=await import('@tauri-apps/api/core');const bytes=await invoke('workspace_image_cache_get',{owner,sha});if(bytes.byteLength)return new Blob([bytes],{type:'image/png'});}catch{}}
- const cache=await storage(owner),response=await cache?.match(cacheUrl(owner,sha,partial));return response?.blob();
+ if(!partial&&isDesktop()){try{const {invoke}=await import('@tauri-apps/api/core');const bytes=await invoke('workspace_image_cache_get',{owner,sha});if(bytes.byteLength)return new Blob([bytes],{type:'image/png'});}catch(error){nativeProbe('get',error);}}
+ const cache=await storage(owner),response=await cache?.match(cacheUrl(owner,sha,partial)),blob=await response?.blob();if(blob&&!partial&&isDesktop())await putStored(owner,sha,blob);return blob;
 }
 async function putStored(owner,sha,blob,partial=false){
- if(!partial&&isDesktop()){try{const {invoke}=await import('@tauri-apps/api/core');await invoke('workspace_image_cache_put',new Uint8Array(await blob.arrayBuffer()),{headers:{'x-workspace-owner':owner,'x-workspace-sha':sha}});return;}catch{}}
+ if(!partial&&isDesktop()){try{const {invoke}=await import('@tauri-apps/api/core');await invoke('workspace_image_cache_put',new Uint8Array(await blob.arrayBuffer()),{headers:{'x-workspace-owner':owner,'x-workspace-sha':sha}});return;}catch(error){nativeProbe('put',error);}}
  const cache=await storage(owner);try{await cache?.put(cacheUrl(owner,sha,partial),new Response(blob,{headers:{'Content-Type':'image/png'}}));}catch{/* A full local cache must not prevent viewing an authorized original. */}
 }
 async function remove(owner,sha,partial=false){const cache=await storage(owner);await cache?.delete(cacheUrl(owner,sha,partial));if(!partial){memory.delete(key(owner,sha));if(isDesktop()){try{const {invoke}=await import('@tauri-apps/api/core');await invoke('workspace_image_cache_remove',{owner,sha});}catch{}}}}

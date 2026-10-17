@@ -6,9 +6,10 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import {loadOriginal,clearImageCache} from '../src/workspace/images/originalCache.mjs';
 const directory=await fs.mkdtemp(path.join(os.tmpdir(),'workspace-r2-runtime-'));
 const reference='11111111-1111-4111-8111-111111111111';
-const originals=new Map(),sessions=new Map();let sequence=0,kind='moodboard';
+const originals=new Map(),sessions=new Map();let sequence=0,kind='moodboard',linkTtl=300;
 const descriptor=row=>({...row,policy:{part_bytes:8388608,png_max_bytes:18874368,max_pixels:40000000,max_dimension:32768},parts:row.parts||[],received_bytes:row.received_bytes||0});
 const backend=createServer(async(request,response)=>{
  try {
@@ -35,7 +36,7 @@ const backend=createServer(async(request,response)=>{
   }
   if(rpc==='workspace_image_file'){
    const d=data.p_data,row=[...sessions.values()].find(x=>x.asset.id===d.asset_id&&x.state==='ready');if(!row){response.writeHead(403);response.end('{"message":"No access"}');return;}
-   response.end(JSON.stringify({available:true,asset_id:row.asset.id,file_id:row.asset.id,operation:d.operation,object_key:row.asset.object_key,file_name:row.asset.file_name,mime_type:row.asset.mime_type,size_bytes:row.asset.size_bytes,sha256:row.asset.sha256,user_id:'fixture',session_id:'fixture',ttl:300}));return;
+   response.end(JSON.stringify({available:true,asset_id:row.asset.id,file_id:row.asset.id,operation:d.operation,object_key:row.asset.object_key,file_name:row.asset.file_name,mime_type:row.asset.mime_type,size_bytes:row.asset.size_bytes,sha256:row.asset.sha256,user_id:'fixture',session_id:'fixture',ttl:linkTtl}));return;
   }
   if(rpc==='workspace_original_gate'){response.end(JSON.stringify({kind,limit:26214400}));return;}
   if(rpc==='workspace_original_begin'){
@@ -79,6 +80,16 @@ try {
   const signed=await fetch(`${host}/images/files/${session.asset_id}/original/link`,{method:'POST',headers}).then(x=>x.json());const dl=await fetch(signed.url);assert.equal(dl.status,200,await dl.clone().text());assert.deepEqual(Buffer.from(await dl.arrayBuffer()),bytes);
   const range=await fetch(signed.url,{headers:{Range:'bytes=4-31'}});assert.equal(range.status,206);assert.equal(range.headers.get('Content-Range'),`bytes 4-31/${bytes.length}`);assert.equal(range.headers.get('Accept-Ranges'),'bytes');assert.deepEqual(Buffer.from(await range.arrayBuffer()),bytes.subarray(4,32));
   const invalidRange=await fetch(signed.url,{headers:{Range:`bytes=${bytes.length}-`}});assert.equal(invalidRange.status,416);
+  if(format==='png'){
+   globalThis.location={origin:host};let links=0,expiredUrl,attempts=0;const requestedRanges=[];
+   const restored=await loadOriginal({owner:'runtime-range',asset:{id:session.asset_id,size_bytes:bytes.length,sha256:digest},hasher:async blob=>createHash('sha256').update(Buffer.from(await blob.arrayBuffer())).digest('hex'),link:async()=>{linkTtl=++links===1?1:300;const fresh=await fetch(`${host}/images/files/${session.asset_id}/original/link`,{method:'POST',headers}).then(r=>r.json());if(links===1)expiredUrl=fresh.url;return fresh;},fetcher:async(url,options)=>{
+    requestedRanges.push(options.headers.Range||null);
+    if(++attempts===1){const response=await fetch(url,options),reader=response.body.getReader(),first=await reader.read();await reader.cancel();let sent=false;return new Response(new ReadableStream({async pull(controller){if(!sent){sent=true;controller.enqueue(first.value.subarray(0,4));}else{await new Promise(resolve=>setTimeout(resolve,2100));controller.error(Error('Deliberate transport interruption after four bytes'));}}},{highWaterMark:0}),{headers:response.headers});}
+    assert.equal((await fetch(expiredUrl)).status,403,'The old signed link really expired in workerd');return fetch(url,options);
+   }});
+   assert.deepEqual(Buffer.from(await restored.blob.arrayBuffer()),bytes);assert.deepEqual(requestedRanges,[null,'bytes=4-']);assert.equal(links,2);linkTtl=300;await clearImageCache('runtime-range');
+   console.log('PASS: real workerd link expires after an interrupted download; client renews it, resumes with bytes=4- (206), and verifies identical SHA-256.');
+  }
  }
  const corruptOpen=await fetch(`${host}/images/uploads`,{method:'POST',headers:{Authorization:'Bearer local-runtime-user'},body:JSON.stringify({request_id:crypto.randomUUID(),deliverable_id:reference,file_name:'corrupt.png',format:'png',role:'png',size_bytes:png.length,sha256:'f'.repeat(64)})}).then(r=>r.json());
  await fetch(`${host}/images/uploads/${corruptOpen.id}/parts/1`,{method:'PUT',headers:{Authorization:'Bearer local-runtime-user'},body:png});

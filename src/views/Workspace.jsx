@@ -68,6 +68,7 @@ export default function Workspace({ previewMode = false }) {
     try {
       if (previewMode) {
         if(lapisPreview){imageDemoModule.current ||= await import('../workspace/images/imageDemo');await imageDemoModule.current.initializeImageDemo(demoState.current);}
+        if(seq!==generation.current)return;
         const id = demoState.current.projects.find(item => item.id === projectId && !item.deleted_at && actor.projects.includes(item.id))?.id || demoState.current.projects.find(item=>!item.deleted_at && actor.projects.includes(item.id))?.id || '';
         setContext({ units: [{ id: 'gimg-demo', name: 'GIMG' }], platform_owner: actor.platformOwner === true, keynotes_access: actor.keynotesAccess === true });
         setUnitId('gimg-demo'); setProjectId(id);

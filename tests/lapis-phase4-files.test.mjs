@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {makePng,pngChunk} from './helpers/lapis-png.mjs';
+import {inspectPngHeader} from '../cloudflare/workspace-originals/images/pngHeader.mjs';
+import {inspectLayered} from '../cloudflare/workspace-originals/images/layered.mjs';
+const policy={png_max_bytes:18874368,max_pixels:40000000,max_dimension:32768,layered_max_bytes:262144000};
+const pixel=makePng({width:1,height:1,raw:Buffer.from([0,255,0,0,255])});
+assert.equal((await inspectPngHeader(new Blob([pixel]),policy)).width,1);
+const ctl=Buffer.alloc(8);ctl.writeUInt32BE(1);const animated=makePng({width:1,height:1,raw:Buffer.from([0,255,0,0,255]),extra:[pngChunk('acTL',ctl)]});
+assert.equal((await inspectPngHeader(new Blob([animated]),policy)).verification,'header');
+const broken=Buffer.concat([pixel.subarray(0,33),pngChunk('IDAT',Buffer.from('broken zlib')),pngChunk('IEND',Buffer.alloc(0))]);
+assert.equal((await inspectPngHeader(new Blob([broken]),policy)).raster_verified,false,'A header is not a raster certificate');
+await assert.rejects(inspectPngHeader(new Blob([makePng({width:8000,height:5001})]),policy),/dimensiones/);
+await assert.rejects(inspectLayered(new Blob([Buffer.from('not a photoshop document')]),'psd',policy),/PSD|cabecera|inválid|tamaño/i);
+await assert.rejects(inspectLayered(new Blob([Buffer.from('PK\x03\x04fake ZIP renamed as KRA')]),'kra',policy),/KRA|ZIP|tamaño/i);
+console.log('PASS: 6 Phase 4 edge cases: tiny/animated PNG, damaged raster with valid header, pixel limit, fake PSD and renamed ZIP. No raster certification claimed.');

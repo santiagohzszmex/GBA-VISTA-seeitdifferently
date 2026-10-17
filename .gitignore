@@ -42,6 +42,8 @@ Thumbs.db
 *~
 
 workspace-dist/
+workspace-lapis-test-dist/
+lapis-windows-packet/
 src-tauri/target/
 src-tauri/gen/
 

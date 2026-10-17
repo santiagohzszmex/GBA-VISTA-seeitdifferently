@@ -50,5 +50,8 @@ export async function runLapisInterfaceAcceptance(db){
  await admin("update public.workspace_unit_memberships set membership_status='suspended' where user_id=$1",[id(3)]);await actor(3);await bad(bundle(project.id),/acceso/);
  await actor(0);await bad(bundle(project.id),/permission/);
  await admin('update workspace_private.upload_policy set images_enabled=false where singleton');
+ await actor(2);const retained=await bundle(project.id);eq(retained.enabled,true);eq(retained.uploads_enabled,false);eq(Boolean(retained.assets[asset]),true);eq(Boolean(retained.versions[second.id]),true);
+ await bad(image('draft.save',task,{...values,base_version:2},0),/todavía no está habilitado/);
+ await actor(4);await bad(bundle(project.id),/acceso/);await admin('select 1');
  console.log(`PASS: ${checks} Phase 3 RBAC, notes, anchored mentions, private drafts, header validation, immutable quality and unchanged editorial chain (local only).`);return checks;
 }

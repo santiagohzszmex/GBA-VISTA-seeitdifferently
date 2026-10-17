@@ -30,6 +30,7 @@ export async function runLapisGatewayAcceptance(db){
  const secret='local-phase2-only',cmd=(action,data,revision=null)=>scalar('select public.workspace_command($1,$2,$3)',[action,data,revision]);
  await admin('select 1');await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261016194802_workspace_lapis_multipart_gateway.sql',import.meta.url),'utf8'));
  await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261016203609_workspace_lapis_image_interface.sql',import.meta.url),'utf8'));
+ await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261017021526_workspace_lapis_retained_read.sql',import.meta.url),'utf8'));
  eq(await scalar('select derivatives_enabled from workspace_private.upload_policy where singleton'),false);
  await admin('update workspace_private.upload_policy set derivatives_enabled=true where singleton');
  const unit=await scalar("select id from public.workspace_units where slug='gimg'");

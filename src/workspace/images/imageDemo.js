@@ -5,7 +5,7 @@ const document=text=>({type:'doc',attrs:{schemaVersion:2},content:[{type:'paragr
 const blobs=new Map(),faults=new Set();
 export async function initializeImageDemo(state){
  if(state.lapis)return;
- const response=await fetch('/__lapis/manifest.json');if(!response.ok)throw Error('Faltan los archivos sintéticos de desarrollo de Lapislázuli.');const fixture=await response.json();if(state.lapis)return;
+ const response=await fetch('/__lapis/manifest.json'+(new URLSearchParams(location.search).get('lapis-corrupt')==='1'?'?corrupt=1':''));if(!response.ok)throw Error('Faltan los archivos sintéticos de desarrollo de Lapislázuli.');const fixture=await response.json();if(state.lapis)return;
  DEMO_ACTORS.artLead={id:'demo-art-lead',name:'Responsable de Ilustración',role:'gimg_area_lead',area:'art-demo',projects:['halloween-demo']};
  state.members.push({user_id:'demo-art-lead',display_name:'Responsable de Ilustración',membership_status:'active'});
  state.lapis={policy:{...fixture.policy,images_enabled:true,derivatives_enabled:false},specs:{},drafts:{},versions:{},assets:{},notes:[],replies:[],resolutions:[],approvals:[]};
@@ -23,15 +23,15 @@ export function imageDemoBundle(state,actor,projectId){
 export async function imageDemoApi(state,actor,action,task,value,revision){
  const s=state.lapis,perms=task?demoPermissions(actor,task.project_id,task.area_id,task):{},owner=`${actor.id}:${task?.id}:${value.role}`,plans=state.lapisPlans||={};
  if(action==='plan.get')return plans[owner]||null;
- if(action==='link'){const a=s.assets[value.assetId],t=state.tasks.find(t=>t.id===a?.deliverable_id);if(!a||!t||!demoPermissions(actor,t.project_id,t.area_id,t)['asset.download_source']||a.owner_id!==actor.id&&!Object.values(s.versions).some(v=>Object.values(v.files).includes(a.id)))throw Object.assign(Error('Archivo fuera de tu acceso'),{status:403});return {available:true,url:blobs.has(a.id)?URL.createObjectURL(blobs.get(a.id)):'/__lapis/original.png'};}
+ if(action==='link'){const a=s.assets[value.assetId],t=state.tasks.find(t=>t.id===a?.deliverable_id);if(!a||!t||!demoPermissions(actor,t.project_id,t.area_id,t)['asset.download_source']||a.owner_id!==actor.id&&!Object.values(s.versions).some(v=>Object.values(v.files).includes(a.id)))throw Object.assign(Error('Archivo fuera de tu acceso'),{status:403});return {available:true,url:blobs.has(a.id)?URL.createObjectURL(blobs.get(a.id)):'/__lapis/original.png'+(new URLSearchParams(location.search).get('lapis-corrupt')==='1'?'?corrupt=1':'')};}
  const reviewer=Object.entries(perms).some(([k,v])=>v&&(k.startsWith('review.')||['qa.approve','publication.approve_final'].includes(k)));
  if(action==='upload'){
   if(!perms['content.edit_assigned'])throw Error('No puedes subir en esta asignación.');
   const fault=new URLSearchParams(location.search).get('lapis-case'),faultKey=`${fault}:${task.id}:${value.role}`;
-  if(fault&&!faults.has(faultKey)){faults.add(faultKey);if(fault==='quota')throw Error('No hay espacio disponible en Workspace; avisa a Dirección');if(fault==='expired')throw Error('La sesión de subida venció');if(fault==='offline')throw new TypeError('Failed to fetch');if(fault==='failed')throw Error('El almacenamiento no está disponible. Reintenta la subida.');}
+  if(fault&&!faults.has(faultKey)){faults.add(faultKey);if(fault==='paused')throw new DOMException('Pausado','AbortError');if(fault==='quota')throw Error('No hay espacio disponible en Workspace; avisa a Dirección');if(fault==='expired')throw Error('La sesión de subida venció');if(fault==='offline')throw new TypeError('Failed to fetch');if(fault==='failed')throw Error('El almacenamiento no está disponible. Reintenta la subida.');}
   const sha256=await hashFile(value.file,{signal:value.signal,onProgress:p=>value.onProgress?.({...p,state:'hashing'})}),totalParts=Math.ceil(value.file.size/s.policy.part_bytes);plans[owner]={owner_id:actor.id,deliverable_id:task.id,role:value.role,completed:false};
   value.signal?.throwIfAborted();value.onProgress?.({received:0,total:value.file.size,parts:0,totalParts,state:'receiving'});
-  for(let number=1;number<=totalParts;number++){value.signal?.throwIfAborted();await new Promise((resolve,reject)=>{const timer=setTimeout(resolve,250);value.signal?.addEventListener('abort',()=>{clearTimeout(timer);reject(new DOMException('Pausado','AbortError'));},{once:true});});value.onProgress?.({received:Math.min(number*s.policy.part_bytes,value.file.size),total:value.file.size,parts:number,totalParts,state:'receiving'});}
+  for(let number=1;number<=totalParts;number++){value.signal?.throwIfAborted();await new Promise((resolve,reject)=>{const timer=setTimeout(resolve,3000);value.signal?.addEventListener('abort',()=>{clearTimeout(timer);reject(new DOMException('Pausado','AbortError'));},{once:true});});value.onProgress?.({received:Math.min(number*s.policy.part_bytes,value.file.size),total:value.file.size,parts:number,totalParts,state:'receiving'});}
   value.signal?.throwIfAborted();
   const asset={id:crypto.randomUUID(),deliverable_id:task.id,owner_id:actor.id,role:value.role,format:value.format,file_name:value.file.name,size_bytes:value.file.size,sha256,status:'validated',verification:value.role==='png'?'header':['procreate','afphoto','clip'].includes(value.format)?'unverified':value.format==='kra'?'zip_manifest':'header',width:value.client?.width,height:value.client?.height};s.assets[asset.id]=asset;blobs.set(asset.id,value.file);plans[owner]={...plans[owner],asset_id:asset.id,completed:true};return {asset,plan:plans[owner]};
  }
