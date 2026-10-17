@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {deadlineDate,deadlineInput,mexicoInstant,deadlineStatus,deliveryGroup,deliverySummary,relativeDate} from './deadlines.mjs';
+import {deadlineDate,deadlineInput,mexicoInstant,deadlineStatus,deliveryGroup,deliverySummary,relativeDate,deadlineInstant} from './deadlines.mjs';
 export function DeadlineField({name,initialValue,hasTime=true,disabled}){
  const initial=deadlineInput(initialValue,hasTime),[date,setDate]=useState(initial.date),[time,setTime]=useState(initial.time),ref=useRef(null);
  let value='',error='';try{value=date?mexicoInstant(date,time||'23:59'):'';}catch(e){error=e.message;}
@@ -7,7 +7,7 @@ export function DeadlineField({name,initialValue,hasTime=true,disabled}){
  return <div className="gw-deadline-input"><label>Fecha<input ref={ref} type="date" value={date} disabled={disabled} onChange={e=>setDate(e.target.value)}/></label><label>Hora opcional<input type="time" value={time} disabled={disabled||!date} onChange={e=>setTime(e.target.value)}/></label><input type="hidden" name={name} value={value}/><input type="hidden" name={`${name}_has_time`} value={Boolean(time).toString()}/><small>Ciudad de México. Sin hora, el límite es a las 23:59 de ese día.</small>{error&&<p role="alert">{error}</p>}</div>;
 }
 export function DeliverySummary({tasks,personal=false,now}){
- const s=deliverySummary(tasks,now),next=tasks.filter(t=>deliveryGroup(t)==='pending'&&t.due_at&&t.state!=='archived').sort((a,b)=>new Date(a.due_at)-new Date(b.due_at))[0];
+ const s=deliverySummary(tasks,now),next=tasks.filter(t=>deliveryGroup(t)==='pending'&&t.due_at&&t.state!=='archived'&&+new Date(deadlineInstant(t.due_at))>=+new Date(now||Date.now())).sort((a,b)=>new Date(a.due_at)-new Date(b.due_at))[0];
  return <div className="gw-delivery-summary" aria-label={personal?'Resumen de mis entregas':'Resumen de entregas de la edición'}><div><strong>{s.delivered} de {s.total} entregadas</strong><span>{s.pending} por entregar · {s.late} vencidas</span></div><progress value={s.delivered} max={s.total||1} aria-label={`${s.delivered} de ${s.total} entregadas`}/>{personal&&<p>{next?<>Próximo límite: <strong>{deadlineDate(next.due_at)}</strong> · {relativeDate(next.due_at,now)} · {next.title}</>:'Sin próximas fechas límite.'}</p>}</div>;
 }
 export function DeliveryGroups({tasks,renderItem}){return [['pending','Por entregar'],['delivered','Entregado']].map(([key,label])=>{const rows=tasks.filter(t=>deliveryGroup(t)===key);return <section className="gw-delivery-group" key={key} aria-label={label}><h2 className="gw-wk-group-label">{label} <span>{rows.length}</span></h2><ul className="gw-wk-items">{rows.map(renderItem)}</ul>{!rows.length&&<p className="gw-wk-rail-empty">Sin asignaciones en este grupo.</p>}</section>;});}

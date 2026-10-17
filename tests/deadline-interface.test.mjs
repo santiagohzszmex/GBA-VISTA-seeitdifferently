@@ -10,6 +10,6 @@ try{
  const props={project,data,task:tasks[0],actorId:'me',onPick:()=>{},command:async()=>{},busy:false};
  const assignments=renderToStaticMarkup(React.createElement(AreaAssignments,props));
  assert.match(assignments,/2 de 4 entregadas/);assert.match(assignments,/aria-label="Por entregar"/);assert.match(assignments,/aria-label="Entregado"/);assert.match(assignments,/Filtrar por persona/);assert.match(assignments,/Vencidas/);assert.match(assignments,/Primer envío a revisión/);assert.match(assignments,/Imagen enviada/);
- const mine=renderToStaticMarkup(React.createElement(PersonalWork,props));assert.match(mine,/2 de 4 entregadas/);assert.match(mine,/Próximo límite/);assert.match(mine,/Por entregar/);assert.match(mine,/Entregado/);assert.match(mine,/Borrador/);assert.doesNotMatch(mine,/Imagen enviada/);
+ const mine=renderToStaticMarkup(React.createElement(PersonalWork,props));assert.match(mine,/2 de 4 entregadas/);assert.match(mine,/Sin próximas fechas límite/);assert.match(mine,/Por entregar/);assert.match(mine,/Entregado/);assert.match(mine,/Borrador/);assert.doesNotMatch(mine,/Imagen enviada/);
  console.log('PASS: actual Assignments and My work render delivery groups/counts, edition progress, person/deadline filters, own next deadline and document/image grouping.');
 }finally{await fs.rm(folder,{recursive:true,force:true});}
