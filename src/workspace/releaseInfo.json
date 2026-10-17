@@ -1,9 +1,9 @@
 {
-  "version": "1.7.0",
-  "nativeVersion": "1.7.0",
+  "version": "1.7.1",
+  "nativeVersion": "1.7.100",
   "codename": "Lapislázuli",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Lapislázuli · Ilustración en Workspace",
-  "notice": "Entrega ilustraciones directamente desde tu asignación, conserva los originales y consulta las observaciones sobre la imagen. El piloto comienza en Día de Muertos. Límites provisionales: PNG 18 MiB, archivos con capas 250 MiB y 40 megapíxeles."
+  "noticeTitle": "Lapislázuli · Entregas y fechas claras",
+  "notice": "Distingue lo que está por entregar de lo enviado a revisión, consulta el límite y el primer envío por separado. Ilustración ya está disponible en todas las ediciones de GIMG según tus permisos."
 }

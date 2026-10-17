@@ -117,7 +117,7 @@ export default function WorkEditor({ task, data, actorId, api, command, onDirtyC
     <div className="gw-wk-sheet-head">
       <div className="gw-wk-sheet-title">
         <h2 title={task.title}>{task.title}</h2>
-        <div className="gw-wk-meta">{area && <span>{area.name}</span>}<Status state={task.state} /><span>Entrega <DueLabel task={task} /></span></div>
+        <div className="gw-wk-meta">{area && <span>{area.name}</span>}<Status state={task.state} /><span>Límite <DueLabel task={task} /></span></div>
       </div>
       <div className="gw-wk-sheet-actions">
         {editable && payload && <>

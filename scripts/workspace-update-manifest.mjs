@@ -2,6 +2,10 @@ import { createHash } from 'node:crypto';
 import { toNativeVersion } from '../src/workspace/releaseVersion.mjs';
 export const UPDATE_TARGETS=['darwin-aarch64','darwin-x86_64','windows-x86_64'];
 export const REPOSITORY='santiagohzszmex/GBA-VISTA-seeitdifferently';
+export function assertLegacyPublisherEndpoint(config) {
+  const expected=`https://github.com/${REPOSITORY}/releases/download/workspace-updates/latest.json`;
+  if(JSON.stringify(config.plugins?.updater?.endpoints)!==JSON.stringify([expected]))throw Error('Platform-channel releases must use their platform publisher; latest.json is reserved for the legacy compatibility bridge');
+}
 export function versionParts(version) {
   if(!/^\d+\.\d+\.\d+$/.test(version)) throw Error('Version must contain three numeric components');
   const values=version.split('.').map(Number);

@@ -1,3 +1,4 @@
+import {withDeadlineFacts} from '../workspace/deadlines.mjs';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -99,7 +100,7 @@ export default function Workspace({ previewMode = false }) {
       const id = next.projects.find(item => item.id === projectId)?.id || next.projects[0]?.id || '';
       const contextualTask = next.tasks.find(item => item.id === selectedId && item.project_id === id) || next.tasks.find(item => item.project_id === id);
       const area = contextualTask?.area_id || next.areas.find(item => item.project_id === id)?.id || null;
-      const [unitPerm, directoryPerm, workPermissions, approvedDocuments, referenceBundle, removed, opal, support, team, images] = await Promise.all([
+      const [unitPerm, directoryPerm, workPermissions, approvedDocuments, referenceBundle, removed, opal, support, team, images, deadlines] = await Promise.all([
         rpc('workspace_permissions', { p_unit: unit }),
         rpc('workspace_permissions', { p_unit: unit, p_project: id || null, p_area: area, p_deliverable: contextualTask?.id || null }),
         id ? rpc('workspace_work_permissions', { p_project_id: id }) : { project: {}, areas: {}, tasks: {}, version_documents: {} },
@@ -109,12 +110,13 @@ export default function Workspace({ previewMode = false }) {
         id ? rpc('workspace_opal_bundle', {p_project_id:id}) : {task_references:{},private_references:[],originals:[]},
         id ? rpc('workspace_support_bundle',{p_project_id:id}) : {documents:[],creation_areas:[]},
         id ? rpc('workspace_team_bundle',{p_project_id:id}) : {members:[],areas:[]},
-        id ? rpc('workspace_image_bundle',{p_project_id:id}).catch(error=>{if(['PGRST202','42883'].includes(error.code))return {enabled:false};throw error;}) : {enabled:false}
+        id ? rpc('workspace_image_bundle',{p_project_id:id}).catch(error=>{if(['PGRST202','42883'].includes(error.code))return {enabled:false};throw error;}) : {enabled:false},
+        id ? rpc('workspace_deadline_facts',{p_project_id:id}) : {}
       ]);
       if (seq !== generation.current) return;
       const perm = { ...workPermissions.project, 'directory.unit_wide': Boolean(unitPerm['unit.members.read']), 'unit.members.read': Boolean(directoryPerm['unit.members.read']) };
       for (const [key, value] of Object.entries(unitPerm)) if ((key.startsWith('unit.') && key !== 'unit.members.read') || key === 'project.create') perm[key] = value;
-      next.referencePermissions = workPermissions.project || {}; next.areaPermissions = workPermissions.areas || {}; next.taskPermissions = workPermissions.tasks || {}; next.approvedDocuments = approvedDocuments; next.references = referenceBundle.references; next.referenceStorage = referenceBundle.storage; next.taskReferences = opal.task_references; next.privateTaskReferences = opal.private_references; next.documentOriginals = opal.originals; next.support = support; next.team = team; next.images=images;
+      next.referencePermissions = workPermissions.project || {}; next.areaPermissions = workPermissions.areas || {}; next.taskPermissions = workPermissions.tasks || {}; next.approvedDocuments = approvedDocuments; next.references = referenceBundle.references; next.referenceStorage = referenceBundle.storage; next.taskReferences = opal.task_references; next.privateTaskReferences = opal.private_references; next.documentOriginals = opal.originals; next.support = support; next.team = team; next.images=images; next.deadlines=deadlines; next.tasks=next.tasks.map(t=>t.project_id===id?withDeadlineFacts(t,next):t);
       next.members = directoryPerm['unit.members.read'] ? await rpc('workspace_directory', { p_unit: unit, p_project: id || null, p_area: area, p_deliverable: contextualTask?.id || null }) : [];
       const ids = next.tasks.map(item => item.id);
       const contents = await Promise.all([['versions', 'workspace_versions'], ['comments', 'workspace_comments'], ['dependencies', 'workspace_dependencies']].map(async ([key, table]) => {

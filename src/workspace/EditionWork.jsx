@@ -1,3 +1,5 @@
+import {deadlineStatus,deliveryGroup,withDeadlineFacts} from './deadlines.mjs';
+import {DeliverySummary,DeliveryGroups,TaskDates} from './DeadlineViews';
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, CalendarClock, FileText, Inbox, Plus, Search } from 'lucide-react';
 import WorkEditor from './WorkEditor';
@@ -51,7 +53,7 @@ const WORK_GROUPS = [
 const groupOf = state => (WORK_GROUPS.find(([, , states]) => states.includes(state))?.[0]) || 'closed';
 
 export function PersonalWork({ project, data, task, actorId, command, api, busy, onPick, previewMode, onDirtyChange, onReference, referenceApi, supportApi, inboxApi, unitId, initialSupportId, initialDeliveryId, initialAnchorId, imageApi, initialImageNoteId, initialImageVersionId }) {
-  const [filter, setFilter] = useState(() => task && CLOSED_STATES.includes(task.state) ? 'all' : 'active');
+  const [filter, setFilter] = useState(() => task && deliveryGroup(task)==='delivered' ? 'sent' : 'active');
   const [focus, setFocus] = useState(false);
   const [split, setSplit] = useState(false);
   const [view, setView] = useState(() => initialDeliveryId ? 'inbox' : initialSupportId ? 'support' : 'deliveries');
@@ -61,12 +63,11 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const anyDirty = workDirty || supportDirty;
   const order = { changes_requested: 0, blocked: 1, in_progress: 2, assigned: 3, pending: 3, review: 4 };
-  const mine = data.tasks.filter(item => item.project_id === project.id && taskIsMine(item, actorId)).sort((a,b) => (order[a.state] ?? 5) - (order[b.state] ?? 5) || (a.due_at ? new Date(a.due_at).getTime() : Infinity) - (b.due_at ? new Date(b.due_at).getTime() : Infinity));
-  const tasks = mine.filter(item => filter === 'all' || !CLOSED_STATES.includes(item.state));
+  const mine = data.tasks.filter(item => item.project_id === project.id && taskIsMine(item, actorId)).map(t=>withDeadlineFacts(t,data)).sort((a,b) => (order[a.state] ?? 5) - (order[b.state] ?? 5) || (a.due_at ? new Date(a.due_at).getTime() : Infinity) - (b.due_at ? new Date(b.due_at).getTime() : Infinity));
+  const tasks = mine.filter(item => deliveryGroup(item)===(filter==='sent'?'delivered':'pending'));
   const selected = tasks.find(item => item.id === task?.id) || tasks[0];
-  const pending = mine.filter(item => !CLOSED_STATES.includes(item.state)).length;
-  const groups = [...WORK_GROUPS.map(([id, label]) => [id, label]), ['closed', 'Aceptado y cerrado']]
-    .map(([id, label]) => ({ id, label, items: tasks.filter(item => groupOf(item.state) === id) })).filter(group => group.items.length);
+  const pending = mine.filter(item => deliveryGroup(item)==='pending').length;
+  const groups = [{id:'deliveries',label:filter==='sent'?'Entregado':'Por entregar',items:tasks}].filter(g=>g.items.length);
   useEffect(() => { onDirtyChange?.(anyDirty); }, [anyDirty, onDirtyChange]);
   useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
   useEffect(() => { if (initialSupportId) changeView('support'); }, [initialSupportId]);
@@ -82,11 +83,12 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
     {focus && <h1 className="gw-sr-only">Mi trabajo</h1>}
     <div className="gw-wk-head"><div><h1>Mi trabajo</h1><p>Crea documentos, continúa tus entregas y consulta lo que te enviaron.</p></div>{view === 'deliveries' && <CreateWork project={project} data={data} actorId={actorId} personal command={command} busy={busy} onCreated={openTask} />}</div>
     <div className="gw-opal-inbox-tabs" role="group" aria-label="Cambiar vista de Mi trabajo"><button type="button" aria-pressed={view === 'deliveries'} onClick={() => changeView('deliveries')}>Entregas</button><button type="button" aria-pressed={view === 'support'} onClick={() => changeView('support')}>Documentos <span>{data.support?.documents?.filter(row => row.author_id === actorId || row.share_scope !== 'private').length || 0}</span></button><button type="button" aria-pressed={view === 'inbox'} onClick={() => changeView('inbox')}>Bandeja de entrada</button></div>
+    {view==='deliveries'&&<DeliverySummary tasks={mine} personal/>}
     {view === 'inbox' ? <DocumentInbox unitId={unitId} inboxApi={inboxApi} initialDeliveryId={initialDeliveryId} anchorId={initialAnchorId} /> : view === 'support' ? <SupportDocuments createRequest={createRequest} inboxApi={inboxApi} initialAnchorId={initialAnchorId} project={project} data={data} actorId={actorId} supportApi={supportApi} busy={busy} onDirtyChange={setSupportDirty} onOpenTask={openTask} initialSupportId={initialSupportId} /> : <div className="gw-wk-mine-layout">
       <aside className="gw-wk-rail" aria-label="Lista de mi trabajo">
         <div className="gw-wk-seg" role="group" aria-label="Mostrar mi trabajo">
-          <button type="button" aria-pressed={filter === 'active'} onClick={() => setFilter('active')}>Pendiente <span>{pending}</span></button>
-          <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>Todo <span>{mine.length}</span></button>
+          <button type="button" aria-pressed={filter === 'active'} onClick={() => setFilter('active')}>Por entregar <span>{pending}</span></button>
+          <button type="button" aria-pressed={filter === 'sent'} onClick={() => setFilter('sent')}>Entregado <span>{mine.length-pending}</span></button>
         </div>
         {groups.map(group => <div key={group.id} className="gw-wk-group" role="group" aria-label={group.label}>
           <h2 className="gw-wk-group-label">{group.label}</h2>
@@ -96,27 +98,28 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
             {item.kind==='image'&&<span className="gw-image-entry">{['assigned','in_progress','changes_requested','pending'].includes(item.state)?'Entregar imagen →':'Ver imagen y notas →'}</span>}{item.block_reason && <span className="gw-wk-work-reason">{item.block_reason}</span>}
           </button></li>)}</ul>
         </div>)}
-        {!tasks.length && <p className="gw-wk-rail-empty">{filter === 'active' && mine.length ? 'No tienes entregas pendientes. Cambia a «Todo» para ver lo aceptado.' : 'Aquí aparecerán tus entregas asignadas.'}</p>}
+        {!tasks.length && <p className="gw-wk-rail-empty">{filter === 'active' && mine.length ? 'No tienes entregas pendientes. Cambia a «Entregado» para ver lo enviado a revisión y lo aprobado.' : 'Aquí aparecerán tus entregas asignadas.'}</p>}
       </aside>
       {selected
-        ? selected.kind==='image' ? <ImageDelivery key={selected.id} task={selected} data={data} actorId={actorId} api={imageApi} command={command} busy={busy} onDirtyChange={setWorkDirty} initialNoteId={initialImageNoteId} initialVersionId={initialImageVersionId}/> : <WorkEditor key={selected.id} task={selected} data={data} actorId={actorId} api={api} command={command} previewMode={previewMode} busy={busy} onDirtyChange={setWorkDirty} onReference={onReference} focus={focus} onFocusChange={setFocus} onSplitChange={setSplit} referenceApi={referenceApi} />
+        ? <div className="gw-deadline-editor"><TaskDates task={withDeadlineFacts(selected,data)}/>{selected.kind==='image' ? <ImageDelivery key={selected.id} task={selected} data={data} actorId={actorId} api={imageApi} command={command} busy={busy} onDirtyChange={setWorkDirty} initialNoteId={initialImageNoteId} initialVersionId={initialImageVersionId}/> : <WorkEditor key={selected.id} task={selected} data={data} actorId={actorId} api={api} command={command} previewMode={previewMode} busy={busy} onDirtyChange={setWorkDirty} onReference={onReference} focus={focus} onFocusChange={setFocus} onSplitChange={setSplit} referenceApi={referenceApi} />}</div>
         : <div className="gw-wk-empty"><FileText size={30} aria-hidden="true" /><h2>No tienes entregas pendientes en esta edición.</h2><p>Puedes crear un documento ahora, escribir en privado y enviarlo a otra persona. Tus asignaciones aparecerán en esta pestaña cuando las recibas.</p><div className="gw-mywork-actions"><button type="button" className="gw-wk-btn gw-wk-btn-primary" disabled={busy || !data.support?.creation_areas?.length} onClick={newDocument}><Plus size={16}/>Nuevo documento</button><button type="button" className="gw-wk-btn" onClick={onReference}>Consultar referencias de la edición</button></div></div>}
     </div>}{pendingNavigation && <DraftExitDialog onStay={() => setPendingNavigation(null)} onDiscard={() => { const navigate=pendingNavigation; setPendingNavigation(null); setWorkDirty(false); setSupportDirty(false); onDirtyChange?.(false); navigate(); }} />}
   </section>;
 }
 
-const FILTERS = [['open', 'Abierto'], ['unassigned', 'Sin responsable'], ['blocked', 'Bloqueado'], ['late', 'Con retraso'], ['all', 'Todo']];
+const FILTERS = [['all','Todo'],['late','Vencidas'],['soon','Vencen pronto'],['unassigned','Sin responsable'],['blocked','Bloqueado']];
 
 export function AreaAssignments({ project, data, task, command, busy, onPick, onReview, referenceApi, imageApi }) {
   const [query, setQuery] = useState('');
   const [referenceTarget,setReferenceTarget] = useState(null);
-  const [filter, setFilter] = useState('open');
+  const [filter, setFilter] = useState('all');
+  const [personId,setPersonId]=useState('');
   const [areaId, setAreaId] = useState('');
-  const scoped = data.tasks.filter(item => item.project_id === project.id && data.taskPermissions?.[item.id]?.['task.assign']);
+  const scoped = data.tasks.filter(item => item.project_id === project.id && data.taskPermissions?.[item.id]?.['task.assign']).map(t=>withDeadlineFacts(t,data));
   const areas = data.areas.filter(area => area.project_id === project.id && data.areaPermissions?.[area.id]?.['task.assign']);
-  const matches = (item, key = filter) => key === 'all' || (key === 'blocked' ? item.state === 'blocked' : key === 'unassigned' ? !item.responsible_id : key === 'late' ? item.due_at && new Date(item.due_at) < new Date() && !['published','archived'].includes(item.state) : !['published','archived'].includes(item.state));
+  const matches=(item,key=filter)=>key==='all'||(key==='blocked'?item.state==='blocked':key==='unassigned'?!item.responsible_id:key==='late'?deadlineStatus(item).key==='late':['soon','today'].includes(deadlineStatus(item).key));
   const nameOf = id => data.members.find(member => member.user_id === id)?.display_name || '';
-  const tasks = scoped.filter(item => matches(item) && (!areaId || item.area_id === areaId) && `${item.title} ${nameOf(item.responsible_id)}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+  const tasks = scoped.filter(item => matches(item) && (!personId || item.responsible_id===personId || item.collaborator_ids?.includes(personId)) && (!areaId || item.area_id === areaId) && `${item.title} ${nameOf(item.responsible_id)}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   const selected = tasks.find(item => item.id === task?.id) || tasks[0];
   const permissions = selected && data.taskPermissions[selected.id];
   const area = selected && data.areas.find(item => item.id === selected.area_id);
@@ -125,25 +128,25 @@ export function AreaAssignments({ project, data, task, command, busy, onPick, on
   const editable = selected && ['pending', 'assigned', 'in_progress', 'review', 'changes_requested', 'blocked'].includes(selected.state);
   return <section className="gw-wk gw-wk-team">
     <div className="gw-wk-head"><div><h1>Asignaciones</h1><p>Organiza el trabajo de {areas.length === 1 ? areas[0].name : 'la edición'}: quién lo realiza, qué entrega y cuándo.</p></div><CreateWork project={project} data={data} command={command} busy={busy} onCreated={onPick} /></div>
+    <DeliverySummary tasks={scoped}/>
     <div className="gw-wk-toolbar">
       <label className="gw-wk-search"><span className="gw-sr-only">Buscar asignación o persona</span><Search size={16} aria-hidden="true" /><input type="search" placeholder="Buscar trabajo o persona" value={query} onChange={event => setQuery(event.target.value)} /></label>
       <div className="gw-wk-chipset" role="group" aria-label="Filtrar asignaciones">{FILTERS.map(([key, label]) => <button type="button" key={key} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}{key !== 'all' && <span>{scoped.filter(item => matches(item, key)).length}</span>}</button>)}</div>
       {areas.length > 1 && <label className="gw-wk-areafilter"><span className="gw-sr-only">Filtrar por área</span><select value={areaId} onChange={event => setAreaId(event.target.value)}><option value="">Todas las áreas</option>{areas.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+      <label className="gw-wk-areafilter">Persona<select aria-label="Filtrar por persona" value={personId} onChange={e=>setPersonId(e.target.value)}><option value="">Todas las personas</option>{data.members.filter(m=>scoped.some(t=>t.responsible_id===m.user_id||t.collaborator_ids?.includes(m.user_id))).map(m=><option key={m.user_id} value={m.user_id}>{m.display_name}</option>)}</select></label>
       <span className="gw-wk-count" role="status">{tasks.length} {tasks.length === 1 ? 'trabajo' : 'trabajos'}</span>
     </div>
     <div className="gw-wk-team-layout">
       <div className="gw-wk-list">
-        <ul className="gw-wk-items" aria-label="Asignaciones">
-        {tasks.map(item => { const person = nameOf(item.responsible_id); const due = dueInfo(item.due_at, item.state); return <li key={item.id}><button type="button" className="gw-wk-assign-item" aria-current={selected?.id === item.id || undefined} onClick={() => onPick(item)}>
+        <DeliveryGroups tasks={tasks} renderItem={item => { const person = nameOf(item.responsible_id); const due = deadlineStatus(item); return <li key={item.id}><button type="button" className="gw-wk-assign-item" aria-current={selected?.id === item.id || undefined} onClick={() => onPick(item)}>
           <Avatar name={person} />
           <span className="gw-wk-assign-main">
             <strong>{item.title}</strong>{item.kind==='image'&&<span className="gw-wk-tag">Imagen · {item.current_version?`v${item.current_version}`:data.images?.drafts?.[item.id]?'Borrador':'Sin entregar'} · {project.title}</span>}
             <span className="gw-wk-assign-sub">{person || <em>Sin responsable</em>}{areas.length > 1 && ` · ${data.areas.find(row => row.id === item.area_id)?.name || ''}`}</span>
-            <span className="gw-wk-assign-foot"><Status state={item.state} kind={item.kind} />{['high', 'urgent'].includes(item.priority) && <span className="gw-wk-tag" data-tone={item.priority}>{PRIORITIES[item.priority]}</span>}<span className="gw-wk-due" data-tone={due.tone || undefined}>{due.label}</span></span>
+            <span className="gw-wk-assign-foot"><Status state={item.state} kind={item.kind} />{['high', 'urgent'].includes(item.priority) && <span className="gw-wk-tag" data-tone={item.priority}>{PRIORITIES[item.priority]}</span>}<DueLabel task={item}/></span>
           </span>
-        </button></li>; })}
-        </ul>
-        {!tasks.length && <div className="gw-wk-list-empty"><Inbox size={22} aria-hidden="true" />{scoped.length ? <><p>Ninguna asignación coincide con la búsqueda o el filtro.</p><button type="button" className="gw-wk-btn" onClick={() => { setQuery(''); setFilter('open'); setAreaId(''); }}>Mostrar el trabajo abierto</button></> : <p>Todavía no hay asignaciones en tu área.</p>}</div>}
+        </button></li>; }}/>
+        {!tasks.length && <div className="gw-wk-list-empty"><Inbox size={22} aria-hidden="true" />{scoped.length ? <><p>Ninguna asignación coincide con la búsqueda o el filtro.</p><button type="button" className="gw-wk-btn" onClick={() => { setQuery(''); setFilter('all'); setAreaId(''); setPersonId(''); }}>Mostrar todas las asignaciones</button></> : <p>Todavía no hay asignaciones en tu área.</p>}</div>}
       </div>
       {selected ? <ReferenceSplit open={Boolean(referenceTarget)} initialReferenceId={referenceTarget} task={selected} project={project} data={data} onClose={()=>setReferenceTarget(null)}><section className="gw-wk-detail" aria-label={`Asignación: ${selected.title}`}>
         <div className="gw-wk-detail-head">
@@ -152,11 +155,11 @@ export function AreaAssignments({ project, data, task, command, busy, onPick, on
           <div className="gw-wk-chips">
             <Status state={selected.state} />
             <span className="gw-wk-chip"><Avatar name={nameOf(selected.responsible_id)} />{nameOf(selected.responsible_id) || 'Sin responsable'}</span>
-            <span className="gw-wk-chip" data-tone={dueInfo(selected.due_at, selected.state).tone || undefined}><CalendarClock size={14} aria-hidden="true" />{dateLabel(selected.due_at)}{dueInfo(selected.due_at, selected.state).note && <small>{dueInfo(selected.due_at, selected.state).note}</small>}</span>
+
             {['high', 'urgent'].includes(selected.priority) && <span className="gw-wk-tag" data-tone={selected.priority}>Prioridad {PRIORITIES[selected.priority].toLowerCase()}</span>}
           </div>
         </div>
-        <div className="gw-wk-nextstep"><ArrowRight size={16} aria-hidden="true" /><p>{nextStep(selected)}</p>{canReview && <button type="button" className="gw-wk-btn gw-wk-btn-primary" onClick={() => onReview(selected)}>Atender entrega en Revisión</button>}</div>
+        <TaskDates task={selected}/><div className="gw-wk-nextstep"><ArrowRight size={16} aria-hidden="true" /><p>{nextStep(selected)}</p>{canReview && <button type="button" className="gw-wk-btn gw-wk-btn-primary" onClick={() => onReview(selected)}>Atender entrega en Revisión</button>}</div>
         <div className="gw-wk-detail-grid">
           <div className="gw-wk-col">
             <section className="gw-wk-card"><h3>Asignación</h3>
@@ -166,7 +169,7 @@ export function AreaAssignments({ project, data, task, command, busy, onPick, on
             <TaskMaterials task={selected} data={data} editable={Boolean(editable)} referenceApi={referenceApi} onOpen={row=>setReferenceTarget(row.reference_id)}/><WorkConversation task={selected} data={data} command={command} busy={busy} />
           </div>
           <div className="gw-wk-col gw-wk-side">
-            {permissions['task.update_schedule'] && <details className="gw-wk-fold"><summary><span>Fecha de entrega y prioridad</span><small>{dateShort(selected.due_at)} · {PRIORITIES[selected.priority] || 'Normal'}</small></summary><CommandForm key={`schedule-${selected.id}-${selected.revision}`} initial={selected} busy={busy} button="Guardar fecha" fields={{ due_at: { label: 'Fecha de entrega', type: 'datetime-local', optional: true }, priority: { label: 'Prioridad', options: { low: 'Baja', normal: 'Normal', high: 'Alta', urgent: 'Urgente' } } }} onSave={values => command('task.schedule', { ...values, deliverable_id: selected.id }, selected.revision)} /></details>}
+            {permissions['task.update_schedule'] && <details className="gw-wk-fold"><summary><span>Límite de entrega y prioridad</span><small>{dateShort(selected.due_at)} · {PRIORITIES[selected.priority] || 'Normal'}</small></summary><CommandForm key={`schedule-${selected.id}-${selected.revision}`} initial={selected} busy={busy} button="Guardar fecha" fields={{ due_at: { label: 'Límite de entrega', type: 'deadline', optional: true }, priority: { label: 'Prioridad', options: { low: 'Baja', normal: 'Normal', high: 'Alta', urgent: 'Urgente' } } }} onSave={values => command('task.schedule', { ...values, deliverable_id: selected.id }, selected.revision)} /></details>}
             <details className="gw-wk-fold"><summary><span>Trabajo que debe completarse primero</span><small>{dependencies.length ? `${dependencies.length} previo${dependencies.length === 1 ? '' : 's'}` : 'Ninguno'}</small></summary><p>Una dependencia evita iniciar o publicar este encargo antes de que el trabajo indicado esté publicado o archivado.</p>{dependencies.map(item => { const previous = data.tasks.find(row => row.id === item.depends_on_id); return <p key={item.depends_on_id} className="gw-wk-dependency">{previous?.title || 'Trabajo relacionado'}{previous && <Status state={previous.state} />}</p>; })}<CommandForm key={`dependency-${selected.id}`} busy={busy} button="Añadir dependencia" fields={{ depends_on_id: { label: 'Trabajo previo', options: choices(scoped.filter(item => item.id !== selected.id)) } }} onSave={values => command('dependency.add', { ...values, deliverable_id: selected.id }, selected.revision)} /></details>
             <WorkOperations task={selected} permissions={permissions} command={command} busy={busy} />
           </div>
@@ -181,6 +184,6 @@ export function EditionCalendar({ actorId, project, data, permissions, command, 
   return <section className="gw-work-section"><h2>Calendario de la edición</h2><p>Entregas, revisiones y fechas editoriales de {project.title}.</p>
     {permissions['task.update_schedule'] && <details className="gw-disclosure"><summary>Añadir fecha</summary><CommandForm busy={busy} button="Añadir hito" fields={{ title: 'Título', kind: { label: 'Tipo', options: { milestone: 'Hito', review: 'Revisión', editorial: 'Fecha editorial' } }, starts_at: { label: 'Inicio', type: 'datetime-local' }, ends_at: { label: 'Fin', type: 'datetime-local', optional: true } }} onSave={values => command('event.save', values)} /></details>}
     {!events.length && <p className="gw-empty">Todavía no hay fechas registradas para esta edición.</p>}
-    <div className="gw-list">{events.map(event => <article key={event.id}><h3>{event.title}</h3><p>{dateLabel(event.starts_at)}{event.ends_at && ` → ${dateLabel(event.ends_at)}`} · {{ milestone: 'Hito', review: 'Revisión', editorial: 'Fecha editorial', deadline: 'Entrega' }[event.kind] || event.kind}</p>{event.deliverable_id && data.tasks.some(task => task.id === event.deliverable_id && (taskIsMine(task, actorId) || data.taskPermissions?.[task.id]?.['task.assign'] || hasReviewPermission(data.taskPermissions?.[task.id] || {}) || data.approvedDocuments?.some(document => document.deliverable_id === task.id))) && <button type="button" onClick={() => onPick(data.tasks.find(task => task.id === event.deliverable_id))}>Abrir trabajo</button>}{permissions['task.update_schedule'] && event.kind !== 'deadline' && <details className="gw-disclosure"><summary>Modificar fecha</summary><CommandForm key={`${event.id}-${event.revision}`} initial={event} busy={busy} fields={{ title: 'Título', starts_at: { label: 'Inicio', type: 'datetime-local' }, ends_at: { label: 'Fin', type: 'datetime-local', optional: true } }} button="Guardar fecha" onSave={values => command('event.save', { ...values, id: event.id, kind: event.kind }, event.revision)} /></details>}</article>)}</div>
+    <div className="gw-list">{events.map(event => <article key={event.id}><h3>{event.title}</h3><p>{dateLabel(event.starts_at)}{event.ends_at && ` → ${dateLabel(event.ends_at)}`} · {{ milestone: 'Hito', review: 'Revisión', editorial: 'Fecha editorial', deadline: 'Entrega' }[event.kind] || event.kind}</p>{event.kind==='deadline'&&data.tasks.find(t=>t.id===event.deliverable_id)&&<TaskDates task={withDeadlineFacts(data.tasks.find(t=>t.id===event.deliverable_id),data)}/>}<span className="gw-sr-only">Las fechas límite usan Ciudad de México.</span>{event.deliverable_id && data.tasks.some(task => task.id === event.deliverable_id && (taskIsMine(task, actorId) || data.taskPermissions?.[task.id]?.['task.assign'] || hasReviewPermission(data.taskPermissions?.[task.id] || {}) || data.approvedDocuments?.some(document => document.deliverable_id === task.id))) && <button type="button" onClick={() => onPick(data.tasks.find(task => task.id === event.deliverable_id))}>Abrir trabajo</button>}{permissions['task.update_schedule'] && event.kind !== 'deadline' && <details className="gw-disclosure"><summary>Modificar fecha</summary><CommandForm key={`${event.id}-${event.revision}`} initial={event} busy={busy} fields={{ title: 'Título', starts_at: { label: 'Inicio', type: 'datetime-local' }, ends_at: { label: 'Fin', type: 'datetime-local', optional: true } }} button="Guardar fecha" onSave={values => command('event.save', { ...values, id: event.id, kind: event.kind }, event.revision)} /></details>}</article>)}</div>
   </section>;
 }
