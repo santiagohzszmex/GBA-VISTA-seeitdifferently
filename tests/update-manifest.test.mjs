@@ -27,3 +27,8 @@ assert.throws(()=>buildUpdateManifest({...minor,minimumNativeVersion:'0.1.402'})
 assert.throws(()=>buildUpdateManifest({...minor,displayVersion:'0.1.4.2'}),/differ/);
 assert.throws(()=>buildUpdateManifest({...minor,minimumNativeVersion:'0.1.4'}),/Mandatory/);
 console.log('PASS: public maintenance releases match native SemVer and mandatory minimums.');
+const macOnly=buildUpdateManifest({...input,artifacts:artifacts.slice(0,2),requiredTargets:UPDATE_TARGETS.slice(0,2)});
+assert.deepEqual(Object.keys(macOnly.platforms),UPDATE_TARGETS.slice(0,2));
+assert.throws(()=>buildUpdateManifest({...input,requiredTargets:UPDATE_TARGETS.slice(0,2)}),/mismatched/);
+assert.throws(()=>buildUpdateManifest({...input,requiredTargets:['windows-x86_64']}),/scope/);
+console.log('PASS: separate macOS publication includes both architectures and excludes Windows.');

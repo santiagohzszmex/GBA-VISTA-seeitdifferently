@@ -28,7 +28,8 @@ export function verifyCandidate(metadata,startup,bytes,{commit,version,displayVe
   if(artifact.file!==expected) throw Error('Unexpected updater filename');
   return artifact;
 }
-export function buildUpdateManifest({version,displayVersion=version,mandatory=false,minimumNativeVersion=null,commit,notes,pubDate,artifacts,previous}) {
+export function buildUpdateManifest({version,displayVersion=version,mandatory=false,minimumNativeVersion=null,commit,notes,pubDate,artifacts,previous,requiredTargets=UPDATE_TARGETS}) {
+  if(JSON.stringify(requiredTargets)!==JSON.stringify(UPDATE_TARGETS)&&JSON.stringify(requiredTargets)!==JSON.stringify(UPDATE_TARGETS.slice(0,2)))throw Error('Unsupported publication scope');
   versionParts(version);
   if(displayVersion!==version && toNativeVersion(displayVersion)!==version)throw Error('Public and native versions differ');
   if(minimumNativeVersion) { versionParts(minimumNativeVersion); if(newerThan(minimumNativeVersion,version))throw Error('Minimum version exceeds release'); }
@@ -38,13 +39,13 @@ export function buildUpdateManifest({version,displayVersion=version,mandatory=fa
   const platforms={};
   for(const artifact of artifacts) {
     const target=`${artifact.platform}-${artifact.architecture}`;
-    if(!UPDATE_TARGETS.includes(target)||platforms[target]||artifact.version!==version)throw Error('Duplicate or mismatched update target');
+    if(!requiredTargets.includes(target)||platforms[target]||artifact.version!==version)throw Error('Duplicate or mismatched update target');
     const url=new URL(artifact.url);
     const prefix=`https://github.com/${REPOSITORY}/releases/download/workspace-v${displayVersion}-beta.1/`;
     if(!artifact.url.startsWith(prefix)||url.search||url.hash||url.username||url.password||decodeURIComponent(url.pathname.split('/').at(-1))!==artifact.file)throw Error('Updater must use the permanent release asset');
     if(!/^[A-Za-z0-9+/]+={0,2}$/.test(artifact.signature||'')||Buffer.from(artifact.signature,'base64').length<100)throw Error('Missing native updater signature');
     platforms[target]={url:artifact.url,signature:artifact.signature};
   }
-  if(UPDATE_TARGETS.some(target=>!platforms[target]))throw Error('All three desktop targets are required');
+  if(requiredTargets.some(target=>!platforms[target]))throw Error('All three desktop targets are required unless publishing both macOS architectures separately');
   return {version,displayVersion,mandatory,...(minimumNativeVersion?{minimumNativeVersion}:{}),notes,pub_date:pubDate,commit,platforms};
 }
