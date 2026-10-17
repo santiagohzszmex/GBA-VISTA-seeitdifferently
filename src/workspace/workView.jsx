@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserRound } from 'lucide-react';
+import {deadlineDate,deadlineStatus} from './deadlines.mjs';
 import { STATES } from './gimgModel';
 
 /* Piezas visuales compartidas por Mi trabajo y Asignaciones.
@@ -16,22 +17,8 @@ const dayKey = date => {
 };
 const dayDiff = (a, b) => Math.round((dayKey(a) - dayKey(b)) / 86400000);
 
-export function dateShort(value) {
-  return value ? new Date(value).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: TZ }).replace('.', '') : 'Sin fecha';
-}
-
-/** Fecha corta con una nota relativa ("vence en 3 días") y un tono para resaltar lo urgente. */
-export function dueInfo(value, state, now = new Date()) {
-  const label = dateShort(value);
-  if (!value) return { label, note: '', tone: '' };
-  if (CLOSED_STATES.includes(state)) return { label, note: '', tone: '' };
-  const diff = dayDiff(new Date(value), now);
-  if (diff < 0) return { label, note: diff === -1 ? 'venció ayer' : `venció hace ${-diff} días`, tone: 'late' };
-  if (diff === 0) return { label, note: 'vence hoy', tone: 'soon' };
-  if (diff === 1) return { label, note: 'vence mañana', tone: 'soon' };
-  if (diff <= 3) return { label, note: `vence en ${diff} días`, tone: 'soon' };
-  return { label, note: `en ${diff} días`, tone: '' };
-}
+export function dateShort(value){return deadlineDate(value);}
+export function dueInfo(value,state,now=new Date()){return deadlineStatus({due_at:value,state,current_version:0},now);}
 
 /** "hoy, 12:00 p. m." o "18 oct, 12:00 p. m." para el recibo de guardado. */
 export function savedLabel(value, now = new Date()) {
@@ -56,6 +43,6 @@ export function Avatar({ name }) {
 }
 
 export function DueLabel({ task }) {
-  const due = dueInfo(task.due_at, task.state);
-  return <span className="gw-wk-due" data-tone={due.tone || undefined}>{due.label}{due.note && <small>{due.note}</small>}</span>;
+  const due = deadlineStatus(task);
+  return <span className="gw-wk-due" data-tone={due.tone || undefined}>{due.label}{due.relative && <small>{due.relative}</small>}<small>{due.text}</small></span>;
 }

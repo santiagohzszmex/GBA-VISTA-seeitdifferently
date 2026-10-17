@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import {execFileSync} from 'node:child_process';
+import {toNativeVersion} from '../src/workspace/releaseVersion.mjs';
 import {createHash} from 'node:crypto';
 import {REPOSITORY,UPDATE_TARGETS,verifyCandidate,buildUpdateManifest} from './workspace-update-manifest.mjs';
 const args=process.argv.slice(2),option=n=>args[args.indexOf(n)+1];
@@ -13,29 +14,29 @@ const gh=a=>execFileSync('gh',a,{encoding:'utf8',stdio:['ignore','pipe','pipe'],
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const release=JSON.parse(await fs.readFile('src/workspace/releaseInfo.json'));
 const config=JSON.parse(await fs.readFile('src-tauri/tauri.conf.json'));
-if(release.version!=='1.7.0'||release.nativeVersion!=='1.7.0'||config.version!=='1.7.0'||release.codename!=='Lapislázuli')throw Error('Unexpected release');
+if(!/^1\.7\.\d+$/.test(release.version)||release.nativeVersion!==toNativeVersion(release.version)||config.version!==release.nativeVersion||release.codename!=='Lapislázuli')throw Error('Unexpected release');
 if(config.plugins.updater.endpoints[0]!==`https://github.com/${REPOSITORY}/releases/download/workspace-updates/latest-{{target}}.json`)throw Error('Separate update endpoint required');
 const base=await fs.readFile('public/gba/workspace/releases.json');if(JSON.parse(base).version!=='1.5.0')throw Error('Base must remain 1.5.0');
 const commit=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
 const info=JSON.parse(gh(['run','view',runId,'--repo',REPOSITORY,'--json','headSha,conclusion,name,url']));
 if(info.conclusion!=='success'||info.headSha!==commit||info.name!=='Workspace native candidates')throw Error('Exact successful native CI required');
 const acceptance=JSON.parse(await fs.readFile(option('--acceptance')));
-if(acceptance.commit!==commit||acceptance.projectRef!=='wgihpztgwsovhykboyru'||!acceptance.backupRestoreVerified||!acceptance.documentReadVerified||!acceptance.documentWriteVerified||acceptance.imagesEnabled!==true||JSON.stringify(acceptance.imageProjectIds)!==JSON.stringify(['8cde6736-e742-4a11-8a53-cb320b36b055'])||acceptance.derivativesEnabled!==false||!/^[a-f\d-]{36}$/.test(acceptance.workerVersion||'')||acceptance.cpuMs!==1000||acceptance.serverHash!=='full-sha256')throw Error('Complete pilot deployment evidence required');
-if(!Array.isArray(acceptance.migrations)||acceptance.migrations.length!==7)throw Error('Seven migrations required');
-for(const m of acceptance.migrations){if(!/^supabase\/migrations\/\d+_workspace_lapis_[a-z_]+\.sql$/.test(m.file)||sha(await fs.readFile(m.file))!==m.sha256)throw Error('Migration differs from deployment evidence');}
+if(acceptance.commit!==commit||acceptance.projectRef!=='wgihpztgwsovhykboyru'||!acceptance.backupRestoreVerified||!acceptance.documentReadVerified||!acceptance.documentWriteVerified||acceptance.imagesEnabled!==true||(release.version==='1.7.0'?JSON.stringify(acceptance.imageProjectIds)!==JSON.stringify(['8cde6736-e742-4a11-8a53-cb320b36b055']):acceptance.imagesAllProjects!==true)||acceptance.derivativesEnabled!==false||!/^[a-f\d-]{36}$/.test(acceptance.workerVersion||'')||acceptance.cpuMs!==1000||acceptance.serverHash!=='full-sha256')throw Error('Complete pilot deployment evidence required');
+if(!Array.isArray(acceptance.migrations)||acceptance.migrations.length!==(release.version==='1.7.0'?7:8))throw Error('Reviewed migration set required');
+for(const m of acceptance.migrations){if(!/^supabase\/migrations\/\d+_workspace_(?:lapis_[a-z_]+|deadline_receipts)\.sql$/.test(m.file)||sha(await fs.readFile(m.file))!==m.sha256)throw Error('Migration differs from deployment evidence');}
 if(Date.now()-Date.parse(acceptance.verifiedAt)>86400000||!Number.isFinite(Date.parse(acceptance.verifiedAt)))throw Error('Fresh deployment evidence required');
 const key=path.join(os.homedir(),'.tauri/workspace-updates.key');
 if((await fs.readFile(key+'.pub','utf8')).trim()!==config.plugins.updater.pubkey)throw Error('Wrong signing identity');
 const folder=path.resolve('release-candidates',`macos-${runId}`);await fs.mkdir(folder,{recursive:true});
 const lock=await fs.open(path.join(folder,'publication.lock'),'wx',0o600);
 try{
- const files=[],updates=[],downloads=[],tag='workspace-v1.7.0-beta.1';
+ const files=[],updates=[],downloads=[],tag=`workspace-v${release.version}-beta.1`;
  for(const target of targets){
   const architecture=target.split('-')[1],dest=path.join(folder,target);await fs.mkdir(dest,{recursive:true});
   try{await fs.access(path.join(dest,'packages.json'));}catch{gh(['run','download',runId,'--repo',REPOSITORY,'--name',`workspace-macos-${architecture}`,'--dir',dest]);}
   const metadata=JSON.parse(await fs.readFile(path.join(dest,'packages.json'))),startup=JSON.parse(await fs.readFile(path.join(dest,'startup.json')));
   const file=metadata.updaters?.[0]?.file;if(!file||path.basename(file)!==file)throw Error('Invalid candidate file');
-  const bytes=await fs.readFile(path.join(dest,file)),artifact=verifyCandidate(metadata,startup,bytes,{commit,version:'1.7.0',target});
+  const bytes=await fs.readFile(path.join(dest,file)),artifact=verifyCandidate(metadata,startup,bytes,{commit,version:release.nativeVersion,displayVersion:release.version,target});
   const installer=metadata.downloads[0];if(path.basename(installer.file)!==installer.file)throw Error('Invalid installer');
   const installerBytes=await fs.readFile(path.join(dest,installer.file));if(installerBytes.length!==installer.size||sha(installerBytes)!==installer.sha256)throw Error('Installer bytes mismatch');
   execFileSync(process.execPath,['node_modules/@tauri-apps/cli/tauri.js','signer','sign','--private-key-path',key,'--password','',path.join(dest,file)],{stdio:['ignore','pipe','pipe']});
@@ -44,7 +45,8 @@ try{
   updates.push({...artifact,url:url(file),signature});downloads.push({...installer,url:url(installer.file)});files.push(path.join(dest,file),path.join(dest,file+'.sig'),path.join(dest,installer.file));
  }
  const notes=await fs.readFile('docs/workspace/lapis-release-notes.md','utf8');
- const manifest=buildUpdateManifest({version:'1.7.0',commit,notes,pubDate:new Date().toISOString(),artifacts:updates,requiredTargets:targets});
+ const currentFeed=await fetch(`https://github.com/${REPOSITORY}/releases/download/workspace-updates/latest-darwin.json`);if(!currentFeed.ok&&currentFeed.status!==404)throw Error('Cannot verify current macOS channel');const previous=currentFeed.ok?await currentFeed.json():null;
+ const manifest=buildUpdateManifest({previous,version:release.nativeVersion,displayVersion:release.version,commit,notes,pubDate:new Date().toISOString(),artifacts:updates,requiredTargets:targets});
  const feedFile=path.join(folder,'latest-darwin.json');await fs.writeFile(feedFile,JSON.stringify(manifest,null,2)+'\n');
  const proof={...acceptance,nativeCi:info.url,installedMacosVerified:true,interactiveWindowsVerified:false,realPilotSmoke:'pending Santiago and reviewer',downloads};
  await fs.writeFile(path.join(folder,'acceptance.json'),JSON.stringify(proof,null,2)+'\n');
@@ -55,7 +57,7 @@ try{
   const sharedUrl=`https://github.com/${REPOSITORY}/releases/download/workspace-updates/latest.json`;
   const shared=await fetch(sharedUrl);if(!shared.ok)throw Error('Cannot preserve shared update channel');const prior=Buffer.from(await shared.arrayBuffer());
   const releases=JSON.parse(gh(['release','list','--repo',REPOSITORY,'--limit','100','--json','tagName']));if(releases.some(r=>r.tagName===tag))throw Error('Immutable release already exists');
-  gh(['release','create',tag,...files,path.join(folder,'packages.json'),path.join(folder,'acceptance.json'),'--repo',REPOSITORY,'--target',commit,'--draft','--prerelease','--title','Workspace 1.7.0 Lapislázuli · macOS','--notes-file',path.join(folder,'release-notes.md')]);
+  gh(['release','create',tag,...files,path.join(folder,'packages.json'),path.join(folder,'acceptance.json'),'--repo',REPOSITORY,'--target',commit,'--draft','--prerelease','--title',`Workspace ${release.version} Lapislázuli · macOS`,'--notes-file',path.join(folder,'release-notes.md')]);
   gh(['release','edit',tag,'--repo',REPOSITORY,'--draft=false','--prerelease']);
   for(const p of [...updates,...downloads]){const r=await fetch(p.url);if(!r.ok)throw Error('Public package unavailable; feed not promoted');const b=Buffer.from(await r.arrayBuffer());if(b.length!==p.size||sha(b)!==p.sha256)throw Error('Public package bytes differ; feed not promoted');}
   gh(['release','upload','workspace-updates',feedFile,'--repo',REPOSITORY,'--clobber']);

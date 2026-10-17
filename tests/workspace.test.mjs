@@ -1,3 +1,4 @@
+import {runDeadlineAcceptance} from './workspace-deadlines.test.mjs';
 import {runLapisPilotAcceptance} from './workspace-lapis-pilot.test.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -363,6 +364,7 @@ checks += await runLapisGatewayAcceptance(db);
 checks += await runLapisInterfaceAcceptance(db);
 console.log(`BASELINE: ${checks} Workspace assertions before allowlist additions.`);
 checks += await runLapisPilotAcceptance(db);
+checks += await runDeadlineAcceptance(db);
 const authUi=await runWorkspaceAuthAcceptance();
 if(process.env.WORKSPACE_SCHEMA_PROOF){await db.exec('reset role');fs.writeFileSync(process.env.WORKSPACE_SCHEMA_PROOF,JSON.stringify({sourceCommit:process.env.GITHUB_SHA,assertions:checks,authUi,evidence:(await db.query(CUARZO_SCHEMA_QUERY)).rows[0].evidence}));}
 console.log(`PASS: ${checks} Workspace assertions: direct API denial, scopes, full editorial cycle, suspension, delegation expiry, immutable versions, self approval, licenses, recovery and session revocation.`);

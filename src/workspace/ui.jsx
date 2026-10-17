@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { documentText } from './documentModel';
 const RichDocument = React.lazy(() => import('./RichDocument'));
+import {DeadlineField} from './DeadlineViews';
 import { STATES, dateLabel, inputDate, isoDate } from './gimgModel';
 export const choices=(items,label='title')=>Object.fromEntries(items.map(x=>[x.id||x.user_id,x[label]||x.display_name]));
 export async function rpc(name,args){const {data,error}=await supabase.rpc(name,args);if(error)throw error;return data;}
@@ -18,7 +19,7 @@ export function CommandForm({fields,onSave,initial={},button='Guardar',busy=fals
   const out = {};
   for (const [key, field] of Object.entries(fields)) {
    const value = values.get(key);
-   if (field.type === 'richtext') { const document = rich.current[key] || initial[`${key}_document`]; out[key] = documentText(document); out[`${key}_document`] = document; out.editor_version = 2; } else out[key] = field.type === 'datetime-local' ? isoDate(value) : value || null;
+   if (field.type === 'richtext') { const document = rich.current[key] || initial[`${key}_document`]; out[key] = documentText(document); out[`${key}_document`] = document; out.editor_version = 2; } else {out[key] = field.type === 'datetime-local' ? isoDate(value) : value || null;if(field.type==='deadline')out.due_has_time=values.get(`${key}_has_time`)==='true';}
   }
   try {
    const result = await onSave(out);
@@ -29,8 +30,8 @@ export function CommandForm({fields,onSave,initial={},button='Guardar',busy=fals
   const f=typeof value==='string'?{label:value}:value;
   const initialValue=f.type==='datetime-local'?inputDate(initial[key]):initial[key]??'';
   const inputProps={name:key,disabled:busy,required:!f.optional,defaultValue:initialValue};
-  const Field = f.type === 'richtext' ? 'div' : 'label';
-  return <Field key={key} className={['textarea','richtext'].includes(f.type)?'gw-field-wide':undefined}>{f.label}{f.type==='richtext'?<React.Suspense fallback={<p role="status">Abriendo texto…</p>}><RichDocument key={formKey} compact ariaLabel={f.label} scope={{...f.scope,areaId:areaId || f.scope?.areaId}} disabled={busy} initialDocument={initial[`${key}_document`]} initialMarkdown={initialValue} onChange={value=>{rich.current[key]=value.content_document;}}/></React.Suspense>:f.options?<select {...inputProps}><option value="">Seleccionar</option>{Object.entries(f.options).map(([id,name])=><option value={id} key={id}>{name}</option>)}</select>:f.type==='textarea'?<textarea {...inputProps} minLength={f.minLength}/>:<input {...inputProps} minLength={f.minLength} type={f.type||'text'}/>}</Field>;
+  const Field = ['richtext','deadline'].includes(f.type) ? 'div' : 'label';
+  return <Field key={key} className={['textarea','richtext','deadline'].includes(f.type)?'gw-field-wide':undefined}>{f.label}{f.type==='deadline'?<DeadlineField key={formKey} name={key} initialValue={initial[key]} hasTime={initial.due_has_time!==false} disabled={busy}/>:f.type==='richtext'?<React.Suspense fallback={<p role="status">Abriendo texto…</p>}><RichDocument key={formKey} compact ariaLabel={f.label} scope={{...f.scope,areaId:areaId || f.scope?.areaId}} disabled={busy} initialDocument={initial[`${key}_document`]} initialMarkdown={initialValue} onChange={value=>{rich.current[key]=value.content_document;}}/></React.Suspense>:f.options?<select {...inputProps}><option value="">Seleccionar</option>{Object.entries(f.options).map(([id,name])=><option value={id} key={id}>{name}</option>)}</select>:f.type==='textarea'?<textarea {...inputProps} minLength={f.minLength}/>:<input {...inputProps} minLength={f.minLength} type={f.type||'text'}/>}</Field>;
  })}<button className="gw-primary" disabled={busy}>{button}</button></form>;
 }
 

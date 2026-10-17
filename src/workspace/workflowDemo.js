@@ -50,6 +50,8 @@ export function createWorkflowDemo() {
   state.dependencies = [];
   state.sequence = 0;
   state.drafts = {};
+  // Synthetic receipts only; real historical timestamps are never inferred this way.
+  state.versions=state.versions.map(v=>({...v,deadline_snapshot_known:true,due_at_on_submit:state.tasks.find(t=>t.id===v.deliverable_id)?.due_at||null}));
   return state;
 }
 export function demoPermissions(actor, projectId, areaId = null, task = null) {
