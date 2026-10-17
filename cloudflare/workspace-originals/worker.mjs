@@ -1,4 +1,4 @@
-const MAX_BYTES = 25 * 1024 * 1024;
+import {createImageGateway} from './images/gateway.mjs';
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 export function detectMime(bytes) {
   const text = String.fromCharCode(...bytes.subarray(0, 32));
@@ -45,8 +45,11 @@ async function peekAndStream(request, expectedSize) {
 }
 const hex = buffer => buffer ? [...new Uint8Array(buffer)].map(byte => byte.toString(16).padStart(2,'0')).join('') : '';
 export function createGateway(fetcher = fetch, logger = console, fixedLength = length => new FixedLengthStream(length)) {
+  const images=createImageGateway({fetcher,logger,fixedLength});
   return {
+    scheduled:(controller,env,ctx)=>images.scheduled(controller,env,ctx),
     async fetch(request, env) {
+      if(/^\/(images|image-downloads)(\/|$)/.test(new URL(request.url).pathname))return images.fetch(request,env);
       const origin = request.headers.get('origin');
       const origins = (env.ALLOWED_ORIGINS || '').split(',').map(value => value.trim());
       const cors = origin && origins.includes(origin) ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-File-Name, X-File-Size, X-File-Sha256', 'Access-Control-Expose-Headers': 'X-Original-Sha256', 'Access-Control-Max-Age': '600' } : {};
@@ -78,7 +81,8 @@ export function createGateway(fetcher = fetch, logger = console, fixedLength = l
           const size = Number(request.headers.get('x-file-size'));
           const sha256 = request.headers.get('x-file-sha256') || '';
           const declared = Number(request.headers.get('content-length'));
-          if (!Number.isInteger(size) || size < 1 || size > Math.min(MAX_BYTES,gate.limit) || declared > MAX_BYTES) throw problem('El archivo supera los 25 MB o no declara su tamaño.',413);
+          if (!Number.isSafeInteger(gate.limit) || gate.limit < 1) throw problem('Límite de almacenamiento no disponible.',503);
+          if (!Number.isSafeInteger(size) || size < 1 || size > gate.limit || declared > gate.limit) throw problem('El archivo supera el límite configurado o no declara su tamaño.',413);
           if (!/^[a-f0-9]{64}$/.test(sha256)) throw problem('Falta la huella de integridad del original.');
           incoming = await peekAndStream(request,size);
           const mime = detectMime(incoming.head);

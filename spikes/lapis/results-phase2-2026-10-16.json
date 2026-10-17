@@ -1,0 +1,108 @@
+{
+  "tested_at": "2026-10-16T20:07:38.153Z",
+  "synthetic": true,
+  "construction": "Pillow PNG 4000x5000 RGBA with EXIF/GPS 0,0 and inert ancillary padding to exact size. Not a real illustrator export.",
+  "results": [
+    {
+      "name": "SYNTHETIC-GPS-19000000-bytes.png",
+      "bytes": 19000000,
+      "status": 200,
+      "elapsed_ms": 6519,
+      "result": {
+        "ok": true,
+        "elapsedMs": 6481,
+        "size": 256328,
+        "type": "image/webp",
+        "engine": "Cloudflare Images remote binding"
+      }
+    },
+    {
+      "name": "SYNTHETIC-GPS-20000000-bytes.png",
+      "bytes": 20000000,
+      "status": 200,
+      "elapsed_ms": 6467,
+      "result": {
+        "ok": true,
+        "elapsedMs": 6457,
+        "size": 256328,
+        "type": "image/webp",
+        "engine": "Cloudflare Images remote binding"
+      }
+    },
+    {
+      "name": "SYNTHETIC-GPS-20971520-bytes.png",
+      "bytes": 20971520,
+      "status": 422,
+      "elapsed_ms": 6621,
+      "result": {
+        "ok": false,
+        "elapsedMs": 6608,
+        "error": "IMAGES_TRANSFORM_ERROR 9402: Could not fetch the image \u2014 file too large"
+      }
+    },
+    {
+      "name": "SYNTHETIC-GPS-20971521-bytes.png",
+      "bytes": 20971521,
+      "status": 422,
+      "elapsed_ms": 6404,
+      "result": {
+        "ok": false,
+        "elapsedMs": 6390,
+        "error": "IMAGES_TRANSFORM_ERROR 9402: Could not fetch the image \u2014 file too large"
+      }
+    },
+    {
+      "name": "SYNTHETIC-GPS-20000001-bytes.png",
+      "bytes": 20000001,
+      "sha256": "2972e90563c16c2af1e6e055d4405b8a1444999fa3fd2e5909d6224c0188872c",
+      "status": 422,
+      "elapsed_ms": 9892,
+      "result": {
+        "ok": false,
+        "elapsedMs": 9832,
+        "error": "IMAGES_TRANSFORM_ERROR 9402: Could not fetch the image \u2014 file too large"
+      }
+    }
+  ],
+  "metadata_probe": [
+    {
+      "name": "SYNTHETIC-GPS-19000000-bytes.png",
+      "size": [
+        4000,
+        5000
+      ],
+      "EXIF_present": true,
+      "GPS_present": true,
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "name": "provider.webp",
+      "size": [
+        800,
+        1000
+      ],
+      "EXIF_present": false,
+      "GPS_present": false,
+      "alpha_extrema": [
+        163,
+        255
+      ]
+    },
+    {
+      "name": "clean.webp",
+      "size": [
+        800,
+        1000
+      ],
+      "EXIF_present": false,
+      "GPS_present": false,
+      "alpha_extrema": [
+        163,
+        255
+      ]
+    }
+  ]
+}

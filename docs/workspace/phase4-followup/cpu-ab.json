@@ -1,0 +1,178 @@
+{
+  "worker": "workspace-lapis-phase4-test",
+  "deployed_version": "82b333c9-bd96-49a8-ad47-20abb2976121",
+  "source": "CPU Time and Wall Time from authenticated Cloudflare dashboard invocation details, 2026-10-17 GMT-6",
+  "free_budget_ms": 10,
+  "finalization_summary": [
+    {
+      "variant": "A",
+      "sample": "typical",
+      "events": 3,
+      "cpu_ms": [
+        3,
+        3,
+        5
+      ],
+      "min": 3,
+      "median": 3,
+      "max": 5
+    },
+    {
+      "variant": "A",
+      "sample": "limit",
+      "events": 2,
+      "cpu_ms": [
+        3,
+        3
+      ],
+      "min": 3,
+      "median": 3.0,
+      "max": 3
+    },
+    {
+      "variant": "B",
+      "sample": "typical",
+      "events": 3,
+      "cpu_ms": [
+        47,
+        34,
+        90
+      ],
+      "min": 34,
+      "median": 47,
+      "max": 90
+    },
+    {
+      "variant": "B",
+      "sample": "limit",
+      "events": 3,
+      "cpu_ms": [
+        128,
+        114,
+        136
+      ],
+      "min": 114,
+      "median": 128,
+      "max": 136
+    }
+  ],
+  "events": [
+    {
+      "trial": "B-limit-3",
+      "cpu_ms": 128,
+      "wall_ms": 2382,
+      "phase": "complete",
+      "bytes": 18874368
+    },
+    {
+      "trial": "A-limit-3",
+      "cpu_ms": 3,
+      "wall_ms": 915,
+      "phase": "complete",
+      "bytes": 18874368
+    },
+    {
+      "trial": "B-typical-3",
+      "cpu_ms": 47,
+      "wall_ms": 1020,
+      "timestamp": "06:25:29.603",
+      "phase": "complete",
+      "bytes": 5726086
+    },
+    {
+      "trial": "A-typical-3",
+      "cpu_ms": 3,
+      "wall_ms": 658,
+      "timestamp": "06:25:26.786",
+      "phase": "complete",
+      "bytes": 5726086
+    },
+    {
+      "trial": "B-limit-2",
+      "cpu_ms": 114,
+      "wall_ms": 1172,
+      "timestamp": "06:25:24.337",
+      "phase": "complete",
+      "bytes": 18874368
+    },
+    {
+      "trial": "A-limit-2",
+      "cpu_ms": 3,
+      "wall_ms": 945,
+      "timestamp": "06:25:19.008",
+      "phase": "complete",
+      "bytes": 18874368
+    },
+    {
+      "trial": "B-typical-2",
+      "cpu_ms": 34,
+      "wall_ms": 1036,
+      "timestamp": "06:25:14.253",
+      "phase": "complete",
+      "bytes": 5726086
+    },
+    {
+      "trial": "A-typical-2",
+      "cpu_ms": 3,
+      "wall_ms": 645,
+      "timestamp": "06:25:11.614",
+      "phase": "complete",
+      "bytes": 5726086
+    },
+    {
+      "trial": "B-limit-1",
+      "cpu_ms": 136,
+      "wall_ms": 1933,
+      "timestamp": "06:25:09.138",
+      "phase": "complete",
+      "bytes": 18874368
+    },
+    {
+      "trial": "B-typical-1",
+      "cpu_ms": 90,
+      "wall_ms": 1381,
+      "timestamp": "06:24:28.457",
+      "phase": "complete",
+      "bytes": 5726086
+    },
+    {
+      "trial": "A-typical-1",
+      "cpu_ms": 5,
+      "wall_ms": 685,
+      "timestamp": "06:24:25.148",
+      "phase": "complete",
+      "bytes": 5726086
+    },
+    {
+      "trial": "A-limit-1",
+      "cpu_ms": 98,
+      "wall_ms": 696,
+      "timestamp": "06:24:32.994",
+      "phase": "part",
+      "part_number": 3,
+      "bytes": 2097152
+    },
+    {
+      "trial": "A-limit-1",
+      "cpu_ms": 247,
+      "wall_ms": 963,
+      "timestamp": "06:24:31.902",
+      "phase": "part",
+      "part_number": 2,
+      "bytes": 8388608
+    },
+    {
+      "trial": "A-limit-1",
+      "cpu_ms": 249,
+      "wall_ms": 929,
+      "timestamp": "06:24:30.451",
+      "phase": "part",
+      "part_number": 1,
+      "bytes": 8388608
+    }
+  ],
+  "missing": "A-limit-1 returned HTTP 200 but its completion log was absent; CPU not invented. Two other limit/A events available.",
+  "scope": "12 successful completions; one preliminary B-limit-1 blocked during test allowlist deployment and excluded. Part upload implementation unchanged between A and B.",
+  "gate": "E NOT PASSED: parts exceed 10 ms even when completion A fits.",
+  "normal_worker_restored_version": "29507f70-1d65-4645-8da0-d6bd611b0278"
+}

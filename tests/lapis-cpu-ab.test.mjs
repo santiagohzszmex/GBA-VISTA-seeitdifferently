@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {assertTestEnvironment,testCompletionHash} from '../cloudflare/workspace-originals/worker.cpu-ab.mjs';
+const env={SUPABASE_URL:'https://ojlcttpqkyktqpqybbdy.supabase.co',LAPIS_CPU_AB:'synthetic-test-only'};
+assert.throws(()=>assertTestEnvironment({...env,SUPABASE_URL:'https://production.invalid'}));
+assert.throws(()=>assertTestEnvironment({...env,LAPIS_CPU_AB:undefined}));
+let calls=0;const full=async()=>{calls++;return 'server-hash';},asset={role:'png',sha256:'client-claim'},request=v=>new Request('https://test.invalid',{headers:{'X-Lapis-Variant':v}});
+assert.equal(await testCompletionHash({env,asset,request:request('A'),verifyFull:full}),'client-claim');assert.equal(calls,0);
+assert.equal(await testCompletionHash({env,asset,request:request('B'),verifyFull:full}),'server-hash');
+assert.equal(await testCompletionHash({env,asset:{...asset,role:'layered'},request:request('A'),verifyFull:full}),'server-hash');assert.equal(calls,2);
+const production=fs.readFileSync(new URL('../cloudflare/workspace-originals/wrangler.jsonc',import.meta.url),'utf8');assert(!production.includes('worker.cpu-ab'));assert(!production.includes('LAPIS_CPU_AB'));
+console.log('PASS: test-only CPU experiment rejects production bindings, skips full hash only for A/PNG, and preserves default production entry point.');

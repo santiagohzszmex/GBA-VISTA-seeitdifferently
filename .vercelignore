@@ -18,6 +18,7 @@ supabase/
 tests/
 docs/
 
-cloudflare/
+# The frontend imports the pure PNG validators from cloudflare/. Vite bundles
+# only those imports; Worker source/config is not copied into the public dist.
 .dev.vars*
 .wrangler/

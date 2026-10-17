@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {makePng,pngChunk} from './helpers/lapis-png.mjs';
+import {inspectPng} from '../cloudflare/workspace-originals/images/png.mjs';
+import {verifyDisplayPng} from '../src/workspace/images/displayPng.mjs';
+import {inspectClientPng} from '../src/workspace/images/imageFiles.mjs';
+const policy={png_max_bytes:18874368,max_pixels:40000000,max_dimension:32768};
+let workers=0,images=0;
+globalThis.Worker=class{constructor(){workers++;}terminate(){}postMessage({blob,policy}){inspectPng(blob.stream(),policy).then(info=>this.onmessage({data:{valid:true,info}}),()=>this.onmessage({data:{valid:false}}));}};
+const valid=new Blob([makePng()]),bad=new Blob([makePng().subarray(0,33),pngChunk('IDAT',Buffer.from('broken zlib')),pngChunk('IEND',Buffer.alloc(0))]);
+await verifyDisplayPng(valid,null);await assert.rejects(verifyDisplayPng(bad,null),/No se pudo mostrar/);
+assert.equal(workers,2,'An unhashed successful file must not certify another unhashed file');
+await verifyDisplayPng(valid,'known-valid-sha');const count=workers;await verifyDisplayPng(valid,'known-valid-sha');assert.equal(workers,count);
+const controller=new AbortController();controller.abort();await assert.rejects(verifyDisplayPng(valid,null,{signal:controller.signal}),{name:'AbortError'});assert.equal(workers,count);
+globalThis.Image=class{constructor(){images++;throw Error('A permissive image decoder must not run for a damaged raster');}};
+const report=await inspectClientPng(bad,policy);assert.equal(report.decoded,false);assert.equal(images,0);
+console.log('PASS: strict raster failure, no unhashed validation reuse, verified cache, early abort and no false local decode claim.');
+
+const animated=new Blob([makePng({extra:[pngChunk('acTL',Buffer.from([0,0,0,1,0,0,0,0]))]})]);
+const info=await verifyDisplayPng(animated,'animated-test-sha');assert.equal(info.animation,'unverified');
+assert.equal((await verifyDisplayPng(animated,'animated-test-sha')).animation,'unverified');
+console.log('PASS: animation metadata survives validation and cache reuse; animation is advisory.');

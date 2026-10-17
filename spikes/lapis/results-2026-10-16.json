@@ -1,0 +1,212 @@
+{
+  "createdAt": "2026-10-16T11:56:53.143Z",
+  "synthetic": true,
+  "localEngine": "sharp/libvips (local machine, NOT Workers)",
+  "local": [
+    {
+      "file": "SYNTHETIC-15MB-4000x5000-alpha.png",
+      "format": "png",
+      "bytes": 16307088,
+      "synthetic": true,
+      "elapsedMs": 729.547,
+      "baselineRssMiB": 67,
+      "peakProcessRssMiB": 267,
+      "width": 4000,
+      "height": 5000,
+      "hasAlphaChannel": true,
+      "previewBytes": 599514,
+      "thumbnailBytes": 32018,
+      "previewAlpha": true,
+      "previewIsOpaque": false,
+      "metadataStripped": true
+    },
+    {
+      "file": "SYNTHETIC-25MB-4000x5000-alpha.png",
+      "format": "png",
+      "bytes": 26889724,
+      "synthetic": true,
+      "elapsedMs": 804.65,
+      "baselineRssMiB": 67,
+      "peakProcessRssMiB": 265,
+      "width": 4000,
+      "height": 5000,
+      "hasAlphaChannel": true,
+      "previewBytes": 781898,
+      "thumbnailBytes": 29948,
+      "previewAlpha": true,
+      "previewIsOpaque": false,
+      "metadataStripped": true
+    },
+    {
+      "file": "SYNTHETIC-50MB-4000x5000-alpha.png",
+      "format": "png",
+      "bytes": 53356261,
+      "synthetic": true,
+      "elapsedMs": 985.711,
+      "baselineRssMiB": 67,
+      "peakProcessRssMiB": 265,
+      "width": 4000,
+      "height": 5000,
+      "hasAlphaChannel": true,
+      "previewBytes": 1270620,
+      "thumbnailBytes": 20872,
+      "previewAlpha": true,
+      "previewIsOpaque": false,
+      "metadataStripped": true
+    },
+    {
+      "file": "SYNTHETIC-5MB-4000x5000-alpha.png",
+      "format": "png",
+      "bytes": 5717086,
+      "synthetic": true,
+      "elapsedMs": 655.161,
+      "baselineRssMiB": 67,
+      "peakProcessRssMiB": 265,
+      "width": 4000,
+      "height": 5000,
+      "hasAlphaChannel": true,
+      "previewBytes": 396624,
+      "thumbnailBytes": 34628,
+      "previewAlpha": true,
+      "previewIsOpaque": false,
+      "metadataStripped": true
+    },
+    {
+      "file": "SYNTHETIC-container.kra",
+      "format": "kra",
+      "bytes": 17407940,
+      "synthetic": true,
+      "elapsedMs": 0.545,
+      "baselineRssMiB": 67,
+      "peakProcessRssMiB": 68,
+      "verification": "zip_manifest",
+      "entries": 4,
+      "layers": "author_declared",
+      "bytesRead": 65870
+    },
+    {
+      "file": "SYNTHETIC-flattened.psd",
+      "format": "psd",
+      "bytes": 80000040,
+      "synthetic": true,
+      "elapsedMs": 0.294,
+      "baselineRssMiB": 67,
+      "peakProcessRssMiB": 68,
+      "verification": "header",
+      "width": 4000,
+      "height": 5000,
+      "channels": 4,
+      "depth": 8,
+      "layers": "author_declared",
+      "bytesRead": 26
+    },
+    {
+      "file": "SYNTHETIC-flattened.tiff",
+      "format": "tiff",
+      "bytes": 80000154,
+      "synthetic": true,
+      "elapsedMs": 0.339,
+      "baselineRssMiB": 67,
+      "peakProcessRssMiB": 68,
+      "verification": "header",
+      "entries": 11,
+      "layers": "author_declared",
+      "bytesRead": 28
+    }
+  ],
+  "binding": [
+    {
+      "file": "SYNTHETIC-15MB-4000x5000-alpha.png",
+      "status": 200,
+      "roundTripMs": 2058,
+      "ok": true,
+      "elapsedMs": 2031,
+      "size": 563604,
+      "type": "image/webp",
+      "engine": "Cloudflare Images remote binding"
+    },
+    {
+      "file": "SYNTHETIC-25MB-4000x5000-alpha.png",
+      "status": 422,
+      "roundTripMs": 1580,
+      "ok": false,
+      "elapsedMs": 1571,
+      "error": "IMAGES_TRANSFORM_ERROR 9402: Could not fetch the image \u2014 file too large"
+    },
+    {
+      "file": "SYNTHETIC-50MB-4000x5000-alpha.png",
+      "status": 422,
+      "roundTripMs": 4175,
+      "ok": false,
+      "elapsedMs": 4166,
+      "error": "IMAGES_TRANSFORM_ERROR 9402: Could not fetch the image \u2014 file too large"
+    },
+    {
+      "file": "SYNTHETIC-5MB-4000x5000-alpha.png",
+      "status": 200,
+      "roundTripMs": 1058,
+      "ok": true,
+      "elapsedMs": 1048,
+      "size": 256328,
+      "type": "image/webp",
+      "engine": "Cloudflare Images remote binding"
+    }
+  ],
+  "remoteTransform": [
+    {
+      "file": "SYNTHETIC-5MB-4000x5000-alpha.png",
+      "inputBytes": 5717086,
+      "roundTripMs": 6975,
+      "engine": "Cloudflare remote transform (remote dev)",
+      "status": 524,
+      "type": "text/plain;charset=utf-8",
+      "bytes": 59,
+      "elapsedMs": 6776,
+      "cfResized": "err=9504",
+      "error": "ERROR 9504: Could not fetch the image - download timed out\n"
+    },
+    {
+      "file": "SYNTHETIC-15MB-4000x5000-alpha.png",
+      "inputBytes": 16307088,
+      "roundTripMs": 6867,
+      "engine": "Cloudflare remote transform (remote dev)",
+      "status": 524,
+      "type": "text/plain;charset=utf-8",
+      "bytes": 59,
+      "elapsedMs": 6817,
+      "cfResized": "err=9504",
+      "error": "ERROR 9504: Could not fetch the image - download timed out\n"
+    },
+    {
+      "file": "SYNTHETIC-25MB-4000x5000-alpha.png",
+      "inputBytes": 26889724,
+      "roundTripMs": 6752,
+      "engine": "Cloudflare remote transform (remote dev)",
+      "status": 524,
+      "type": "text/plain;charset=utf-8",
+      "bytes": 59,
+      "elapsedMs": 6703,
+      "cfResized": "err=9504",
+      "error": "ERROR 9504: Could not fetch the image - download timed out\n"
+    },
+    {
+      "file": "SYNTHETIC-50MB-4000x5000-alpha.png",
+      "inputBytes": 53356261,
+      "roundTripMs": 6608,
+      "engine": "Cloudflare remote transform (remote dev)",
+      "status": 524,
+      "type": "text/plain;charset=utf-8",
+      "bytes": 59,
+      "elapsedMs": 6557,
+      "cfResized": "err=9504",
+      "error": "ERROR 9504: Could not fetch the image - download timed out\n"
+    }
+  ],
+  "remoteLimitVerified": false,
+  "notes": [
+    "All samples synthetic, not illustrator exports. PSD flattened; KRA manifest-only fixture.",
+    "Cloudflare binding benchmark: 800x1000 WebP. Local benchmark: preview 1600x2000, thumbnail 320x400 plus output-alpha statistics.",
+    "Input sizes nominally 5/15/25/50 MB; exact byte lengths are recorded. No exact byte boundary claim.",
+    "Source fixtures did not contain EXIF/GPS; absent output metadata does not prove stripping a tagged source."
+  ]
+}

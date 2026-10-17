@@ -1,0 +1,29 @@
+{
+  "source": "Cloudflare authenticated dashboard, Worker Observability event details; cpuTimeMs is not wall time",
+  "worker": "workspace-lapis-phase4-test",
+  "version": "d4c8b68a-ae84-44c0-aa1d-1534b3a2f0de",
+  "samples": [
+    {
+      "fixture": "original.png",
+      "bytes": 5726086,
+      "localTime": "2026-10-16 20:25:31.366 GMT-6",
+      "cpuTimeMs": 47,
+      "wallTimeMs": 1184,
+      "status": 200,
+      "outcome": "ok"
+    },
+    {
+      "fixture": "near-limit.png",
+      "bytes": 18874368,
+      "localTime": "2026-10-16 20:25:36.896 GMT-6",
+      "cpuTimeMs": 184,
+      "wallTimeMs": 1709,
+      "status": 200,
+      "outcome": "ok"
+    }
+  ],
+  "freeBudgetMs": 10,
+  "gate": "no superada",
+  "limits": "Two individual invocations, not percentiles. Successful HTTP does not establish compliance with the Free CPU budget. Empty pprof and profile API 404 are not profiling evidence.",
+  "plan": "Free: Current plan confirmed in authenticated Workers plans dashboard"
+}

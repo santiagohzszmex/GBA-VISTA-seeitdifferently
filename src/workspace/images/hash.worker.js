@@ -1,0 +1,2 @@
+import {createSHA256} from 'hash-wasm';
+self.onmessage=async({data:{file}})=>{try{const hash=await createSHA256();hash.init();for(let at=0;at<file.size;at+=1048576){hash.update(new Uint8Array(await file.slice(at,at+1048576).arrayBuffer()));self.postMessage({received:Math.min(file.size,at+1048576),total:file.size});}self.postMessage({sha256:hash.digest('hex')});}catch{self.postMessage({error:'No se pudo calcular la huella del archivo.'});}};

@@ -1,9 +1,9 @@
 {
-  "version": "1.6.6.2",
-  "nativeVersion": "1.6.602",
-  "codename": "Cuarzo",
+  "version": "1.7.0",
+  "nativeVersion": "1.7.0",
+  "codename": "Lapislázuli",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Crea tu GBA ID desde Workspace",
-  "notice": "Workspace 1.6.6.2 Cuarzo añade la opción Crear GBA ID junto al inicio de sesión. Puedes crear tu cuenta sin correo, con un PIN y una frase de recuperación; tu equipo sigue autorizando el acceso a las ediciones."
+  "noticeTitle": "Lapislázuli · Ilustración en Workspace",
+  "notice": "Entrega ilustraciones directamente desde tu asignación, conserva los originales y consulta las observaciones sobre la imagen. El piloto comienza en Día de Muertos. Límites provisionales: PNG 18 MiB, archivos con capas 250 MiB y 40 megapíxeles."
 }

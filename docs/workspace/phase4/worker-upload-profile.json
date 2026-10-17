@@ -1,0 +1,18 @@
+[
+  {
+    "file": "original.png",
+    "bytes": 5726086,
+    "status": 200,
+    "completionWallMs": 1238.8,
+    "profileStatus": 404,
+    "verification": "header"
+  },
+  {
+    "file": "near-limit.png",
+    "bytes": 18874368,
+    "status": 200,
+    "completionWallMs": 1764.2,
+    "profileStatus": 404,
+    "verification": "header"
+  }
+]

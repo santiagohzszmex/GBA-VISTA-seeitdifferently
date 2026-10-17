@@ -1,0 +1,22 @@
+{
+  "project": "workspace-lapis-phase4-test",
+  "postgres": "17.11",
+  "new_checks": 10,
+  "transaction": "ROLLBACK",
+  "coverage": [
+    "other edition denied",
+    "allowed edition creates image spec",
+    "upload open allowed",
+    "removal denies open",
+    "removal denies resume part",
+    "removal denies verified completion",
+    "removal denies draft",
+    "retained bundle assets/drafts/versions identical",
+    "authorized original file readable",
+    "global pause retains reads"
+  ],
+  "historical_remote_checks": 36,
+  "historical_local_checks": 770,
+  "local_now": 785,
+  "note": "36 previous checks are historical workflow evidence, not 36 new checks or explicit retained-read coverage; ten additional real SQL checks cover this change."
+}

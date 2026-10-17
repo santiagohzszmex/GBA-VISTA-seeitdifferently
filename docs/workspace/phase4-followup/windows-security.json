@@ -1,0 +1,14 @@
+{
+  "repository": "santiagohzszmex/GBA-VISTA-seeitdifferently",
+  "visibility": "PUBLIC",
+  "user_decision": "Santiago authorized continuing publicly after the privacy notice.",
+  "build_commit": "edc550d8aee337b519e0af9d85e09b5959ff7908",
+  "run": "39030323475",
+  "retention_days": 7,
+  "artifact_expires_at": "2026-10-24T11:55:51Z",
+  "exe_sha256": "6fdfebdfb3dd80506c16c13ff072f0bc8951476e55cf3d561ee7b45c9178f38c",
+  "files_scanned": 10,
+  "matched_credential_or_production_worker_literals": 0,
+  "review": "Build source uses synthetic fixtures, Auth/Supabase throwing aliases, no updater endpoint, blocked external fetch and CSP. Scan checked credential patterns and production Worker URL in supplied packet; not exhaustive reverse engineering.",
+  "not_tested": "Windows execution belongs to Santiago; existing edc550d binary not rebuilt for this follow-up."
+}

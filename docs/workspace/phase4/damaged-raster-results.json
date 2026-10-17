@@ -1,0 +1,9 @@
+{
+  "testProject": "ojlcttpqkyktqpqybbdy",
+  "synthetic": true,
+  "bytes": 90,
+  "verification": "header",
+  "qualityPassed": false,
+  "returnedForChanges": "changes_requested",
+  "downloadIdentical": true
+}

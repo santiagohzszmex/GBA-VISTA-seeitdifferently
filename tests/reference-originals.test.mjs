@@ -12,7 +12,9 @@ assert.deepEqual(parsePalette('#673ab7, #F4ECE0 #673AB7'),['#673AB7','#F4ECE0'])
 assert.equal(validatePalette(['#673AB7']),true);assert.equal(validatePalette(['javascript:alert(1)']),false);
 for(const kind of ['concept','creative_direction','moodboard','instructions'])validateOriginal({size:5,type:'application/pdf'},kind);
 assert.throws(()=>validateOriginal({size:5,type:'image/svg+xml'},'concept'),/PDF o una imagen/);
-assert.throws(()=>validateOriginal({size:26214401,type:'image/png'},'moodboard'),/25 MB/);
+assert.throws(()=>validateOriginal({size:50,type:'image/png'},'concept',{file_limit_bytes:40}),/límite configurado/);
+validateOriginal({size:50,type:'image/png'},'concept',{file_limit_bytes:60});
+assert.throws(()=>validateOriginal({size:26214401,type:'image/png'},'moodboard',{file_limit_bytes:26214400}),/límite configurado/);
 assert.equal(canManageReference('concept',null,{}),false);
 assert.equal(canManageReference('instructions','art',{}, {art:{'reference.manage_instructions':true}}),true);
 function fixture({kind='moodboard',denied=false,putFailure=false,finishFailure=false,deleteFailure=false,wrongSize=false,wrongHash=false}={}) {

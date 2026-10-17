@@ -1,0 +1,16 @@
+{
+  "$schema":"../../node_modules/wrangler/config-schema.json",
+  "name":"workspace-lapis-phase4-test",
+  "main":"worker.cpu-ab.mjs",
+  "compatibility_date":"2026-10-10",
+  "account_id":"4334afb560574c76fa5054127dcd9b0b",
+  "workers_dev":true,
+  "r2_buckets":[{"binding":"ORIGINALS","bucket_name":"workspace-lapis-phase4-test"}],
+  "vars":{
+    "LAPIS_CPU_AB":"synthetic-test-only",
+    "SUPABASE_URL":"https://ojlcttpqkyktqpqybbdy.supabase.co",
+    "ALLOWED_ORIGINS":"http://127.0.0.1:1420,http://localhost:1420,tauri://localhost,http://tauri.localhost,https://tauri.localhost,null"
+  },
+  "triggers":{"crons":["*/15 * * * *"]},
+  "observability":{"enabled":true,"redact_query_string":true,"logs":{"enabled":true,"invocation_logs":true,"head_sampling_rate":1},"traces":{"enabled":true,"head_sampling_rate":1}}
+}

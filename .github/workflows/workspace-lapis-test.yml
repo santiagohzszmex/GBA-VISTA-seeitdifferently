@@ -1,0 +1,40 @@
+name: Lapislazuli isolated Windows test
+on:
+  push:
+    branches: [codex/workspace-1-7-0-phase-4]
+    paths: ['.github/workflows/workspace-lapis-test.yml', 'scripts/lapis-phase4/test-client/**', 'src-tauri/tauri.lapis-test.json', 'src/workspace/images/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  portable-test:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+        with:
+          targets: x86_64-pc-windows-msvc
+      - run: npm ci
+      - name: Generate synthetic files and build the isolated app
+        shell: pwsh
+        run: |
+          $env:LAPIS_FIXTURE_DIR = Join-Path $env:RUNNER_TEMP 'lapis-fixtures'
+          node scripts/lapis-synthetic-fixtures.mjs
+          npx tauri build --debug --no-bundle --config src-tauri/tauri.lapis-test.json --target x86_64-pc-windows-msvc
+          New-Item -ItemType Directory -Force lapis-windows-packet
+          Copy-Item src-tauri/target/x86_64-pc-windows-msvc/debug/gba-workspace.exe lapis-windows-packet/Workspace-Lapis-Test.exe
+          Copy-Item "$env:LAPIS_FIXTURE_DIR/*" lapis-windows-packet/
+          Copy-Item docs/workspace/phase4/WINDOWS.md lapis-windows-packet/LEEME.md
+          Copy-Item node_modules/hash-wasm/LICENSE lapis-windows-packet/hash-wasm-LICENSE.txt
+          Get-FileHash lapis-windows-packet/Workspace-Lapis-Test.exe -Algorithm SHA256 | Format-List | Out-File lapis-windows-packet/SHA256.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Workspace-Lapislazuli-Windows-TEST
+          path: lapis-windows-packet/
+          retention-days: 7

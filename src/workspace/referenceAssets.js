@@ -10,7 +10,9 @@ async function authorizedFetch(gateway, path, options = {}) {
   return result;
 }
 export async function uploadReferenceOriginal(gateway, reference, file) {
-  validateOriginal(file, reference.kind);
+  const {data:policy,error:policyError} = await supabase.rpc('workspace_upload_policy');
+  if (policyError || !Number.isSafeInteger(policy?.reference_max_bytes)) throw Error('No se pudo consultar el límite de almacenamiento. Vuelve a intentarlo.');
+  validateOriginal(file, reference.kind, policy);
   const sha256 = [...new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()))].map(byte => byte.toString(16).padStart(2, '0')).join('');
   const response = await authorizedFetch(gateway, `/references/${reference.id}`, { method: 'POST', headers: { 'Content-Type': originalMime(file), 'X-File-Name': encodeURIComponent(file.name), 'X-File-Size': String(file.size), 'X-File-Sha256': sha256 }, body: file });
   return response.json();
