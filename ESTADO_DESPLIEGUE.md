@@ -22,3 +22,12 @@
 - macOS publicado · Release workspace-v1.7.0-beta.1 y feed latest-darwin.json, CI 39052986294 completo correcto (tres plataformas); dos paquetes macOS firmados y bytes públicos verificados. Windows no publicado, canal compartido y base pública 1.5.0 intactos. Siguiente: humo real de Santiago/revisor.
 - Web promovida · dpl_6mQKsytAexeK1B4bJGv6C8mNxCUH, gba-vista-seeitdifferently-d68hyde72.vercel.app, GBA ID verificado. Se corrigió .vercelignore para incluir módulos PNG compartidos (sin archivos privados). El Worker reporta CPU 1000 ms en script_runtime.limits.
 - Cierre · La comprobación de flujo real PNG/revisor y la alerta de presupuesto corresponden a Santiago y siguen pendientes. No se simularon aprobaciones ni se publicaron binarios Windows. Comandos de pausa/reversión: docs/workspace/lapis-production-operations.md.
+- Verificación pública final · Workspace HTTP 200, cliente de imágenes presente, GBA ID server_connection=verified y manifiesto base 1.5.0 idéntico. PR #27 adjunta. Acceso temporal del CLI Vercel retirado tras las pruebas.
+
+## 1.7.1 Lapislázuli
+
+- Web publicada: dpl_DtYAuQsKpjjgwgJcwp7jRYqTyDCD. Migración workspace_deadline_receipts aplicada; 43 asignaciones y 10 versiones conservadas.
+- Imágenes activadas para todas las ediciones no archivadas y futuras de GIMG, con RBAC y límites existentes.
+- macOS publicado: workspace-v1.7.1-beta.1, canal 1.7.100. CI 39056237948 correcta en las tres plataformas; Windows pendiente de prueba humana.
+- Fuente de los binarios: 4e90fd8b30f9dd114b9971608f6d7f2b4319d27c; el cierre posterior sólo modifica documentación y la utilidad de respaldo.
+- Base 1.5.0 y canal compartido preservados. Operación y reversión: docs/workspace/deadlines-171-operations.md.

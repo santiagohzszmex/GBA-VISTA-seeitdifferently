@@ -29,5 +29,5 @@ for(const [table,rows] of Object.entries(b.rows)){
  assert.equal(result.rows[0].restored,(rows||[]).length,`Restore count mismatch: ${table}`);
 }
 await db.close();
-await fs.writeFile(folder+'/restore-rehearsal.json',JSON.stringify({verified_at:new Date().toISOString(),sha256:inventory.sha256,offline:true,affectedTables:7,exactRows:true,scope:'Encrypted export decrypts; seven affected tables restore with original PostgreSQL column types and exact values. Function definitions, ACL, triggers and constraints retained for selective recovery; no production changes.'},null,2),{mode:0o600});
-console.log('PASS offline backup decryption and exact typed restoration of seven affected tables.');
+await fs.writeFile(folder+'/restore-rehearsal.json',JSON.stringify({verified_at:new Date().toISOString(),sha256:inventory.sha256,offline:true,affectedTables:Object.keys(b.rows).length,exactRows:true,scope:'Encrypted export decrypts; affected tables restore with original PostgreSQL column types and exact values. Function definitions, ACL, triggers and constraints retained for selective recovery; no production changes.'},null,2),{mode:0o600});
+console.log(`PASS offline backup decryption and exact typed restoration of ${Object.keys(b.rows).length} affected tables.`);
