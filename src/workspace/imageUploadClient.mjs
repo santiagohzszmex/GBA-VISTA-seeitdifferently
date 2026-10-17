@@ -20,8 +20,8 @@ export function createImageUploader({gateway,authorization,hashFile,persist=asyn
    if(file.size!==plan.size_bytes||file.name!==plan.file_name||await hashFile(file)!==plan.sha256)throw Error('El archivo cambió; selecciona el mismo original para reanudar');
    if(signal?.aborted)throw signal.reason||Error('Subida pausada');
    let state=plan.session_id?await call(`/images/uploads/${plan.session_id}`,{},signal):await call('/images/uploads',json(plan),signal);
-   plan={...plan,session_id:state.id,expires_at:state.expires_at};await persist(plan);
-   if(['cancelled','expired','failed'].includes(state.state))throw Error('La sesión terminó; inicia una nueva subida');
+   plan={...plan,session_id:state.id,asset_id:state.asset_id,expires_at:state.expires_at};await persist(plan);
+   if(['cancelled','expired','failed','cleaning'].includes(state.state))throw Error('La sesión terminó; inicia una nueva subida');
    const total=Math.ceil(file.size/state.part_bytes),done=new Set(state.parts.map(p=>p.partNumber));
    onProgress({received:state.received_bytes,total:file.size,parts:done.size,totalParts:total,state:state.state});
    if(state.state!=='ready')for(let number=1;number<=total;number++){

@@ -70,20 +70,22 @@ try {
  const invalid=await fetch(`${host}/references/${reference}`,{method:'POST',headers:{Authorization:'Bearer local-runtime-user','Content-Type':'image/png','X-File-Name':'checksum-failure','X-File-Size':String(png.length),'X-File-Sha256':'f'.repeat(64)},body:png});
  assert.equal(invalid.status,502);assert.equal([...originals.values()].at(-1).status,'failed');
  assert.equal((await fetch(`${host}/originals/${[...originals.keys()][0]}`)).status,401);
- // Real workerd + R2 multipart, native DigestStream and PNG DecompressionStream.
+ // Real workerd + R2 multipart, native DigestStream and light PNG headers.
  for(const [bytes,format]of [[png,'png'],[Buffer.alloc(8388608+333,7),'afphoto']]){
   const digest=createHash('sha256').update(bytes).digest('hex'),headers={Authorization:'Bearer local-runtime-user'};
   const open=await fetch(`${host}/images/uploads`,{method:'POST',headers,body:JSON.stringify({request_id:crypto.randomUUID(),deliverable_id:reference,file_name:`synthetic.${format}`,format,role:format==='png'?'png':'layered',size_bytes:bytes.length,sha256:digest})});const session=await open.json();assert.equal(open.status,201,JSON.stringify(session));assert.equal(JSON.stringify(session).includes('object_key'),false);
   for(let n=1;n<=Math.ceil(bytes.length/8388608);n++){const r=await fetch(`${host}/images/uploads/${session.id}/parts/${n}`,{method:'PUT',headers,body:bytes.subarray((n-1)*8388608,n*8388608)});assert.equal(r.status,200,await r.text());}
-  const finish=await fetch(`${host}/images/uploads/${session.id}/complete`,{method:'POST',headers}),done=await finish.json();assert.equal(finish.status,200,JSON.stringify(done));assert.equal(done.verification,format==='png'?'decoded':'unverified');
+  const finish=await fetch(`${host}/images/uploads/${session.id}/complete`,{method:'POST',headers}),done=await finish.json();assert.equal(finish.status,200,JSON.stringify(done));assert.equal(done.verification,format==='png'?'header':'unverified');
   const signed=await fetch(`${host}/images/files/${session.asset_id}/original/link`,{method:'POST',headers}).then(x=>x.json());const dl=await fetch(signed.url);assert.equal(dl.status,200,await dl.clone().text());assert.deepEqual(Buffer.from(await dl.arrayBuffer()),bytes);
+  const range=await fetch(signed.url,{headers:{Range:'bytes=4-31'}});assert.equal(range.status,206);assert.equal(range.headers.get('Content-Range'),`bytes 4-31/${bytes.length}`);assert.equal(range.headers.get('Accept-Ranges'),'bytes');assert.deepEqual(Buffer.from(await range.arrayBuffer()),bytes.subarray(4,32));
+  const invalidRange=await fetch(signed.url,{headers:{Range:`bytes=${bytes.length}-`}});assert.equal(invalidRange.status,416);
  }
  const corruptOpen=await fetch(`${host}/images/uploads`,{method:'POST',headers:{Authorization:'Bearer local-runtime-user'},body:JSON.stringify({request_id:crypto.randomUUID(),deliverable_id:reference,file_name:'corrupt.png',format:'png',role:'png',size_bytes:png.length,sha256:'f'.repeat(64)})}).then(r=>r.json());
  await fetch(`${host}/images/uploads/${corruptOpen.id}/parts/1`,{method:'PUT',headers:{Authorization:'Bearer local-runtime-user'},body:png});
  const corruptFinish=await fetch(`${host}/images/uploads/${corruptOpen.id}/complete`,{method:'POST',headers:{Authorization:'Bearer local-runtime-user'}});assert.equal(corruptFinish.status,400,await corruptFinish.text());assert.equal(sessions.get(corruptOpen.id).state,'cancelled','Completed multipart abort must allow confirmed invalid-file cleanup');
  const cancel=await fetch(`${host}/images/uploads`,{method:'POST',headers:{Authorization:'Bearer local-runtime-user'},body:JSON.stringify({request_id:crypto.randomUUID(),deliverable_id:reference,file_name:'cancel.afphoto',format:'afphoto',role:'layered',size_bytes:100,sha256:'a'.repeat(64)})}).then(r=>r.json());
  const cancelled=await fetch(`${host}/images/uploads/${cancel.id}`,{method:'DELETE',headers:{Authorization:'Bearer local-runtime-user'}});assert.equal(cancelled.status,200,await cancelled.text());
- console.log('PASS: actual workerd multipart 8 MiB + final part, SHA-256 DigestStream, PNG decode, opaque layers, signed download and invalid/cancelled multipart cleanup.');
+ console.log('PASS: actual workerd multipart 8 MiB + final part, SHA-256 DigestStream, light PNG headers, opaque layers, signed full/range downloads and invalid/cancelled multipart cleanup.');
  console.log('PASS: actual workerd + private local R2 preserve exact PNG/PDF bytes, validate service SHA-256, reject corruption and deny anonymous reads. No production files or paid resources were used.');
 }finally{
  cli.kill('SIGTERM');backend.closeAllConnections();await new Promise(resolve=>backend.close(resolve));

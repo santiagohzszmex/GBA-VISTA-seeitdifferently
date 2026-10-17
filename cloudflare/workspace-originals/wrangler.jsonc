@@ -10,7 +10,7 @@
     "SUPABASE_URL": "https://wgihpztgwsovhykboyru.supabase.co",
     "ALLOWED_ORIGINS": "https://gba.software,https://www.gba.software,https://vista.gba.software,http://tauri.localhost,https://tauri.localhost,tauri://localhost,null"
   },
-  "images": {"binding":"IMAGES"},
+  // Images binding disabled in Phase 3; replaceable processor code is retained.
   "triggers": {"crons":["*/15 * * * *"]},
   "observability": {"enabled":true,"redact_query_string":true,"logs":{"enabled":true,"invocation_logs":false,"head_sampling_rate":0.1},"traces":{"enabled":false,"head_sampling_rate":0.01}}
 }

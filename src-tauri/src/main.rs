@@ -1,7 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod image_cache;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    // Maintenance CLI only; no filesystem command is exposed to the webview.
+    // Maintenance verifier takes explicit paths only from CLI arguments.
     if args.get(1).map(String::as_str) == Some("--verify-update") {
         if args.len() != 4 || verify_update(&args[2], &args[3]).is_err() {
             eprintln!("Workspace update signature rejected");
@@ -12,6 +13,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .invoke_handler(tauri::generate_handler![image_cache::workspace_image_cache_get,image_cache::workspace_image_cache_put,image_cache::workspace_image_cache_remove,image_cache::workspace_image_cache_clear])
         .run(tauri::generate_context!())
         .expect("No se pudo iniciar Workspace");
 }

@@ -12,7 +12,7 @@ class Bucket{
  obj(key,bytes,metadata={}){return {key,size:bytes.length,body:new Blob([bytes]).stream(),checksums:{sha256:Buffer.from(sha(bytes),'hex')},...metadata,arrayBuffer:async()=>Uint8Array.from(bytes).buffer};}
  async put(key,body,opts={}){if(this.failPut)throw Error('R2 transient write failure');if(opts.onlyIf&&this.objects.has(key))return null;const bytes=Buffer.from(await new Response(body).arrayBuffer());this.objects.set(key,bytes);return this.obj(key,bytes);}
  async head(key){const b=this.objects.get(key);return b?this.obj(key,b):null;}
- async get(key,opts={}){let b=this.objects.get(key);if(!b)return null;if(opts.range)b=b.subarray(opts.range.offset,opts.range.offset+opts.range.length);return this.obj(key,b);}
+ async get(key,opts={}){let b=this.objects.get(key);if(!b)return null;const full=b;if(opts.range)b=b.subarray(opts.range.offset,opts.range.offset+opts.range.length);return this.obj(key,b,{size:full.length,checksums:{sha256:Buffer.from(sha(full),'hex')}});}
  async delete(key){if(this.failDelete)throw Error('R2 unavailable');this.objects.delete(key);}
  async createMultipartUpload(key){const id=webcrypto.randomUUID();this.created++;this.uploads.set(id,{key,parts:new Map()});return this.resumeMultipartUpload(key,id);}
  resumeMultipartUpload(key,id){const get=()=>{const value=this.uploads.get(id);if(!value||value.key!==key)throw Object.assign(Error('NoSuchUpload'),{code:'NoSuchUpload'});return value;};return {uploadId:id,
@@ -29,6 +29,9 @@ export async function runLapisGatewayAcceptance(db){
  const actor=async n=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify(n?{sub:id(n),session_id:sid(n)}:{})]);await db.exec(`set role ${n?'authenticated':'anon'}`);};
  const secret='local-phase2-only',cmd=(action,data,revision=null)=>scalar('select public.workspace_command($1,$2,$3)',[action,data,revision]);
  await admin('select 1');await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261016194802_workspace_lapis_multipart_gateway.sql',import.meta.url),'utf8'));
+ await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261016203609_workspace_lapis_image_interface.sql',import.meta.url),'utf8'));
+ eq(await scalar('select derivatives_enabled from workspace_private.upload_policy where singleton'),false);
+ await admin('update workspace_private.upload_policy set derivatives_enabled=true where singleton');
  const unit=await scalar("select id from public.workspace_units where slug='gimg'");
  await admin("update workspace_private.original_limits set enabled=true,capacity_bytes=10000000000,gateway_key_hash=encode(extensions.digest($1,'sha256'),'hex') where singleton",[secret]);
  for(let n=1;n<=5;n++){
@@ -60,7 +63,7 @@ export async function runLapisGatewayAcceptance(db){
  await call(`/images/uploads/${s.id}/complete`,{method:'POST'},400); // Must not strand state=validating.
  await call(`/images/uploads/${s.id}/parts/1`,{method:'PUT',body:original.subarray(0,2)},400);
  s=await call(`/images/uploads/${s.id}/parts/1`,{method:'PUT',body:original});eq(s.received_bytes,original.length);
- s=await call(`/images/uploads/${s.id}/complete`,{method:'POST'});eq(s.state,'ready');eq(s.verification,'decoded');eq(s.preview_state,'unavailable');eq(s.message,'Vista previa no disponible; descarga el original');
+ s=await call(`/images/uploads/${s.id}/complete`,{method:'POST'});eq(s.state,'ready');eq(s.verification,'header');eq(s.preview_state,'unavailable');eq(s.message,'Vista previa no disponible; descarga el original');
  eq(await admin('select status from workspace_private.image_assets where id=$1',[s.asset_id]).then(x=>x.rows[0].status),'validated');
  await call(`/images/uploads/${s.id}`,{method:'DELETE'},409);
  // Working copies cannot be read even by Direction until submitted.
@@ -131,6 +134,6 @@ export async function runLapisGatewayAcceptance(db){
  await admin('update workspace_private.original_limits set allocated_bytes=8100000000 where singleton');eq(await scalar("select count(*)::int from workspace_private.notifications where event_type='storage.warning' and recipient_id=$1",[id(1)]),1);
  await admin('update workspace_private.original_limits set allocated_bytes=10000000000 where singleton');const full=await call('/images/uploads',{method:'POST',body:{request_id:webcrypto.randomUUID(),deliverable_id:task.id,file_name:'synthetic.png',role:'png',format:'png',size_bytes:original.length,sha256:sha(original)}},400);eq(full.error,'No hay espacio disponible en Workspace; avisa a Dirección');
  await actor(0);await bad(scalar("select public.workspace_image_maintenance('cleanup.claim','{}','wrong')"),/Pasarela/);await bad(scalar("select public.workspace_image_file('{}','wrong')"),/Pasarela/);
- await admin('update workspace_private.upload_policy set images_enabled=false where singleton');eq(await scalar('select images_enabled from workspace_private.upload_policy where singleton'),false);
+ await admin('update workspace_private.upload_policy set images_enabled=false,derivatives_enabled=false where singleton');eq(await scalar('select images_enabled from workspace_private.upload_policy where singleton'),false);
  console.log(`PASS: ${checks} Phase 2 gateway/database/SDK assertions; isolated local database and fake R2.`);await db.exec('reset role');return checks;
 }

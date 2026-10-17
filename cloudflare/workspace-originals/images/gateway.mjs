@@ -1,4 +1,4 @@
-import {inspectPng} from './png.mjs';
+import {inspectPngHeader} from './pngHeader.mjs';
 import {inspectLayered} from './layered.mjs';
 import {cloudflareProcessor} from './previews.mjs';
 const uuid='[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
@@ -6,7 +6,7 @@ const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(
 const problem=(message,status=400)=>Object.assign(Error(message),{status});
 const b64=bytes=>btoa(String.fromCharCode(...bytes)).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');
 const un64=s=>Uint8Array.from(atob(s.replaceAll('-','+').replaceAll('_','/')),x=>x.charCodeAt(0));
-function publicSession(s){return {id:s.id,asset_id:s.asset.id,deliverable_id:s.asset.deliverable_id,state:s.state,size_bytes:s.asset.size_bytes,sha256:s.asset.sha256,file_name:s.asset.file_name,format:s.asset.format,role:s.asset.role,verification:s.asset.verification,received_bytes:s.received_bytes,parts:s.parts.map(({partNumber,size_bytes,sha256})=>({partNumber,size_bytes,sha256})),expires_at:s.expires_at,part_bytes:s.policy.part_bytes,preview_state:s.preview_state||'pending'};}
+function publicSession(s){return {id:s.id,asset_id:s.asset.id,deliverable_id:s.asset.deliverable_id,state:s.state,size_bytes:s.asset.size_bytes,sha256:s.asset.sha256,file_name:s.asset.file_name,format:s.asset.format,role:s.asset.role,verification:s.asset.verification,width:s.asset.width,height:s.asset.height,received_bytes:s.received_bytes,parts:s.parts.map(({partNumber,size_bytes,sha256})=>({partNumber,size_bytes,sha256})),expires_at:s.expires_at,part_bytes:s.policy.part_bytes,preview_state:s.preview_state||'pending'};}
 function rangeFile(bucket,asset){return {size:asset.size_bytes,slice(start,end){start=Math.max(0,Math.min(start,asset.size_bytes));end=Math.max(start,Math.min(end,asset.size_bytes));return {async arrayBuffer(){const size=end-start;if(size<=0)return new ArrayBuffer(0);const obj=await bucket.get(asset.object_key,{range:{offset:start,length:size}});if(!obj?.body)throw problem('Original no disponible.',502);const bytes=await obj.arrayBuffer();if(bytes.byteLength!==size)throw problem('Original truncado.',502);return bytes;}};}};}
 function missingUpload(error){return error?.code==='NoSuchUpload'||/NoSuchUpload|multipart upload (does not exist|has been aborted|was not found)/i.test(error?.message||'');}
 export function createImageGateway({fetcher=fetch,logger=console,processorFactory=env=>cloudflareProcessor(env.IMAGES),digestFactory=()=>new crypto.DigestStream('SHA-256'),fixedLength=n=>new FixedLengthStream(n),now=()=>Date.now()}={}){
@@ -49,7 +49,7 @@ export function createImageGateway({fetcher=fetch,logger=console,processorFactor
  const result={
  async fetch(request,env){
   const url=new URL(request.url),origin=request.headers.get('origin'),allowed=(env.ALLOWED_ORIGINS||'').split(',').map(x=>x.trim());
-  const headers={'Referrer-Policy':'no-referrer','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox",...(origin&&allowed.includes(origin)?{'Access-Control-Allow-Origin':origin,Vary:'Origin','Access-Control-Allow-Methods':'GET, POST, PUT, DELETE, OPTIONS','Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Expose-Headers':'X-Original-Sha256','Access-Control-Max-Age':'600'}:{})};
+  const headers={'Referrer-Policy':'no-referrer','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox",...(origin&&allowed.includes(origin)?{'Access-Control-Allow-Origin':origin,Vary:'Origin','Access-Control-Allow-Methods':'GET, POST, PUT, DELETE, OPTIONS','Access-Control-Allow-Headers':'Authorization, Content-Type, Range','Access-Control-Expose-Headers':'X-Original-Sha256, Content-Range, Content-Length, Accept-Ranges','Access-Control-Max-Age':'600'}:{})};
   const json=(body,status=200)=>Response.json(body,{status,headers});let rpc,s,lease;
   try{
    if(origin&&!allowed.includes(origin))throw problem('Origen no autorizado.',403);
@@ -65,9 +65,11 @@ export function createImageGateway({fetcher=fetch,logger=console,processorFactor
     if(!Number.isSafeInteger(data.expires)||data.expires<=Math.floor(now()/1000)||data.asset_id!==download[1]||data.operation!==download[2])throw problem('El enlace venció o no corresponde al archivo.',403);
     rpc=rpcFor(env);const file=await rpc('workspace_image_file',{p_data:{...data,redeem:true}});
     if(!file.available)throw problem('Vista previa no disponible; descarga el original.',404);
-    const object=await env.ORIGINALS.get(file.object_key);if(!object?.body||object.size!==file.size_bytes)throw problem('Original no disponible o tamaño incorrecto.',502);
+    const range=request.headers.get('Range');let offset=0,length=file.size_bytes;
+    if(range){const match=/^bytes=(\d+)-(\d*)$/.exec(range);if(!match)throw problem('Rango inválido.',416);offset=Number(match[1]);const end=match[2]?Number(match[2]):file.size_bytes-1;if(!Number.isSafeInteger(offset)||!Number.isSafeInteger(end)||offset<0||offset>=file.size_bytes||end<offset)throw problem('Rango fuera del archivo.',416);length=Math.min(end,file.size_bytes-1)-offset+1;}
+    const object=await env.ORIGINALS.get(file.object_key,range?{range:{offset,length}}:undefined);if(!object?.body||object.size!==file.size_bytes)throw problem('Original no disponible o tamaño incorrecto.',502);
     if(object.checksums?.sha256&&hex(object.checksums.sha256)!==file.sha256)throw problem('La integridad del archivo no coincide.',502);
-    return new Response(object.body,{headers:{...headers,'Content-Type':file.mime_type,'Content-Length':String(file.size_bytes),'X-Original-Sha256':file.sha256,'Content-Disposition':`${file.operation==='original'?'attachment':'inline'}; filename*=UTF-8''${encodeURIComponent(file.file_name)}`}});
+    return new Response(object.body,{status:range?206:200,headers:{...headers,'Accept-Ranges':'bytes',...(range?{'Content-Range':`bytes ${offset}-${offset+length-1}/${file.size_bytes}`} : {}),'Content-Type':file.mime_type,'Content-Length':String(length),'X-Original-Sha256':file.sha256,'Content-Disposition':`${file.operation==='original'?'attachment':'inline'}; filename*=UTF-8''${encodeURIComponent(file.file_name)}`}});
    }
    const bearer=request.headers.get('authorization');if(!bearer?.startsWith('Bearer '))throw problem('Inicia sesión para acceder a los archivos.',401);
    // Connector tokens use their own reviewed dispatcher; not interpreted as JWTs.
@@ -122,10 +124,10 @@ export function createImageGateway({fetcher=fetch,logger=console,processorFactor
     const original=await env.ORIGINALS.get(s.asset.object_key);if(!original?.body)throw problem('Original no disponible.',502);
     const sha256=await hashStream(original.body,s.asset.size_bytes);if(sha256!==s.asset.sha256)throw problem('La integridad del original no coincide.');
     let info;
-    try{if(s.asset.role==='png')info=await inspectPng((await env.ORIGINALS.get(s.asset.object_key)).body,s.policy);else info=await inspectLayered(rangeFile(env.ORIGINALS,s.asset),s.asset.format,s.policy);}
+    try{if(s.asset.role==='png')info=await inspectPngHeader(rangeFile(env.ORIGINALS,s.asset),s.policy);else info=await inspectLayered(rangeFile(env.ORIGINALS,s.asset),s.asset.format,s.policy);}
     catch(error){throw problem(error.message);}
     s=await storage(rpc,'verified',{session_id:id,lease_id:lease,sha256,size_bytes:s.asset.size_bytes,...info});lease=null;
-    let preview={state:'not_applicable'};if(s.asset.role==='png'){
+    let preview={state:'disabled'};if(s.asset.role==='png'&&s.policy.derivatives_enabled){
      try{preview=await processPreview(env,rpc,s.asset.id)||{state:'pending'};}catch{preview={state:'unavailable',message:'Vista previa no disponible; descarga el original'};}
     }
     return json({...publicSession(s),preview_state:preview.state,message:preview.message||'Original guardado. La aprobación del área se realiza por separado.'});
