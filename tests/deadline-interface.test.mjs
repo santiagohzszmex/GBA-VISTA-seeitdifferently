@@ -12,4 +12,15 @@ try{
  assert.match(assignments,/2 de 4 entregadas/);assert.match(assignments,/aria-label="Por entregar"/);assert.match(assignments,/aria-label="Entregado"/);assert.match(assignments,/Filtrar por persona/);assert.match(assignments,/Vencidas/);assert.match(assignments,/Primer envío a revisión/);assert.match(assignments,/Imagen enviada/);
  const mine=renderToStaticMarkup(React.createElement(PersonalWork,props));assert.match(mine,/2 de 4 entregadas/);assert.match(mine,/Sin próximas fechas límite/);assert.match(mine,/Por entregar/);assert.match(mine,/Entregado/);assert.match(mine,/Borrador/);assert.doesNotMatch(mine,/Imagen enviada/);
  console.log('PASS: actual Assignments and My work render delivery groups/counts, edition progress, person/deadline filters, own next deadline and document/image grouping.');
+ if(process.env.WORKSPACE_OVERFLOW_FIXTURE){
+  const due='2026-10-11T18:18:00Z',sent='2026-10-12T00:00:00Z';
+  const cards=[{...base,id:'long',kind:'image',title:'DIR-01 — Cerrar el recorrido visual A–D y preparar todas las ilustraciones para la edición',state:'qa_approved',priority:'urgent',current_version:1,due_at:due,first_submitted_at:sent,submitted_due_at:due,submitted_deadline_known:true},{...base,id:'token',title:'Documento_'+('ReferenciaSinEspacios'.repeat(8)),state:'qa_approved',priority:'high',current_version:1,due_at:due,first_submitted_at:sent,submitted_due_at:due,submitted_deadline_known:true}];
+  const fixture={...data,tasks:cards,deadlines:Object.fromEntries(cards.map(t=>[t.id,{first_submitted_at:sent,submitted_due_at:due,submitted_deadline_known:true}])),taskPermissions:Object.fromEntries(cards.map(t=>[t.id,{'task.assign':true}]))};
+  const props2={...props,data:fixture,task:cards[0]};
+  const css=await fs.readFile('src/workspace/workspace.css','utf8');
+  const render=C=>renderToStaticMarkup(React.createElement(C,props2));
+  await fs.mkdir(process.env.WORKSPACE_OVERFLOW_FIXTURE,{recursive:true});
+  for(const [name,Component] of [['asignaciones',AreaAssignments],['mi-trabajo',PersonalWork]])await fs.writeFile(path.join(process.env.WORKSPACE_OVERFLOW_FIXTURE,name+'.html'),`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${name} · Prueba de ajuste</title><style>*{box-sizing:border-box}body{margin:0;background:#f7f7f8;font-family:Arial,sans-serif}main{padding:24px}button,input,select{font:inherit}${css}</style><main class="gw-editions">${render(Component)}</main></html>`);
+  await fs.writeFile(path.join(process.env.WORKSPACE_OVERFLOW_FIXTURE,'estrecha.html'),'<!doctype html><html lang="es"><meta charset="utf-8"><title>Prueba a 720 px</title><style>body{font:14px Arial;background:#eee}iframe{width:720px;height:1050px;border:0;display:block;margin-bottom:20px}</style><h1>Ventana de 720 px · datos sintéticos</h1><iframe title="Asignaciones" src="asignaciones.html"></iframe><iframe title="Mi trabajo" src="mi-trabajo.html"></iframe></html>');
+ }
 }finally{await fs.rm(folder,{recursive:true,force:true});}
