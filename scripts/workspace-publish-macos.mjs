@@ -14,7 +14,7 @@ const gh=a=>execFileSync('gh',a,{encoding:'utf8',stdio:['ignore','pipe','pipe'],
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const release=JSON.parse(await fs.readFile('src/workspace/releaseInfo.json'));
 const config=JSON.parse(await fs.readFile('src-tauri/tauri.conf.json'));
-if(!/^1\.7\.\d+$/.test(release.version)||release.nativeVersion!==toNativeVersion(release.version)||config.version!==release.nativeVersion||release.codename!=='Lapislázuli')throw Error('Unexpected release');
+if(!/^1\.7\.\d+(?:\.\d+)?$/.test(release.version)||release.nativeVersion!==toNativeVersion(release.version)||config.version!==release.nativeVersion||release.codename!=='Lapislázuli')throw Error('Unexpected release');
 if(config.plugins.updater.endpoints[0]!==`https://github.com/${REPOSITORY}/releases/download/workspace-updates/latest-{{target}}.json`)throw Error('Separate update endpoint required');
 const base=await fs.readFile('public/gba/workspace/releases.json');if(JSON.parse(base).version!=='1.5.0')throw Error('Base must remain 1.5.0');
 const commit=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
