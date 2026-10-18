@@ -31,3 +31,9 @@
 - macOS publicado: workspace-v1.7.1-beta.1, canal 1.7.100. CI 39056237948 correcta en las tres plataformas; Windows pendiente de prueba humana.
 - Fuente de los binarios: 4e90fd8b30f9dd114b9971608f6d7f2b4319d27c; el cierre posterior sólo modifica documentación y la utilidad de respaldo.
 - Base 1.5.0 y canal compartido preservados. Operación y reversión: docs/workspace/deadlines-171-operations.md.
+
+## 1.7.1.1 · Corrección visual
+
+- Web dpl_57P6RheuPj7ucgsEhV5qAEfSoAjn y macOS workspace-v1.7.1.1-beta.1 publicados. CI 39091337130 correcta; binarios fuente 6666cfa71b7af35cb22bafcb79cdba0640cfba05.
+- Aviso comprobado en la app real 1.7.1, sin descargar ni instalar. Puente, Windows y base 1.5.0 preservados. Sin cambios de servidor o datos.
+- Evidencia y reversión: docs/workspace/overflow-1711-operations.md.
