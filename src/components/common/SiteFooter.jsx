@@ -18,7 +18,7 @@ export default function SiteFooter() {
             <p className="font-serif italic text-4xl leading-none">VISTA</p>
             <p className="mt-5 text-sm font-bold text-white">Una plataforma de Global Insight Media Group.</p>
             <p className="mt-2 text-sm leading-6 text-neutral-400">
-              Publicación y contenido para comunidades geopolíticas de Minecraft.
+              Historias, cultura e ideas con la mirada editorial de GIMG.
             </p>
           </div>
 

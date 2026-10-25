@@ -1,77 +1,32 @@
 import React from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import VISTAHome from './VISTAHome';
-import VISTAAuth from './VISTAAuth';
+import {AuthProvider,useAuth} from './context/AuthContext';
 import WorkspaceAuth from './workspace/WorkspaceAuth';
-import PerfilUsuario from './views/PerfilUsuario';
-import PerfilEditorial from './views/news/PerfilEditorial';
 import WorkspaceView from './views/Workspace';
-import NetworkPreview from './views/NetworkPreview';
-import GlobalRadioPlayer from './components/radio/GlobalRadioPlayer';
-import { RadioProvider } from './radio/RadioContext';
-
-const StudioProfile = React.lazy(() => import('./views/StudioProfile'));
-const WorkspacePublications = React.lazy(() => import('./workspace/WorkspacePublications'));
-const SurveyPage = React.lazy(() => import('./views/SurveyPage'));
-const UpdatePreview = import.meta.env.DEV ? React.lazy(() => import('./workspace/UpdatePreview')) : null;
-const isSurveyRoute = window.location.pathname.replace(/\/$/, '') === '/encuesta/partners'
-  || new URLSearchParams(window.location.search).get('encuesta') === 'partners';
-const isWorkspaceRoute = window.location.pathname.replace(/\/$/, '') === '/workspace/web'
-  || new URLSearchParams(window.location.search).get('workspace') === '1';
-
-// Creamos un sub-componente para poder "sintonizar" el contexto
-function MainApp() {
-  const { user } = useAuth();
-  const searchParams = new URLSearchParams(window.location.search);
-  if (isSurveyRoute) return <React.Suspense fallback={<div className="min-h-screen bg-[#0a0a0a] text-white p-12">Abriendo VISTA…</div>}><SurveyPage previewMode={import.meta.env.DEV && searchParams.get('survey-preview') === '1'} /></React.Suspense>;
-  if (isWorkspaceRoute) return user ? <WorkspaceView /> : <WorkspaceAuth />;
-  if (searchParams.get('gimg-publications') === '1') return <React.Suspense fallback={<p>Cargando publicaciones…</p>}><WorkspacePublications /></React.Suspense>;
-  const publicStudio = searchParams.get('studio');
-  if (publicStudio) return user ? <React.Suspense fallback={<div className="p-12">Abriendo estudio…</div>}><StudioProfile slug={publicStudio}/></React.Suspense> : <VISTAAuth onLogin={() => {}}/>;
-  const publicHandle = searchParams.get('profile');
-  const publicEditorial = searchParams.get('editorial');
-  const workspacePreview = import.meta.env.DEV
-    && new URLSearchParams(window.location.search).get('workspace-preview') === '1';
-  const networkPreview = import.meta.env.DEV
-    && new URLSearchParams(window.location.search).get('network-preview') === '1';
-  const authPreview = import.meta.env.DEV
-    && new URLSearchParams(window.location.search).get('auth-preview') === '1';
-
-  if (authPreview) return <VISTAAuth onLogin={() => {}} />;
-  if (networkPreview) return <NetworkPreview previewMode />;
-  if (workspacePreview) return <WorkspaceView previewMode />;
-  if (publicHandle) return user
-    ? <PerfilUsuario publicHandle={publicHandle} />
-    : <VISTAAuth onLogin={() => {}} />;
-  if (publicEditorial) return user
-    ? <PerfilEditorial selloNombre={publicEditorial} publicEditorial />
-    : <VISTAAuth onLogin={() => {}} />;
-  
-  // El Router Maestro: Si hay sesión, entra a VISTA. Si no, al muro de Auth.
-  return user ? <VISTAHome /> : <VISTAAuth onLogin={() => {}} />;
+import GimgVista from './vista/GimgVista';
+import {RadioProvider} from './radio/RadioContext';
+const Mothership=React.lazy(()=>import('./views/Mothership'));
+const WorkspacePublications=React.lazy(()=>import('./workspace/WorkspacePublications'));
+const Keynotes=React.lazy(()=>import('./views/Keynotes'));
+const UpdatePreview=import.meta.env.DEV?React.lazy(()=>import('./workspace/UpdatePreview')):null;
+const path=window.location.pathname.replace(/\/$/,'');
+const params=new URLSearchParams(window.location.search);
+const workspace=path==='/workspace/web'||params.get('workspace')==='1';
+const administration=path==='/mothership';
+function MainApp(){
+ const {user,isDueño}=useAuth();
+ if(workspace)return user?<WorkspaceView/>:<WorkspaceAuth/>;
+ if(import.meta.env.DEV&&params.get('workspace-preview')==='1')return <WorkspaceView previewMode/>;
+ if(administration){
+  if(!user)return <WorkspaceAuth productName="Mothership"/>;
+  if(!isDueño)return <main className="gv"><section className="gv-reader"><h1>Acceso reservado.</h1><p>Mothership está disponible para la administración de GBA.</p><a href="/workspace/web/">Ir a Workspace</a></section></main>;
+  return <React.Suspense fallback={<p role="status">Abriendo Mothership…</p>}><div className="bg-[#0a0a0a] px-6 py-4 text-sm text-neutral-400"><a href="https://vista.gba.software/">← VISTA</a><span className="mx-4">·</span><a href="/workspace/web/">Workspace</a></div><Mothership/></React.Suspense>;
+ }
+ if(params.get('gimg-publications')==='1')return <React.Suspense fallback={<p>Cargando publicaciones…</p>}><WorkspacePublications/></React.Suspense>;
+ if(params.has('keynote')||path==='/keynotes')return <React.Suspense fallback={<p>Cargando Keynotes…</p>}><Keynotes initialSlug={params.get('keynote')}/></React.Suspense>;
+ return <GimgVista preview={import.meta.env.DEV&&params.get('vista-preview')==='1'}/>;
 }
-
-function App() {
-  React.useEffect(() => {
-    if (!isWorkspaceRoute) return;
-    document.title = 'Workspace · GIMG';
-    const icon = document.createElement('link');
-    icon.rel = 'icon';
-    icon.type = 'image/png';
-    icon.href = '/gba/workspace/workspace-icon.png';
-    document.head.append(icon);
-    return () => icon.remove();
-  }, []);
-  if (import.meta.env.DEV && new URLSearchParams(location.search).has('workspace-update-preview')) return <React.Suspense fallback={<p>Cargando prueba local…</p>}><UpdatePreview /></React.Suspense>;
-  return (
-    <RadioProvider>
-      {/* AuthProvider envuelve todo el edificio */}
-      <AuthProvider productName={isWorkspaceRoute ? 'Workspace' : 'VISTA'}>
-        <MainApp />
-        {!isSurveyRoute && !isWorkspaceRoute && <GlobalRadioPlayer />}
-      </AuthProvider>
-    </RadioProvider>
-  );
+export default function App(){
+ React.useEffect(()=>{document.title=workspace?'Workspace · GIMG':administration?'Mothership · GBA':'VISTA · Publicaciones de GIMG';if(workspace){const icon=document.createElement('link');icon.rel='icon';icon.type='image/png';icon.href='/gba/workspace/workspace-icon.png';document.head.append(icon);return()=>icon.remove();}},[]);
+ if(import.meta.env.DEV&&params.has('workspace-update-preview'))return <React.Suspense fallback={<p>Cargando prueba…</p>}><UpdatePreview/></React.Suspense>;
+ return <RadioProvider><AuthProvider productName={workspace?'Workspace':administration?'Mothership':'VISTA'}><MainApp/></AuthProvider></RadioProvider>;
 }
-
-export default App;

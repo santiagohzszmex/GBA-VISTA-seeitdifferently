@@ -203,6 +203,7 @@ export default function NoticiasTab({ previewMode = false }) {
     try {
       const { data, error } = await supabase
         .from('contenido')
+        .is('archived_at', null)
         .select('*')
         .in('categoria', ['Noticia', 'Periódico'])
         .order('created_at', { ascending: false });

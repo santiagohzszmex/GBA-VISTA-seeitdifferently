@@ -382,7 +382,7 @@ function QuickShareButton({ item, content }) {
 // ==========================================
 // COMPONENTE PRINCIPAL
 // ==========================================
-export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, focusedNewsId, nowOverride = null }) {
+export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, focusedNewsId, nowOverride = null, onOpenPublication = null }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [coverflowItems, setCoverflowItems] = useState([]);
   const [expanded, setExpanded] = useState(false);
@@ -510,12 +510,13 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
   const handleOpen = useCallback((item) => {
     const premiere = getGimgPremiereState(item, now);
     if (!premiere.canOpen) return;
+    if (onOpenPublication) { onOpenPublication(item); return; }
     setExpanded(true);
     if (premiere.editionReleased) onRead && onRead(item);
     window.setTimeout(() => {
       expandedPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
-  }, [now, onRead]);
+  }, [now, onRead, onOpenPublication]);
 
   useEffect(() => {
     if (!focusedNewsId || activeItem?.id !== focusedNewsId || openedFocusedRef.current === focusedNewsId) return undefined;
@@ -558,14 +559,18 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
 
         <button
           onClick={handlePrevious}
-          className={`absolute left-4 md:left-12 z-50 p-4 rounded-full bg-white/50 backdrop-blur-md border border-[#d2d2d7] text-[#1d1d1f] transition-all duration-300 hover:scale-110 hover:bg-white shadow-lg ${expanded ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}
+          aria-label="Publicación anterior"
+          disabled={coverflowItems.length < 2}
+          className={`absolute left-4 md:left-12 z-50 p-4 rounded-full bg-white/50 backdrop-blur-md border border-[#d2d2d7] text-[#1d1d1f] transition-all duration-300 hover:scale-110 hover:bg-white shadow-lg ${expanded ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 disabled:invisible'}`}
         >
           <ChevronLeft size={24} />
         </button>
 
         <button
           onClick={handleNext}
-          className={`absolute right-4 md:right-12 z-50 p-4 rounded-full bg-white/50 backdrop-blur-md border border-[#d2d2d7] text-[#1d1d1f] transition-all duration-300 hover:scale-110 hover:bg-white shadow-lg ${expanded ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}
+          aria-label="Publicación siguiente"
+          disabled={coverflowItems.length < 2}
+          className={`absolute right-4 md:right-12 z-50 p-4 rounded-full bg-white/50 backdrop-blur-md border border-[#d2d2d7] text-[#1d1d1f] transition-all duration-300 hover:scale-110 hover:bg-white shadow-lg ${expanded ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 disabled:invisible'}`}
         >
           <ChevronRight size={24} />
         </button>
@@ -592,6 +597,8 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
             <button
               key={idx}
               onClick={() => handleGoTo(idx)}
+              aria-label={`Ver publicación ${idx + 1}`}
+              aria-current={idx === activeIndex ? 'true' : undefined}
               className={`h-1.5 rounded-full transition-all duration-500 ${idx === activeIndex ? 'w-8 bg-[#1d1d1f]' : 'w-2 bg-[#d2d2d7] hover:bg-[#86868b]'}`}
             />
           ))}
@@ -638,8 +645,8 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
               {activeContent.descripcion}
             </p>
             <div className="h-12 flex flex-shrink-0 items-center gap-3">
-              {activePremiere.editionReleased && <QuickLikeButton key={activeItem.id} itemId={activeItem.id} />}
-              {activePremiere.editionReleased && <QuickSaveButton key={`save-${activeItem.id}`} item={activeItem} />}
+              {!onOpenPublication && activePremiere.editionReleased && <QuickLikeButton key={activeItem.id} itemId={activeItem.id} />}
+              {!onOpenPublication && activePremiere.editionReleased && <QuickSaveButton key={`save-${activeItem.id}`} item={activeItem} />}
               <QuickShareButton
                 key={`share-${activeItem.id}`}
                 item={activeItem}
