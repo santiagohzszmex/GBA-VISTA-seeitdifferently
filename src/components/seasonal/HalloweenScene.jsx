@@ -4,7 +4,7 @@ import { halloweenIcon, isHalloweenSeason } from '../../utils/season';
 
 const treats = [
   ['El futuro no da miedo.', 'Mirarlo siempre igual, sí. Esta noche, cambia de perspectiva.'],
-  ['Hay historias del otro lado.', 'Un servidor por descubrir. Una edición por abrir. Alguien con quien crear.'],
+  ['Hay historias del otro lado.', 'Una historia por descubrir. Una edición por abrir. Alguien con quien crear.'],
   ['Tu próxima idea está viva.', 'Que no se quede como un fantasma. Dale un lugar en VISTA.'],
   ['Hoy te toca un trato.', 'Una mirada nueva para un mundo que todavía tiene mucho que contar.'],
 ];

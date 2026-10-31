@@ -68,7 +68,7 @@ export const AuthProvider = ({ children, productName = 'VISTA' }) => {
   return <AuthContext.Provider value={value}>
     {loading || sessionError ? <main className="min-h-screen bg-[#fbfbfd] text-[#1d1d1f] flex items-center justify-center px-6 font-sans" aria-busy={loading}>
       <div className="max-w-md text-center">
-        <p className={productName === 'Workspace' ? 'text-3xl font-semibold tracking-tight mb-7' : 'font-serif italic text-5xl mb-7'}>{productName === 'Workspace' ? productName : 'VISTA.'}</p>
+        <p className={productName === 'Workspace' ? 'text-3xl font-semibold tracking-tight mb-7' : 'font-serif italic text-5xl mb-7'}>{productName === 'VISTA' ? 'VISTA.' : productName}</p>
         {sessionError ? <>
           <p className="text-sm leading-7 text-[#6e6e73]" role="alert">{sessionError}</p>
           <button type="button" onClick={() => void loader.current?.restore()} className="mt-7 px-7 py-3 rounded-full bg-[#0066ff] text-white font-bold text-sm">Reintentar</button>

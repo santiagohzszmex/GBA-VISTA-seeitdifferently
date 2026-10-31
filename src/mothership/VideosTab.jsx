@@ -25,7 +25,7 @@ export default function VideosTab({ previewMode = false }) {
   const refresh = async () => {
     if (previewMode) return;
     setListLoading(true);
-    const { data, error } = await supabase.from('contenido').select('*, reparto(*)').in('categoria', VIDEO_CATEGORIES).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('contenido').select('*, reparto(*)').is('archived_at', null).in('categoria', VIDEO_CATEGORIES).order('created_at', { ascending: false });
     if (error) setStatus({ type: 'error', msg: 'No se pudo cargar el catálogo. Puedes reintentar desde el botón Actualizar.' });
     else setList(data || []);
     setListLoading(false);

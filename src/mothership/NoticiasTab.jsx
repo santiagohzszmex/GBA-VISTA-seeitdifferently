@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { uploadToCloudinary } from '../cloudinary';
 import { EDITORIAL_CATEGORIES } from '../utils/editorialCategories';
-import CreditsPanel from '../components/social/CreditsPanel';
+import {EditionCreditsEditor} from '../vista/EditionCredits';
+import {validateEditionCredits} from '../vista/credits.mjs';
 import { youtubeId, validateEditionRelease } from '../utils/publishing';
 import EditionDraftPreview from './EditionDraftPreview';
 import './publishing.css';
@@ -177,6 +178,7 @@ export default function NoticiasTab({ previewMode = false }) {
   const [traducciones, setTraducciones] = useState([]);
 
   const initialFormState = {
+    edition_credits: [],
     titulo: '',
     descripcion: '',
     portada_url: '', 
@@ -203,6 +205,7 @@ export default function NoticiasTab({ previewMode = false }) {
     try {
       const { data, error } = await supabase
         .from('contenido')
+        .is('archived_at', null)
         .select('*')
         .in('categoria', ['Noticia', 'Periódico'])
         .order('created_at', { ascending: false });
@@ -277,6 +280,7 @@ export default function NoticiasTab({ previewMode = false }) {
       : parseStoredPages(item.enlace_pdf);
 
     setFormData({
+      edition_credits: item.edition_credits || [],
       titulo: item.titulo || '',
       descripcion: item.descripcion || '',
       portada_url: item.poster_url || item.banner_url || '',
@@ -340,6 +344,7 @@ export default function NoticiasTab({ previewMode = false }) {
 
     try {
       validateEditionRelease(releaseMode, formData, Boolean(gimgVideoArchivo || formData.gimg_video_url));
+      const credits = validateEditionCredits(formData.edition_credits, {required: !editingItem});
       const linkedYoutubeId = formData.youtube_id.trim() ? youtubeId(formData.youtube_id) : '';
       if (formData.youtube_id.trim() && !linkedYoutubeId) throw new Error('El enlace complementario de YouTube no es válido.');
       let finalPortadaUrl = formData.portada_url;
@@ -434,6 +439,7 @@ export default function NoticiasTab({ previewMode = false }) {
 
       // Empaquetar para Supabase
       const payload = {
+        edition_credits: credits,
         titulo: formData.titulo, 
         descripcion: formData.descripcion, 
         poster_url: finalPortadaUrl,
@@ -468,8 +474,9 @@ export default function NoticiasTab({ previewMode = false }) {
         const update = current => [next, ...current.filter(item => item.id !== next.id)];
         if (isComunidad) setKioscoNews(update); else setGimgNews(update);
       } else if (editingItem) {
-        const { error } = await supabase.from('contenido').update(payload).eq('id', editingItem.id);
+        const { data, error } = await supabase.from('contenido').update(payload).eq('id', editingItem.id).select('id').single();
         if (error) throw error;
+        if (!data) throw new Error('No se pudo guardar esta edición con tus permisos actuales.');
       } else {
         const { error } = await supabase.from('contenido').insert([payload]);
         if (error) throw error;
@@ -657,11 +664,12 @@ export default function NoticiasTab({ previewMode = false }) {
 
             </div></details>
             <details className="ms-more"><summary>Enlace de YouTube complementario</summary><div><label className="ms-field"><span>Video vinculado a la edición (opcional)</span><input name="youtube_id" value={formData.youtube_id} onChange={handleChange} placeholder="Enlace de YouTube o ID"/></label></div></details>
+            <EditionCreditsEditor value={formData.edition_credits} onChange={edition_credits=>setFormData(current=>({...current,edition_credits}))} disabled={loading}/>
             {status && <p role={status.type === 'error' ? 'alert' : 'status'} className={`ms-notice ms-notice-${status.type}`}>{status.msg}</p>}
             <div className="ms-actions"><button type="button" className="ms-button" onClick={openEditionPreview}><Eye size={15}/>Vista previa</button><button type="submit" className="ms-button ms-button-primary" disabled={loading}><Save size={15}/>{loading ? 'Guardando…' : editingItem ? 'Guardar cambios' : releaseMode === 'cover' ? 'Anunciar portada' : 'Publicar edición'}</button></div>
           </form>
 
-          {editingItem && !previewMode && <CreditsPanel subjectType="content" subjectId={editingItem.id} editable dark className="mt-7"/>}
+
         </div>
       </div>
 

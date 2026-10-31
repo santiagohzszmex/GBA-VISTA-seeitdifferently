@@ -22,22 +22,17 @@ export default async function handler(request, response) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
-  if (!id || !supabaseUrl || !supabaseKey) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || '') || !supabaseUrl || !supabaseKey) {
     sendHtml(response, 400, '<!doctype html><html><body><h1>Edicion no disponible</h1></body></html>');
     return;
   }
 
   let edition;
   try {
-    const endpoint = `${supabaseUrl}/rest/v1/rpc/vista_public_edition_preview`;
+    const fields = 'id,titulo,descripcion,poster_url,banner_url,sello_editorial,vistas,likes_count,publicar_at,gimg_video_url,gimg_video_portada_url,gimg_video_titulo,gimg_video_descripcion,gimg_video_estreno_at';
+    const endpoint = `${supabaseUrl}/rest/v1/contenido?id=eq.${encodeURIComponent(id)}&catalog_origin=eq.gimg&archived_at=is.null&estado_publicacion=eq.aprobado&select=${fields}`;
     const result = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ p_content_id: id })
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` }
     });
 
     if (!result.ok) throw new Error(`Supabase respondio ${result.status}`);
@@ -57,6 +52,7 @@ export default async function handler(request, response) {
   const host = request.headers['x-forwarded-host'] || request.headers.host;
   const origin = `${protocol}://${host}`;
   const now = Date.now();
+  edition.has_gimg_premiere = Boolean(edition.gimg_video_url);
   const editionReleaseAt = edition.publicar_at ? new Date(edition.publicar_at).getTime() : null;
   const videoReleaseAt = edition.gimg_video_estreno_at ? new Date(edition.gimg_video_estreno_at).getTime() : null;
   const isPremierePhase = Boolean(editionReleaseAt && now < editionReleaseAt);
@@ -77,7 +73,7 @@ export default async function handler(request, response) {
   const releaseLabel = isPremierePhase && editionReleaseAt
     ? new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'America/Mexico_City' }).format(new Date(editionReleaseAt))
     : '';
-  const actionLabel = coverAnnouncement ? 'Ver portada con GBA ID' : videoReleased ? 'Ver presentacion con GBA ID' : 'Leer con GBA ID';
+  const actionLabel = coverAnnouncement ? 'Ver portada' : videoReleased ? 'Ver presentación' : 'Leer en VISTA';
 
   const html = `<!doctype html>
 <html lang="es">

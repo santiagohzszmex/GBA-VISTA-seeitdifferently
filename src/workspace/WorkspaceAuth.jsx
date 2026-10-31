@@ -5,7 +5,7 @@ import { workspaceIdentityRequest } from '../auth/workspaceIdentity.mjs';
 import workspaceIcon from '../../src-tauri/icons/128x128.png';
 import './workspaceAuth.css';
 
-export default function WorkspaceAuth() {
+export default function WorkspaceAuth({productName = 'Workspace'}) {
   const [mode, setMode] = useState('login');
   const [handle, setHandle] = useState('');
   const [pin, setPin] = useState('');
@@ -60,11 +60,11 @@ export default function WorkspaceAuth() {
   }
 
   return <main className="wa" aria-labelledby="workspace-access-title">
-    <header className="wa-header"><div className="wa-brand"><img src={workspaceIcon} alt="" width="36" height="36" /><span>Workspace</span></div><span className="wa-byline">GBA Forge</span></header>
+    <header className="wa-header"><div className="wa-brand"><img src={workspaceIcon} alt="" width="36" height="36" /><span>{productName}</span></div><span className="wa-byline">GBA Forge</span></header>
     <section className="wa-card">
       <img className="wa-icon" src={workspaceIcon} alt="" width="88" height="88" />
-      <p className="wa-eyebrow">EL ESPACIO DE TRABAJO DE GIMG</p>
-      <h1 id="workspace-access-title">{recovering ? 'Recupera tu acceso.' : registering ? 'Crea tu GBA ID.' : 'Bienvenido a Workspace.'}</h1>
+      <p className="wa-eyebrow">{productName === 'Mothership' ? 'ADMINISTRACIÓN DE GBA' : 'EL ESPACIO DE TRABAJO DE GIMG'}</p>
+      <h1 id="workspace-access-title">{recovering ? 'Recupera tu acceso.' : registering ? 'Crea tu GBA ID.' : `Bienvenido a ${productName}.`}</h1>
       <p className="wa-intro">{recovering ? 'Usa el código o la frase que guardaste al crear tu GBA ID y elige un nuevo PIN.' : registering ? 'Una misma cuenta para GBA y Workspace. Elige tu nombre y un PIN de 4 dígitos; no necesitas correo.' : 'Entra con tu GBA ID para continuar con tu equipo.'}</p>
       {!recovering && <div className="wa-modes" role="group" aria-label="Acceso con GBA ID"><button type="button" disabled={busy} aria-pressed={!registering} onClick={() => changeMode('login')}>Iniciar sesión</button><button type="button" disabled={busy} aria-pressed={registering} onClick={() => changeMode('register')}>Crear GBA ID</button></div>}
       <form onSubmit={submit} aria-busy={busy}>

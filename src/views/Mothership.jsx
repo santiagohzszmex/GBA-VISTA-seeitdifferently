@@ -4,7 +4,7 @@ import { Monitor, Film, Newspaper, ShieldCheck, Cpu, Megaphone, Terminal, Server
 // Importamos los submódulos subiendo un nivel en la estructura de carpetas (../)
 import VideosTab from '../mothership/VideosTab';
 import NoticiasTab from '../mothership/NoticiasTab';
-import AduanaTab from '../mothership/AduanaTab';
+
 import GBAForgeTab from '../mothership/GBAForgeTab'; // <-- Importación del Laboratorio
 import CampaniasTab from '../mothership/CampaniasTab';
 import InfrastructureTab from '../mothership/InfrastructureTab';
@@ -12,11 +12,11 @@ import AnimaTab from '../mothership/AnimaTab';
 import CommunicationsTab from '../mothership/CommunicationsTab';
 import AudienceTab from '../mothership/AudienceTab';
 import SurveysTab from '../mothership/SurveysTab';
-import NetworkAdminTab from '../mothership/NetworkAdminTab';
+import ArchiveTab from '../mothership/ArchiveTab';
 import RecruitmentTab from '../mothership/RecruitmentTab';
 
 export default function Mothership({ previewMode = false }) {
-  const [activeSection, setActiveSection] = useState(previewMode && new URLSearchParams(window.location.search).get('recruitment-preview') === '1' ? 'recruitment' : previewMode && new URLSearchParams(window.location.search).get('survey-preview') === '1' ? 'surveys' : 'videos');
+  const [activeSection, setActiveSection] = useState(previewMode && new URLSearchParams(window.location.search).get('recruitment-preview') === '1' ? 'recruitment' : previewMode && new URLSearchParams(window.location.search).get('survey-preview') === '1' ? 'surveys' : 'news');
   const [forgeArea, setForgeArea] = useState('development');
 
   // El enrutador interno del panel
@@ -26,8 +26,6 @@ export default function Mothership({ previewMode = false }) {
         return <VideosTab previewMode={previewMode} />;
       case 'news':
         return <NoticiasTab previewMode={previewMode} />;
-      case 'aduana':
-        return <AduanaTab />;
       case 'forge': // <-- Ruta para GBA Forge
         return (
           <div>
@@ -44,8 +42,8 @@ export default function Mothership({ previewMode = false }) {
         return <AnimaTab />;
       case 'communications':
         return <CommunicationsTab />;
-      case 'network':
-        return <NetworkAdminTab previewMode={previewMode} />;
+      case 'archive':
+        return <ArchiveTab />;
       case 'recruitment':
         return <RecruitmentTab previewMode={previewMode} />;
       case 'surveys':
@@ -96,7 +94,7 @@ export default function Mothership({ previewMode = false }) {
               activeSection === 'news' ? 'bg-white text-black shadow-lg' : 'text-neutral-500 hover:text-white'
             }`}
           >
-            <Newspaper size={16} /> Periódicos
+            <Newspaper size={16} /> Publicaciones GIMG
           </button>
 
           <button
@@ -149,20 +147,13 @@ export default function Mothership({ previewMode = false }) {
           <button onClick={() => setActiveSection('surveys')} className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 whitespace-nowrap ${activeSection === 'surveys' ? 'bg-emerald-400 text-black' : 'text-neutral-500 hover:text-white'}`}><Users size={16} /> Encuestas</button>
 
           <button
-            onClick={() => setActiveSection('network')}
-            className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all whitespace-nowrap ${activeSection === 'network' ? 'bg-emerald-400 text-black shadow-lg' : 'text-neutral-500 hover:text-white'}`}
+            onClick={() => setActiveSection('archive')}
+            className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all whitespace-nowrap ${activeSection === 'archive' ? 'bg-emerald-400 text-black shadow-lg' : 'text-neutral-500 hover:text-white'}`}
           >
-            <Globe2 size={16} /> Network / Partners
+            <Globe2 size={16} /> Archivo histórico
           </button>
 
-          <button 
-            onClick={() => setActiveSection('aduana')}
-            className={`px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all whitespace-nowrap ${
-              activeSection === 'aduana' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-neutral-500 hover:text-white'
-            }`}
-          >
-            <ShieldCheck size={16} /> Aduana
-          </button>
+
         </div>
         
       </div>

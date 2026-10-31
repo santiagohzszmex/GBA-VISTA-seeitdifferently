@@ -1,6 +1,10 @@
 {
   "routes": [
     {
+      "src": "^/(?:mothership|vista|keynotes)/?$",
+      "dest": "/index.html"
+    },
+    {
       "src": "^/workspace/web/?$",
       "dest": "/index.html"
     },
