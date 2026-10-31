@@ -259,7 +259,7 @@ function ExpandedPanel({ item, content, onClose, now }) {
 // ==========================================
 // PORTADA INDIVIDUAL DEL COVERFLOW (con reflejo estilo Apple)
 // ==========================================
-function CoverflowSlide({ item, isActive, isPrev, isNext, onOpen, now }) {
+function CoverflowSlide({ item, isActive, isPrev, isNext, onOpen, now, flipped = false }) {
   // Resolvemos el idioma a nivel individual para que las imágenes inactivas también tengan su póster correcto
   const { poster, titulo } = useContentLanguage(item);
   const premiere = getGimgPremiereState(item, now);
@@ -293,8 +293,8 @@ function CoverflowSlide({ item, isActive, isPrev, isNext, onOpen, now }) {
       onClick={() => isActive && onOpen(item)}
     >
       {/* Portada Traducida */}
-      <div className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-[0_25px_50px_rgba(0,0,0,0.25)] border border-white/40 cursor-pointer group/cover">
-        {displayPoster ? <img src={displayPoster} alt={displayTitle} className="w-full h-full object-cover" /> : <PreviewArtwork title={displayTitle}/>}
+      <div className={`vista-cover-card ${flipped ? 'is-flipped' : ''} relative aspect-[3/4] rounded-2xl overflow-hidden shadow-[0_25px_50px_rgba(0,0,0,0.25)] border border-white/40 cursor-pointer group/cover`}>
+        <div className="vista-cover-front">{displayPoster ? <img src={displayPoster} alt={displayTitle} className="w-full h-full object-cover" /> : <PreviewArtwork title={displayTitle}/>}
         {premiere.isPremierePhase && (
           <span className="absolute top-4 left-4 z-10 inline-flex items-center gap-1.5 bg-black/75 backdrop-blur-md border border-white/15 text-white px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest">
             <Clock3 size={11}/> Próximamente
@@ -307,6 +307,7 @@ function CoverflowSlide({ item, isActive, isPrev, isNext, onOpen, now }) {
             </span>
           </div>
         )}
+        </div><div className="vista-cover-back" aria-hidden="true"><FileText size={40}/><strong>{displayTitle}</strong><span>Edición abierta</span></div>
       </div>
 
       {/* Reflejo (estilo Apple CoverFlow) */}
@@ -382,7 +383,7 @@ function QuickShareButton({ item, content }) {
 // ==========================================
 // COMPONENTE PRINCIPAL
 // ==========================================
-export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, focusedNewsId, nowOverride = null, onOpenPublication = null }) {
+export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, focusedNewsId, nowOverride = null, onOpenPublication = null, onClosePublication = null, renderExpandedPanel = null }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [coverflowItems, setCoverflowItems] = useState([]);
   const [expanded, setExpanded] = useState(false);
@@ -392,6 +393,10 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
   const [isPageVisible, setIsPageVisible] = useState(() => typeof document === 'undefined' || document.visibilityState === 'visible');
   const [isInViewport, setIsInViewport] = useState(true);
   const stageRef = useRef(null);
+  const readButtonRef = useRef(null);
+  const openTimerRef = useRef(null);
+  const closeTimerRef = useRef(null);
+  useEffect(() => () => { window.clearTimeout(openTimerRef.current); window.clearTimeout(closeTimerRef.current); }, []);
   const expandedPanelRef = useRef(null);
   const openedFocusedRef = useRef(null);
   const interactionTimerRef = useRef(null);
@@ -510,13 +515,14 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
   const handleOpen = useCallback((item) => {
     const premiere = getGimgPremiereState(item, now);
     if (!premiere.canOpen) return;
-    if (onOpenPublication) { onOpenPublication(item); return; }
+    if (onOpenPublication) onOpenPublication(item);
     setExpanded(true);
     if (premiere.editionReleased) onRead && onRead(item);
-    window.setTimeout(() => {
+    window.clearTimeout(closeTimerRef.current);
+    openTimerRef.current = window.setTimeout(() => {
       expandedPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 80);
-  }, [now, onRead, onOpenPublication]);
+    }, renderExpandedPanel ? FLIP_DURATION + 500 : 80);
+  }, [now, onRead, onOpenPublication, renderExpandedPanel]);
 
   useEffect(() => {
     if (!focusedNewsId || activeItem?.id !== focusedNewsId || openedFocusedRef.current === focusedNewsId) return undefined;
@@ -529,12 +535,16 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
   }, [activeItem, focusedNewsId, handleOpen, now]);
 
   const handleClose = useCallback((e) => {
-    e.stopPropagation();
+    e?.stopPropagation?.();
+    window.clearTimeout(openTimerRef.current);
     setExpanded(false);
-    setTimeout(() => {
+    onClosePublication?.();
+    readButtonRef.current?.focus({preventScroll:true});
+    closeTimerRef.current = window.setTimeout(() => {
+      readButtonRef.current?.focus({preventScroll:true});
       stageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, FLIP_DURATION + 50);
-  }, []);
+  }, [onClosePublication]);
 
   if (coverflowItems.length === 0) return null;
 
@@ -555,7 +565,7 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
     >
 
       {/* Escenario 3D Coverflow */}
-      <div className="relative w-full h-[420px] md:h-[560px] flex items-start justify-center pt-4 overflow-hidden group">
+      <div className={`relative w-full h-[420px] md:h-[560px] flex items-start justify-center pt-4 overflow-hidden group ${renderExpandedPanel ? 'vista-cover-stage' : ''} ${expanded ? 'is-expanded' : ''}`}>
 
         <button
           onClick={handlePrevious}
@@ -583,6 +593,7 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
               isActive={index === activeIndex}
               isPrev={index === (activeIndex - 1 + coverflowItems.length) % coverflowItems.length}
               isNext={index === (activeIndex + 1) % coverflowItems.length}
+              flipped={Boolean(renderExpandedPanel && expanded && index === activeIndex)}
               onOpen={handleOpen}
               now={now}
             />
@@ -663,6 +674,8 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
               <Eye size={14} /> {activeItem.vistas || 0} {activeContent.lang === 'en' ? 'Reads' : 'Lecturas'}
             </span>}
             <button
+              ref={readButtonRef}
+              aria-expanded={expanded}
               onClick={() => handleOpen(activeItem)}
               disabled={!activePremiere.canOpen}
               className="text-xs font-bold text-white uppercase tracking-widest flex items-center gap-1 bg-[#0066FF] hover:bg-[#0052cc] px-5 py-2.5 rounded-full transition-colors"
@@ -676,7 +689,7 @@ export default function NewsCoverflow({ news = [], onRead, onNavigateProfile, fo
       {/* Panel desplegado */}
       {activeItem && expanded && (
         <div ref={expandedPanelRef} className="w-full px-6 md:px-0 md:max-w-4xl mb-16 scroll-mt-6">
-          <ExpandedPanel item={activeItem} content={activeContent} onClose={handleClose} now={now} />
+          {renderExpandedPanel ? renderExpandedPanel(activeItem, activeContent, handleClose) : <ExpandedPanel item={activeItem} content={activeContent} onClose={handleClose} now={now} />}
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import EditionCredits from '../vista/EditionCredits';
 import { X } from 'lucide-react';
 import { getGimgPremiereState } from '../utils/editionRelease';
 
@@ -19,6 +20,7 @@ export default function EditionDraftPreview({ form, cover, pages, mode, onClose 
         {!release.editionReleased && <p className="ms-preview-note mb-6">{form.publicar_at ? `Las páginas se abrirán el ${new Date(form.publicar_at).toLocaleString('es-MX')}. ` : ''}{mode === 'cover' ? 'La portada ya se puede consultar.' : 'La presentación se mostrará cuando llegue su estreno.'}</p>}
         {(release.editionReleased || release.coverAnnouncement) && (cover ? <img src={cover} alt="Portada de la edición" className="max-w-full max-h-[65vh] object-contain mx-auto"/> : <p className="ms-help">Añade la portada para verla aquí.</p>)}
         {mode === 'video' && release.videoReleased && form.gimg_video_url && <video src={form.gimg_video_url} poster={form.gimg_video_portada_url || undefined} controls className="w-full"/>}
+        <EditionCredits credits={form.edition_credits} dark/>
         {release.editionReleased && pages.map((page,index) => <img key={page.id} src={page.preview} alt={`Página ${index+1} de la edición`} className="w-full mt-6"/>)}
         {release.editionReleased && !pages.length && /^https:\/\//.test(form.enlace_pdf) && <p className="ms-help mt-5">PDF de la edición: {form.enlace_pdf}</p>}
       </div>
