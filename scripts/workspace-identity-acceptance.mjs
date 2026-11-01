@@ -10,6 +10,8 @@ export async function verifyPresentationAcceptance(proof,{commit,files,projectRe
   const normalized=source
     .replace("({ children, productName = 'VISTA' })",'({ children })')
     .replace(`<p className={productName === 'Workspace' ? 'text-3xl font-semibold tracking-tight mb-7' : 'font-serif italic text-5xl mb-7'}>{productName === 'Workspace' ? productName : 'VISTA.'}</p>`,`<p className="font-serif italic text-5xl mb-7">VISTA.</p>`)
+    // Both reviewed brand labels are presentation-only; all session code must still match byte-for-byte.
+    .replace(`<p className={productName === 'Workspace' ? 'text-3xl font-semibold tracking-tight mb-7' : 'font-serif italic text-5xl mb-7'}>{productName === 'VISTA' ? 'VISTA.' : productName}</p>`,`<p className="font-serif italic text-5xl mb-7">VISTA.</p>`)
     .replace('Abriendo {productName}…','Abriendo VISTA…');
   if(!/^[a-f0-9]{40}$/.test(baseline))throw Error('Invalid identity baseline');
   let original;
