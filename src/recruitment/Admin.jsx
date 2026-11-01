@@ -4,6 +4,7 @@ import {
   AREAS,
   CYCLE,
   CYCLES,
+  PRIORITY_PLACES,
   LABELS,
   QUESTIONS,
   areaName,
@@ -14,6 +15,7 @@ import {
 } from "./model";
 function ReviewPanel({ director, user, previewMode = false, cycleKey = CYCLE, onCycleChange }) {
   const [rows, setRows] = useState([]),
+    [definition,setDefinition] = useState(null),
     [reviews, setReviews] = useState({}),
     [contacts, setContacts] = useState({}),
     [selected, setSelected] = useState(null),
@@ -30,6 +32,7 @@ function ReviewPanel({ director, user, previewMode = false, cycleKey = CYCLE, on
   const load = useCallback(async () => {
     try {
       if (previewMode) {
+        setDefinition(cycleKey===CYCLE?{target_places:5,reserve_places:5,remaining_places:PRIORITY_PLACES}:{target_places:15,reserve_places:5,remaining_places:{production:2,research:3,writing:2,design:3,illustration:3,photography:1,qa:1}});
         const defaults = {
           decision: "submitted",
           published: false,
@@ -82,6 +85,9 @@ function ReviewPanel({ director, user, previewMode = false, cycleKey = CYCLE, on
         setUpdated(new Date());
         return;
       }
+      const cycle = await supabase.from('gimg_recruitment_cycles').select('target_places,reserve_places,remaining_places').eq('key',cycleKey).single();
+      if(cycle.error)throw cycle.error;
+      setDefinition(cycle.data);
       const all = [];
       for (let from = 0; ; from += 500) {
         const { data, error: failed } = await supabase
@@ -306,7 +312,7 @@ function ReviewPanel({ director, user, previewMode = false, cycleKey = CYCLE, on
           Actualizar
         </button>
       </div>
-      <label className="rg-period-selector">Periodo<select value={cycleKey} disabled={busy} onChange={event=>{
+      <label className="rg-period-selector">Periodo<select aria-label="Periodo" value={cycleKey} disabled={busy} onChange={event=>{
         if(values && selected && JSON.stringify(values)!==JSON.stringify(reviews[selected]) && !window.confirm('Hay cambios de revisión sin guardar. ¿Quieres descartarlos y cambiar de periodo?'))return;
         setSelected(null);setValues(null);setRows([]);onCycleChange(event.target.value);
       }}>{CYCLES.map(([key,title])=><option key={key} value={key}>{title}</option>)}</select></label>
@@ -329,7 +335,7 @@ function ReviewPanel({ director, user, previewMode = false, cycleKey = CYCLE, on
                   reviews[x.id]?.public_decision === "accepted",
               ).length
             }
-            /15
+            /{definition?.target_places ?? "…"}
           </strong>
           <span>Seleccionadas</span>
         </div>
@@ -342,7 +348,7 @@ function ReviewPanel({ director, user, previewMode = false, cycleKey = CYCLE, on
                   reviews[x.id]?.public_decision === "reserve",
               ).length
             }
-            /5
+            /{definition?.reserve_places ?? "…"}
           </strong>
           <span>En reserva</span>
         </div>
@@ -354,13 +360,14 @@ function ReviewPanel({ director, user, previewMode = false, cycleKey = CYCLE, on
         </div>
       </div>
       <div className="rg-area-stats">
-        {AREAS.map(([key, name, places]) => {
+        {AREAS.filter(([key])=>cycleKey===CYCLE || !['video_editing','animation_2d','animation_3d'].includes(key)).map(([key, name]) => {
+          const places=definition?.remaining_places?.[key] || 0;
           const count = rows.filter((x) => x.answers.area === key).length;
           return (
             <div key={key}>
               <span>{name}</span>
               <strong>
-                {count} postulaciones · {places} plazas
+                {count} postulaciones · {cycleKey!==CYCLE?'periodo anterior':places>0?`${places} ${places===1?'vacante prevista':'vacantes previstas'}`:'registro de interés'}
               </strong>
               <div className="rg-meter">
                 <i
