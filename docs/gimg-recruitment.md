@@ -1,3 +1,27 @@
+# Convocatoria GIMG · periodo de noviembre 2026
+
+Estado actual: publicada en https://gba.software/convocatoria/gimg/ . Nuevo ciclo `gimg-noviembre-2026`, del 1 de noviembre a las 00:00 al 15 de noviembre a las 23:59, America/Mexico_City (cierre exclusivo: `2026-11-16T06:00:00Z`).
+
+Una incorporación prevista en cada perfil: Edición de video, Animación 2D, Animación 3D, Ilustración digital y Maquetación/diseño editorial. Los otros perfiles admiten registros de interés, sujetos a futuras vacantes. Las cifras publicadas son una previsión por perfil; Dirección selecciona, sin una reserva automática de puesto. La selección del nuevo ciclo tiene límite total de cinco aceptados; se conserva el límite de reserva de cinco del sistema. Los integrantes actuales confirman continuidad por privado y no deben volver a postularse.
+
+El formulario, situaciones por perfil, condiciones versión `2026-11-01`, metadatos y vista social se actualizaron. Se conserva el consentimiento de octubre en `LEGACY_TERMS`. El panel privado y Mothership permiten escoger periodo; la persona puede consultar su postulación anterior con `?ciclo=gimg-otono-2026`, usando la misma cuenta. No se copiaron solicitudes o resultados entre ciclos.
+
+Las muestras siguen siendo privadas, PDF/PNG/JPG/WEBP hasta 10 MB; para video/animación/3D se ofrece un enlace HTTPS. Las dos políticas de subida (incluida la restrictiva) exigen sesión activa, carpeta de la propia cuenta y un ciclo abierto que coincida con el segmento del archivo. No se ampliaron los formatos o límites de R2 ni se habilitaron editores de video/3D.
+
+La matriz RBAC canónica y `docs/workspace-rbac-source.md` pasan a 1.1. `video_editing`, `animation_2d` y `animation_3d` son funciones organizacionales del colaborador de un área visual (`art`) asignada; no son nuevos rangos técnicos ni cambian la tabla de permisos. No se crean asignaciones, licencias o departamentos automáticamente.
+
+Migraciones: `20261101193755_gimg_november_period.sql` y `20261101193756_workspace_visual_functions.sql`. La primera cierra sólo la recepción del periodo antiguo, crea el nuevo ciclo y amplía las opciones con cambios acotados sobre las funciones existentes; conserva los controles de revisión y contacto. La segunda actualiza exclusivamente el catálogo privado de funciones.
+
+Pruebas locales: 173 de convocatoria (53 del ciclo nuevo), 887 de Workspace (14 de las nuevas funciones), identidad y conservación de alcances cubiertas. Integridad de postulaciones, evaluaciones, contactos y asignaciones existentes comprobada antes/después en producción; matriz de permisos idéntica y ningún aviso nuevo de seguridad. No se crearon registros de prueba en producción.
+
+Web READY: `dpl_72ax76Zen6Px9MP3oXinNRGWPaTv`, código `d076d080eebf2319683b6cc5d9c47885ac5f5ffe`. La interfaz real pública muestra las cinco prioridades, el registro de interés y el intervalo correcto. El panel toma los cupos de la definición del periodo seleccionado y conserva el selector de octubre/noviembre, probado con datos ficticios locales.
+
+La corrección macOS 1.7.1.3 (`1.7.103`) quedó publicada en https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/tag/workspace-v1.7.1.3-beta.1 . Fuente nativa `86bb97203f99977a0f784eb20c9060a86276cc88`, CI https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/actions/runs/41343601705 . Ambos paquetes macOS pasaron instalación/arranque en CI y verificación de firma e integridad; sólo se publicó el feed de Mac. No se instaló nada en el equipo del usuario. El ajuste posterior de contadores pertenece únicamente al panel web de convocatoria, fuera del bundle de Workspace, y no exigió recompilar el binario. El editor de publicación se ejecutó en un checkout separado de la fuente exacta de CI, sin alterar el checkout de trabajo. Windows y la base pública 1.5.0 permanecen iguales.
+
+---
+
+## Historial de implementación · octubre de 2026
+
 # Convocatoria GIMG · octubre 2026
 
 ## Rutas y aislamiento
