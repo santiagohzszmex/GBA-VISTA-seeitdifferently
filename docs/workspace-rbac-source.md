@@ -1,8 +1,8 @@
 # Matriz RBAC definitiva de GBA Workspace para GIMG
 
 **Estado:** aprobada para implementación  
-**Versión:** 1.0  
-**Fecha:** 8 de octubre de 2026  
+**Versión:** 1.1
+**Fecha:** 1 de noviembre de 2026
 **Aplicación inicial:** unidad GIMG dentro de GBA Workspace
 
 ## 1. Objetivo
@@ -27,7 +27,7 @@ Indica las operaciones que el sistema puede autorizar: administrar, coordinar, a
 
 ### Asignación organizacional — `assignment_role`
 
-Indica la función real dentro de GIMG: Dirección, Producción, Investigación, Redacción, Maquetación, Ilustración, Fotografía o QA.
+Indica la función real dentro de GIMG: Dirección, Producción, Investigación, Redacción, Maquetación, Ilustración, Fotografía, Edición de video, Animación 2D, Animación 3D o QA.
 
 Una persona puede tener varias asignaciones organizacionales y un solo rol técnico principal por alcance. También puede recibir delegaciones adicionales, temporales y explícitas.
 
@@ -69,7 +69,7 @@ El alcance más reducido prevalece. Tener acceso a un proyecto no concede acceso
 | Responsable editorial | `gimg_area_lead` | Área editorial de proyectos asignados |
 | Responsable de maquetación | `gimg_area_lead` | Diseño de proyectos asignados |
 | Responsable de continuidad de ilustración | `gimg_area_lead` | Ilustración de proyectos asignados |
-| Investigación, redacción, diseño, ilustración o fotografía | `gimg_contributor` | Proyectos, áreas y entregables asignados |
+| Investigación, redacción, diseño, ilustración, fotografía, edición de video o animación 2D/3D | `gimg_contributor` | Proyectos, áreas y entregables asignados |
 | Gestión de archivos y QA | `gimg_quality_manager` | Proyectos activos de GIMG |
 | Reserva, aspirante o integrante inactivo | Sin rol operativo; opcional `gimg_viewer` para incorporación | Recursos expresamente compartidos |
 
@@ -303,3 +303,22 @@ La interfaz puede ocultar acciones no autorizadas, pero la seguridad no debe dep
 - La descarga de originales usa autorización temporal y queda auditada.
 - Todas las acciones sensibles se prueban tanto desde interfaz como mediante llamadas directas a la API.
 
+
+
+## Adenda · Incorporación de noviembre de 2026
+
+Se conserva el organigrama vigente. La convocatoria prioriza una incorporación en cada perfil: ilustración, maquetación, edición de video, animación 2D y animación 3D. El resto de áreas recibe registros de interés sujetos a vacantes. La continuidad de integrantes actuales se confirma por separado; postularse no otorga membresía, rango, licencia ni acceso editorial.
+
+| Función organizacional | Clave | Rol técnico | Alcance y revisión |
+|---|---|---|---|
+| Edición de video | `video_editing` | `gimg_contributor` | Área visual asignada (`art`), en el proyecto autorizado. Responsable de área → QA → Dirección. |
+| Animación 2D | `animation_2d` | `gimg_contributor` | Área visual asignada (`art`), en el proyecto autorizado. Responsable de área → QA → Dirección. |
+| Animación 3D | `animation_3d` | `gimg_contributor` | Área visual asignada (`art`), en el proyecto autorizado. Responsable de área → QA → Dirección. |
+| Ilustración | `illustration` | `gimg_contributor` | Se mantiene el área visual y la continuidad de ilustración existentes. |
+| Maquetación y diseño editorial | `design` | `gimg_contributor` | Se mantiene Integración/Diseño y maquetación (`integration`). |
+
+Las funciones nuevas se adscriben al área visual existente —que puede conservar el nombre Ilustración en una edición—, sin crear automáticamente departamentos ni responsables nuevos. Una persona puede tener varias asignaciones organizacionales bajo el mismo rol principal y alcance. Compartir área no habilita ver borradores o tareas privadas de otra persona: siguen aplicando las reglas de recursos propios/asignados y referencias compartidas.
+
+Estas funciones no autorizan revisar o aprobar el trabajo ajeno, publicar, otorgar accesos, ampliar vigencias ni administrar la plataforma. No cambian la matriz de permisos de la sección 7. Si se necesita una coordinación distinta, Dirección debe asignarla expresamente por los mecanismos existentes. La revisión se rige por el área, no por el formato del archivo. Los proyectos cerrados permanecen de consulta.
+
+Los avances audiovisuales y 3D pueden documentarse y entregarse mediante archivos o enlaces expresamente admitidos y acordados. Esta adenda no habilita formatos nuevos en R2 ni promete edición nativa de video/3D en Workspace.

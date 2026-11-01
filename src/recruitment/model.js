@@ -1,18 +1,29 @@
-export const CYCLE = "gimg-otono-2026";
-export const TERMS_VERSION = "2026-10-08";
+export const LEGACY_CYCLE = "gimg-otono-2026";
+export const CYCLE = "gimg-noviembre-2026";
+export const CYCLES = [[CYCLE,"Noviembre 2026"],[LEGACY_CYCLE,"Octubre 2026 · anterior"]];
+export const TERMS_VERSION = "2026-11-01";
 export const COMMUNITY =
   "Plantel Nezahualcóyotl de la Escuela Preparatoria de la UAEMéx";
-export const OPEN_AT = "2026-10-08T06:00:00Z";
-export const CLOSE_AT = "2026-10-19T06:00:00Z";
+export const OPEN_AT = "2026-11-01T06:00:00Z";
+export const CLOSE_AT = "2026-11-16T06:00:00Z";
 export const AREAS = [
-  ["production", "Producción y organización", 2],
-  ["research", "Investigación y reportería", 3],
-  ["writing", "Redacción y edición", 2],
-  ["design", "Diseño editorial y maquetación", 3],
-  ["illustration", "Ilustración digital", 3],
-  ["photography", "Fotografía y documentación", 1],
-  ["qa", "Gestión de archivos y control de calidad", 1],
+  ["video_editing", "Edición de video", 1],
+  ["animation_2d", "Animación 2D", 1],
+  ["animation_3d", "Animación 3D", 1],
+  ["illustration", "Ilustración digital", 1],
+  ["design", "Maquetación y diseño editorial", 1],
+  ["production", "Producción y organización", 0],
+  ["research", "Investigación y reportería", 0],
+  ["writing", "Redacción y edición", 0],
+  ["photography", "Fotografía y documentación", 0],
+  ["qa", "Gestión de archivos y control de calidad", 0],
 ];
+export const PRIORITY_PLACES = Object.fromEntries(AREAS.map(([key,,places])=>[key,places]));
+export const placeLabel = (definition,key) => {
+ if(definition?.closed_areas?.includes(key))return 'Cerrada para nuevas postulaciones';
+ const places=definition?.remaining_places?.[key] ?? PRIORITY_PLACES[key] ?? 0;
+ return places>0 ? `${places} ${places===1?'vacante prevista':'vacantes previstas'}` : 'Registro de interés · sujeto a vacantes';
+};
 export const QUESTIONS = {
   community: [
     "¿Perteneces a la comunidad del Plantel Nezahualcóyotl?",
@@ -153,6 +164,21 @@ export const QUESTIONS = {
   ],
 };
 export const SCENARIOS = {
+  video_editing: [
+    "Construyes piezas audiovisuales con el material y la dirección de GIMG: montaje, ritmo, audio, subtítulos y créditos. Puedes usar las herramientas que tengas disponibles.",
+    "Recibes una entrevista larga para crear un video breve. ¿Cómo elegirías lo esencial, conservarías el sentido y comprobarías música, permisos, subtítulos y créditos antes de entregar?",
+    "Criterio narrativo, claridad, accesibilidad y archivos organizados.",
+  ],
+  animation_2d: [
+    "Das movimiento a ilustraciones, personajes o elementos gráficos. Compartes bocetos, pruebas de movimiento y archivos fuente según las indicaciones del proyecto.",
+    "Debes animar una ilustración manteniendo su estilo. ¿Qué prepararías antes de animar, cómo mostrarías una primera prueba y qué acordarías sobre duración, movimiento y entrega?",
+    "Continuidad visual, planificación, comunicación y proceso.",
+  ],
+  animation_3d: [
+    "Creas y animas elementos tridimensionales para las piezas de GIMG, cuidando estilo, iluminación, tiempos de render y organización del proyecto.",
+    "Te piden una animación 3D breve y tienes equipo limitado. ¿Cómo ajustarías el alcance, presentarías una prueba y organizarías modelos, texturas, licencias y render para llegar a tiempo?",
+    "Alcance realista, criterio visual, recursos y trazabilidad.",
+  ],
   production: [
     "Organizas fechas, entregas, responsables y avances. Dirección conserva las decisiones del proyecto.",
     "Una persona no entregó su archivo y otra necesita ese archivo para comenzar. ¿Qué harías primero, qué registrarías en Workspace y cuándo avisarías a Dirección?",
@@ -175,7 +201,7 @@ export const SCENARIOS = {
   ],
   illustration: [
     "Creas imágenes a partir de instrucciones, presentas bocetos y entregas archivos digitales editables cuando sea posible. Puedes usar cualquier programa de dibujo digital.",
-    "Recibes una indicación que dice “debe sentirse inquietante, pero no sangrienta”. ¿Qué propondrías en el boceto y qué preguntarías antes de comenzar el arte final?",
+    "Recibes un concepto editorial y referencias visuales para una ilustración. ¿Qué propondrías en el boceto y qué preguntarías antes de comenzar el arte final?",
     "Interpretación, propuesta visual, comunicación y etapas.",
   ],
   photography: [

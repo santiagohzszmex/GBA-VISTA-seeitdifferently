@@ -32,7 +32,7 @@ export function createPeopleDemo(data,actorId,projectId){
   else if(action==='assign'){
    if(statusOf(member)!=='active')throw Error('La persona debe tener acceso activo.');
    const c=CARGOS.find(c=>c.key===value.cargoKey);const fn=value.functionKey || c.assignmentRole;
-   const specialty=({research:'research',editorial:'text',writing:'text',design:'integration',layout:'integration',photography:'art',illustration:'art'})[fn];
+   const specialty=({research:'research',editorial:'text',writing:'text',design:'integration',layout:'integration',photography:'art',illustration:'art',video_editing:'art',animation_2d:'art',animation_3d:'art'})[fn];
    let area=state.areas.find(a=>a.project_id===value.projectId && a.specialty===specialty && (fn!=='photography' || a.name==='Fotografía'));
    if(c.scope==='area'&&!area){area={id:id('demo-area'),project_id:value.projectId,name:fn==='photography'?'Fotografía':'Área de prueba',specialty};state.areas.push(area);}
    const scopeId=c.scope==='unit'?state.unit.id:c.scope==='project'?value.projectId:area.id;

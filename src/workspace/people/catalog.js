@@ -56,6 +56,9 @@ export const FUNCTIONS = {
   "design": "Diseño",
   "illustration": "Ilustración",
   "photography": "Fotografía",
+  "video_editing": "Edición de video",
+  "animation_2d": "Animación 2D",
+  "animation_3d": "Animación 3D",
   "qa": "QA"
 };
 
@@ -126,7 +129,10 @@ export const CARGOS = [
       "writing",
       "design",
       "illustration",
-      "photography"
+      "photography",
+      "video_editing",
+      "animation_2d",
+      "animation_3d"
     ],
     "defaultFunction": "illustration",
     "functionLabel": "Función"

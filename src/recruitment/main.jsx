@@ -5,7 +5,11 @@ import { supabase } from "../supabaseClient";
 import Identity from "./Auth";
 import ReviewPanel from "./Admin";
 import {
-  CYCLE,
+  CYCLE as CURRENT_CYCLE,
+  LEGACY_CYCLE,
+  CYCLES,
+  PRIORITY_PLACES,
+  placeLabel,
   COMMUNITY,
   OPEN_AT,
   CLOSE_AT,
@@ -25,9 +29,12 @@ import {
   label,
   warnings,
 } from "./model";
-import { TERMS } from "./terms";
+import { TERMS, LEGACY_TERMS } from "./terms";
 import "./recruitment.css";
 import "./recruitment-page.css";
+const CYCLE = new URLSearchParams(location.search).get('ciclo')===LEGACY_CYCLE ? LEGACY_CYCLE : CURRENT_CYCLE;
+const historicalCycle = CYCLE===LEGACY_CYCLE;
+const cycleTerms = historicalCycle ? LEGACY_TERMS : TERMS;
 const copy = {
   profile: [
     "Primero, tu perspectiva.",
@@ -178,13 +185,13 @@ function Conditions({ onClose }) {
         </button>
       </header>
       <article>
-        <p className="rg-kicker">VERSIÓN {TERMS_VERSION}</p>
+        <p className="rg-kicker">VERSIÓN {historicalCycle ? '2026-10-08' : TERMS_VERSION}</p>
         <h1>
           Crear juntos.
           <br />
           Con acuerdos claros.
         </h1>
-        {TERMS.map(([title, text]) => (
+        {cycleTerms.map(([title, text]) => (
           <section key={title}>
             <h2>{title}</h2>
             <p>{text}</p>
@@ -334,7 +341,7 @@ function Questionnaire({ session, user, definition, onBack }) {
             p_email: email && validEmail(email) ? email : null,
             p_phone: phone || null,
             p_complete: complete,
-            p_terms: complete && terms ? TERMS_VERSION : null,
+            p_terms: complete && terms ? definition.terms_version || TERMS_VERSION : null,
             p_truth: complete && truth,
             p_revision: revision.current,
           },
@@ -716,7 +723,7 @@ function Questionnaire({ session, user, definition, onBack }) {
                     <option value="">Elige un área</option>
                     {AREAS.map(([key, name]) => (
                       <option key={key} value={key} disabled={closedAreas.includes(key)}>
-                        {name}{closedAreas.includes(key) ? ' · Convocatoria cerrada' : definition.remaining_places?.[key] !== undefined ? ` · ${definition.remaining_places[key]} ${definition.remaining_places[key] === 1 ? 'puesto disponible' : 'puestos disponibles'}` : ''}
+                        {name} · {placeLabel(definition,key)}
                       </option>
                     ))}
                   </select>
@@ -837,7 +844,7 @@ function Questionnaire({ session, user, definition, onBack }) {
                       disabled={uploading}
                       onChange={upload}
                     />
-                    <small>Hasta 10 MB. La muestra será privada.</small>
+                    <small>PDF o imagen hasta 10 MB. Para video, animación o proyectos 3D, comparte un enlace HTTPS a tu reel o muestra. No subas archivos de video aquí.</small>
                   </label>
                 )}
                 <fieldset className="rg-contact-choice">
@@ -1055,7 +1062,7 @@ function App() {
     [access, setAccess] = useState({}),
     [definition, setDefinition] = useState(
       preview
-        ? { key: CYCLE, is_open: true, opens_at: OPEN_AT, closes_at: CLOSE_AT, closed_areas: ['illustration', 'writing'], remaining_places: {design: 2, research: 1} }
+        ? { key: CYCLE, is_open: true, opens_at: OPEN_AT, closes_at: CLOSE_AT, closed_areas: [], remaining_places: PRIORITY_PLACES }
         : null,
     ),
     [view, setView] = useState("landing"),
@@ -1224,7 +1231,7 @@ function App() {
         </main>
       ) : view === "questionnaire" && user && definition ? (
         <Questionnaire
-          key={session.user.id}
+          key={`${session.user.id}-${CYCLE}`}
           session={session}
           user={user}
           definition={definition}
@@ -1232,10 +1239,11 @@ function App() {
         />
       ) : (
         <main>
+          <div className="rg-wrap rg-period-links" aria-label="Periodos de convocatoria">{CYCLES.map(([key,title])=><a key={key} aria-current={CYCLE===key?'page':undefined} href={`?ciclo=${key}`}>{title}</a>)}</div>
           <section className="rg-hero rg-wrap">
             <div>
               <p className="rg-kicker">
-                CONVOCATORIA GIMG · CICLO EDITORIAL 2026
+                {historicalCycle ? 'CONVOCATORIA ANTERIOR · OCTUBRE 2026' : 'CONVOCATORIA GIMG · NOVIEMBRE 2026'}
               </p>
               <h1>
                 Hay historias
@@ -1245,12 +1253,10 @@ function App() {
                 <em>seguir vivas.</em>
               </h1>
               <p className="rg-lead">
-                Forma parte del primer equipo editorial y creativo de Global
-                Insight Media Group.
+                {historicalCycle ? 'Consulta tu postulación y los resultados del periodo de octubre de GIMG.' : 'Súmate a la siguiente etapa editorial y audiovisual de Global Insight Media Group.'}
               </p>
               <p>
-                Investigar. Escribir. Diseñar. Ilustrar. Encontrar una mirada y
-                convertirla en una publicación que podamos compartir.
+                {historicalCycle ? 'Este periodo ya terminó. Tus respuestas y resultados se conservan por separado de la nueva convocatoria.' : 'Ilustrar. Maquetar. Editar video. Animar en 2D y 3D. Un equipo que continúa y busca nuevas formas de compartir sus historias.'}
               </p>
               <div className="rg-actions">
                 <button
@@ -1269,7 +1275,7 @@ function App() {
                 </a>
               </div>
               <p className="rg-date">
-                8–18 de octubre · 7–10 minutos · Puestos disponibles por área
+                {historicalCycle ? 'Periodo anterior · cerrado para nuevas postulaciones' : '1–15 de noviembre · 7–10 minutos · Colaboración voluntaria'}
               </p>
             </div>
             <Floral />
@@ -1293,26 +1299,26 @@ function App() {
             <div className="rg-cycle-grid">
               <article>
                 <span>01</span>
-                <h3>Día de Muertos</h3>
+                <h3>Publicaciones</h3>
                 <p>
-                  Una edición para contar, recordar y dar forma a las historias
-                  que nos acompañan.
+                  Ilustración y maquetación para dar forma a las historias que
+                  el equipo prepare durante el nuevo periodo.
                 </p>
               </article>
               <article>
                 <span>02</span>
-                <h3>Halloween</h3>
+                <h3>Video y animación</h3>
                 <p>
-                  Otra edición principal para explorar lo inquietante con
-                  intención y criterio editorial.
+                  Nuevas colaboraciones en edición de video y animación 2D y 3D,
+                  con una dirección visual compartida.
                 </p>
               </article>
               <article>
                 <span>03</span>
-                <h3>Tres microediciones</h3>
+                <h3>Un equipo que continúa</h3>
                 <p>
-                  Leyendas que encontrarán su lugar en publicaciones breves del
-                  ciclo.
+                  Conservamos el organigrama y coordinamos las nuevas incorporaciones
+                  con quienes ya forman parte de GIMG.
                 </p>
               </article>
             </div>
@@ -1322,7 +1328,7 @@ function App() {
             <h2>Encuentra tu lugar.</h2>
             {!!definition?.closed_areas?.length && <p className="rg-note">{definition.closed_areas.map(key => key === 'illustration' ? 'Ilustración' : key === 'writing' ? 'Redacción' : areaName(key)).join(' y ')}: convocatoria cerrada para nuevas postulaciones. Las solicitudes ya recibidas se conservan para revisión y selección. Si te interesa la composición, la tipografía o la maquetación, seguimos buscando integrantes en <a href="#area-design">Diseño editorial</a>.</p>}
             <div>
-              {AREAS.map(([key, name, initialPlaces], i) => {
+              {AREAS.filter(([key])=>!historicalCycle || !['video_editing','animation_2d','animation_3d'].includes(key)).map(([key, name, initialPlaces], i) => {
                 const places = definition?.remaining_places?.[key] ?? initialPlaces;
                 return (
                 <article key={key} id={`area-${key}`}>
@@ -1330,16 +1336,16 @@ function App() {
                   <h3>{name}</h3>
                   <p>{SCENARIOS[key][0]}</p>
                   <strong>
-                    {definition?.closed_areas?.includes(key) ? 'Cerrada para nuevas postulaciones' : `${places} ${places === 1 ? 'puesto disponible' : 'puestos disponibles'}`}
+                    {placeLabel(definition,key)}
                   </strong>
                 </article>
               );})}
             </div>
             <p className="rg-note">
-              Las dos plazas de Producción incluyen Responsable de Producción y
-              Coordinación de Producción y Workspace. Diseño incluye una
-              responsabilidad de maquetación. Podrá haber hasta cinco personas
-              en reserva.
+              Buscamos una incorporación por cada uno de los cinco perfiles prioritarios.
+              Las demás áreas reciben registros de interés, sujetos a futuras vacantes.
+              Si ya formas parte del equipo, confirma tu continuidad por privado;
+              no necesitas volver a postularte.
             </p>
           </section>
           <section className="rg-how rg-wrap">

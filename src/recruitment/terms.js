@@ -1,4 +1,4 @@
-export const TERMS = [
+export const LEGACY_TERMS = [
   [
     "La convocatoria",
     "GIMG, la división editorial de GBA, organiza este ciclo dirigido a la comunidad del Plantel Nezahualcóyotl de la Escuela Preparatoria de la UAEMéx. Las postulaciones se reciben del 8 al 18 de octubre de 2026; el cierre es a las 23:59, hora de Ciudad de México. Esta iniciativa de GBA no promete una constancia o certificación de la institución.",
@@ -32,3 +32,11 @@ export const TERMS = [
     "Puedes revisar y corregir el borrador hasta enviarlo. Después del envío, consulta el estado desde tu GBA ID. Los datos se utilizan para este proceso y su coordinación; una participación en otros ciclos requerirá una decisión posterior. Para solicitar corrección, retiro de la postulación, información sobre conservación o eliminación de tus datos, escribe a contacto@gba.software indicando tu GBA ID, sin enviar tu PIN ni código de recuperación. Las muestras no se publicarán por el solo hecho de postularte; cualquier uso editorial se acordará posteriormente.",
   ],
 ];
+
+// Keep the original consent text available with the original application.
+export const TERMS = LEGACY_TERMS.map(([title,text],index)=>[title,({
+ 0:"GIMG, la división editorial de GBA, abre un nuevo periodo de incorporación para la comunidad del Plantel Nezahualcóyotl de la Escuela Preparatoria de la UAEMéx. Recibe postulaciones del 1 al 15 de noviembre de 2026, hasta las 23:59 de Ciudad de México. La convocatoria anterior y sus resultados se conservan por separado.",
+ 1:"La colaboración es voluntaria. Se prevé una incorporación en edición de video, una en animación 2D, una en animación 3D, una en ilustración y una en maquetación. Las demás áreas reciben registros de interés sujetos a necesidades posteriores. Postularte no garantiza selección. Dirección revisa disponibilidad, motivación, criterio y cobertura del equipo; no se exige experiencia profesional, portafolio ni software de pago para postularte.",
+ 2:"El equipo actual continúa y conserva su organigrama. Las nuevas personas se incorporarán a los proyectos y calendarios que GIMG confirme, sin prometer aquí una temática o edición aún no anunciada. Workspace registra asignaciones, documentos, referencias y revisiones. Los avances audiovisuales o tridimensionales podrán entregarse por los medios y enlaces acordados; la convocatoria no promete un editor de video o 3D dentro de Workspace. Los avisos rápidos podrán coordinarse por WhatsApp después de la selección.",
+ 4:"Los créditos y constancias de GIMG se basan en contribuciones efectivamente realizadas y verificadas. Los créditos se conservan aunque la persona termine su colaboración. La convocatoria no garantiza reconocimientos escolares ni certificación de otra institución. El acceso a herramientas requiere incorporación y asignación explícitas; la continuidad del equipo actual se gestiona por separado y no exige volver a postularse."
+})[index] || text]);

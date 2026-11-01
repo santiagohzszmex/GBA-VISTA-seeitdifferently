@@ -1,9 +1,9 @@
 {
-  "version": "1.7.1.2",
-  "nativeVersion": "1.7.102",
+  "version": "1.7.1.3",
+  "nativeVersion": "1.7.103",
   "codename": "Lapislázuli",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Lapislázuli · Ediciones cerradas",
-  "notice": "Las ediciones cerradas se consultan en Cerradas y ya no aparecen en Ediciones. Se conservan documentos, imágenes y versiones; para modificar su contenido hay que reabrirlas con los permisos correspondientes."
+  "noticeTitle": "Lapislázuli · Nuevas funciones visuales",
+  "notice": "Edición de video y animación 2D y 3D se incorporan al catálogo de funciones de GIMG, con los mismos permisos de colaborador y la cadena de revisión existente."
 }

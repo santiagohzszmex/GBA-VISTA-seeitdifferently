@@ -1,9 +1,9 @@
-# Workspace 1.7.1.2 Lapislázuli
+# Workspace 1.7.1.3 Lapislázuli
 
-Las ediciones cerradas y archivadas se consultan en **Cerradas**, separadas de las ediciones en trabajo. Conservan referencias, documentos, versiones, originales, notas y borradores privados según los accesos de cada persona.
+Edición de video, Animación 2D y Animación 3D se añaden al catálogo de funciones de colaboradores de GIMG. Se muestran con su nombre en Integrantes y Equipo. Usan el área visual asignada y los mismos permisos de colaborador; se conserva la revisión de área → QA → Dirección.
 
-Cerrar bloquea nuevas entregas, modificaciones, notas y subidas editoriales también en el servidor. Una operación iniciada antes del cierre debe terminar antes de que se cierre la edición; después se rechazan cambios. Dirección puede reabrirla desde Configuración con sus permisos existentes y vuelve a Ediciones.
+No asigna cargos automáticamente, no renueva licencias o membresías y no cambia la matriz de permisos. La convocatoria de noviembre se publica en la web como proceso separado de las solicitudes de octubre. El equipo actual confirma su continuidad por privado y no necesita volver a postularse.
 
-La corrección llega por la web y el actualizador manual de macOS Apple Silicon e Intel, sin instalar nada automáticamente. Windows conserva Cuarzo hasta la prueba interactiva de Lapislázuli. La base pública 1.5.0 permanece igual.
+Conserva las ediciones cerradas de consulta de 1.7.1.2. No habilita formatos adicionales de R2 ni promete un editor de video o 3D dentro de Workspace. Los avances se entregan mediante documentos, archivos admitidos o enlaces acordados.
 
-No cierra ediciones automáticamente, no revoca integrantes o licencias y no modifica las publicaciones de VISTA. Beta sin notarización de Apple; los paquetes del actualizador llevan firma criptográfica de Workspace.
+Actualización manual de macOS Apple Silicon e Intel. Windows conserva su canal anterior hasta la prueba interactiva de Lapislázuli. La base pública 1.5.0 sigue intacta. Beta sin notarización de Apple; los paquetes del actualizador llevan firma criptográfica de Workspace.

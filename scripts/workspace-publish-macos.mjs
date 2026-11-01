@@ -24,10 +24,15 @@ const acceptance=JSON.parse(await fs.readFile(option('--acceptance')));
 if(acceptance.commit!==commit||acceptance.projectRef!=='wgihpztgwsovhykboyru'||!acceptance.backupRestoreVerified||!acceptance.documentReadVerified||!acceptance.documentWriteVerified||acceptance.imagesEnabled!==true||(release.version==='1.7.0'?JSON.stringify(acceptance.imageProjectIds)!==JSON.stringify(['8cde6736-e742-4a11-8a53-cb320b36b055']):acceptance.imagesAllProjects!==true)||acceptance.derivativesEnabled!==false||!/^[a-f\d-]{36}$/.test(acceptance.workerVersion||'')||acceptance.cpuMs!==1000||acceptance.serverHash!=='full-sha256')throw Error('Complete pilot deployment evidence required');
 if(!Array.isArray(acceptance.migrations)||acceptance.migrations.length!==(release.version==='1.7.0'?7:8))throw Error('Reviewed migration set required');
 for(const m of acceptance.migrations){if(!/^supabase\/migrations\/\d+_workspace_(?:lapis_[a-z_]+|deadline_receipts)\.sql$/.test(m.file)||sha(await fs.readFile(m.file))!==m.sha256)throw Error('Migration differs from deployment evidence');}
-if(release.version==='1.7.1.2'){
+if(toNativeVersion(release.version).startsWith('1.7.') && Number(release.nativeVersion.split('.')[2])>=102){
  const correction=acceptance.closedEditionCorrection;
  if(!correction || correction.migration?.file!=='supabase/migrations/20261101183053_workspace_closed_editions.sql' || sha(await fs.readFile(correction.migration.file))!==correction.migration.sha256 || correction.productionSchemaVerified!==true || correction.localSqlAssertions<68 || correction.liveTestWrites!==false || correction.changedProjectStatuses!==false)throw Error('Reviewed closed-edition migration and production verification required');
  if(correction.projectContentMigration?.file!=='supabase/migrations/20261101184906_workspace_closed_project_content.sql' || sha(await fs.readFile(correction.projectContentMigration.file))!==correction.projectContentMigration.sha256)throw Error('Closed project concept migration evidence required');
+}
+if(release.version==='1.7.1.3'){
+ const update=acceptance.visualFunctionsCorrection;
+ if(!update || update.productionCatalogVerified!==true || update.matrixUnchanged!==true || update.memberAssignmentsChanged!==false || update.localRoleChecks<13)throw Error('Visual function scope evidence required');
+ for(const migration of [update.migration,update.recruitmentMigration])if(!migration || !/^supabase\/migrations\/2026110119375[56]_(?:gimg_november_period|workspace_visual_functions)\.sql$/.test(migration.file) || sha(await fs.readFile(migration.file))!==migration.sha256)throw Error('New-period migration evidence differs');
 }
 if(Date.now()-Date.parse(acceptance.verifiedAt)>86400000||!Number.isFinite(Date.parse(acceptance.verifiedAt)))throw Error('Fresh deployment evidence required');
 const key=path.join(os.homedir(),'.tauri/workspace-updates.key');

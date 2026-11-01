@@ -1268,3 +1268,5 @@
 .rg-review-host .rg-contact-box {
   background: #102c26;
 }
+
+.rg-period-links{display:flex;flex-wrap:wrap;gap:10px 22px;padding-top:22px;font-size:13px}.rg-period-links a{color:#61616a;text-decoration:underline;text-underline-offset:4px}.rg-period-links a[aria-current=page]{font-weight:700;color:#24242b}.rg-period-selector{display:flex;gap:12px;align-items:center;margin:22px 0}.rg-period-selector select{max-width:100%;min-height:44px;padding:8px 12px;background:#fff;color:#24242b;border:1px solid #d5d5dc;border-radius:9px;font:inherit}

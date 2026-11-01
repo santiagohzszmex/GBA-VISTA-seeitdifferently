@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import {
   AREAS,
   CYCLE,
+  CYCLES,
   LABELS,
   QUESTIONS,
   areaName,
@@ -11,7 +12,7 @@ import {
   csvCell,
   decisionMessage,
 } from "./model";
-export default function ReviewPanel({ director, user, previewMode = false }) {
+function ReviewPanel({ director, user, previewMode = false, cycleKey = CYCLE, onCycleChange }) {
   const [rows, setRows] = useState([]),
     [reviews, setReviews] = useState({}),
     [contacts, setContacts] = useState({}),
@@ -86,7 +87,7 @@ export default function ReviewPanel({ director, user, previewMode = false }) {
         const { data, error: failed } = await supabase
           .from("gimg_recruitment_applications")
           .select("*")
-          .eq("cycle_key", CYCLE)
+          .eq("cycle_key", cycleKey)
           .eq("phase", "submitted")
           .order("submitted_at", { ascending: false })
           .order("id")
@@ -125,7 +126,7 @@ export default function ReviewPanel({ director, user, previewMode = false }) {
     } catch {
       setError("No pudimos actualizar las postulaciones. Vuelve a intentar.");
     }
-  }, [previewMode]);
+  }, [previewMode,cycleKey]);
   useEffect(() => {
     load();
     if (previewMode) return;
@@ -261,7 +262,7 @@ export default function ReviewPanel({ director, user, previewMode = false }) {
     const a = document.createElement("a"),
       url = URL.createObjectURL(blob);
     a.href = url;
-    a.download = "gimg-postulaciones.csv";
+    a.download = `gimg-${cycleKey}-postulaciones.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -305,6 +306,10 @@ export default function ReviewPanel({ director, user, previewMode = false }) {
           Actualizar
         </button>
       </div>
+      <label className="rg-period-selector">Periodo<select value={cycleKey} disabled={busy} onChange={event=>{
+        if(values && selected && JSON.stringify(values)!==JSON.stringify(reviews[selected]) && !window.confirm('Hay cambios de revisión sin guardar. ¿Quieres descartarlos y cambiar de periodo?'))return;
+        setSelected(null);setValues(null);setRows([]);onCycleChange(event.target.value);
+      }}>{CYCLES.map(([key,title])=><option key={key} value={key}>{title}</option>)}</select></label>
       {previewMode && (
         <p className="rg-muted">
           Vista de desarrollo · Datos ficticios · No se guardan cambios.
@@ -698,4 +703,9 @@ export default function ReviewPanel({ director, user, previewMode = false }) {
       )}
     </main>
   );
+}
+
+export default function RecruitmentReview(props){
+ const [cycleKey,setCycleKey]=useState(CYCLE);
+ return <ReviewPanel key={cycleKey} {...props} cycleKey={cycleKey} onCycleChange={setCycleKey}/>;
 }

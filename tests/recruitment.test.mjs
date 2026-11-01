@@ -1,8 +1,9 @@
+import {runNovemberRecruitment} from './recruitment-november.test.mjs';
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import {
-  CYCLE,
+  LEGACY_CYCLE as CYCLE,
   cleanAnswers,
   sectionsFor,
   validateAnswers,
@@ -700,11 +701,12 @@ $function$
   await no(db.query("update public.gimg_recruitment_applications set phase='submitted' where id=$1", [existingApplication]), /Redacción ya no recibe/);
   await db.query("update public.gimg_recruitment_applications set answers=answers||'{\"secondary\":\"\"}'::jsonb,phase='submitted' where id=$1", [existingApplication]);
   ok(await scalar('select phase from public.gimg_recruitment_applications where id=$1', [existingApplication]), 'submitted');
+  count += await runNovemberRecruitment(db,{first,second,director,actor,base});
   console.log(
     `PASS: ${count} checks — private drafts, ownership, reviewer access, publication snapshots, private contact, deadline, conditional questions, recovery budget and session revocation.`,
   );
 } catch (error) {
-  console.error(error.message);
+  console.error(error.message, error.where || "");
   console.error(error.stack);
   process.exitCode = 1;
 } finally {

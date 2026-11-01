@@ -6,7 +6,7 @@ import { REFERENCE_KINDS } from './referenceModel';
 import './supportDocuments.css';
 
 const SUPPORT_KIND = { interview:'Entrevista', research:'Investigación', notes:'Notas', source:'Fuente', transcript:'Transcripción', working:'Documento de trabajo' };
-const ASSIGNMENT_ROLE = { contributor:'Colaborador',direction:'Dirección', coordination:'Coordinación', production:'Producción', qa:'Calidad', research:'Investigación', writing:'Redacción', illustration:'Ilustración', design:'Diseño', photography:'Fotografía', layout:'Diseño editorial' };
+const ASSIGNMENT_ROLE = { contributor:'Colaborador',direction:'Dirección', coordination:'Coordinación', production:'Producción', qa:'Calidad', research:'Investigación', writing:'Redacción', illustration:'Ilustración', design:'Diseño', photography:'Fotografía', layout:'Diseño editorial', video_editing:'Edición de video', animation_2d:'Animación 2D', animation_3d:'Animación 3D' };
 export default function TeamWorkspace({ project, data, actorId, selectedSupportId, onOpenDocument, onOpenTask }) {
   const areas = data.team?.areas || data.areas.filter(area => area.project_id === project.id);
   const areaName = id => areas.find(area => area.id === id)?.name || 'Área';
