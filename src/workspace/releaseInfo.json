@@ -1,9 +1,9 @@
 {
-  "version": "1.7.1.1",
-  "nativeVersion": "1.7.101",
+  "version": "1.7.1.2",
+  "nativeVersion": "1.7.102",
   "codename": "Lapislázuli",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Lapislázuli · Tarjetas que se ajustan",
-  "notice": "Las tarjetas de Asignaciones y Mi trabajo se ajustan al contenido. Los títulos, fechas y estados largos saltan de línea sin salir del cuadro."
+  "noticeTitle": "Lapislázuli · Ediciones cerradas",
+  "notice": "Las ediciones cerradas se consultan en Cerradas y ya no aparecen en Ediciones. Se conservan documentos, imágenes y versiones; para modificar su contenido hay que reabrirlas con los permisos correspondientes."
 }

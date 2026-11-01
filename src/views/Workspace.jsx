@@ -9,6 +9,8 @@ import EditionReviews from '../workspace/EditionReviews';
 import TeamWorkspace from '../workspace/TeamWorkspace';
 import { taskIsMine, canReviewTask, editionCapabilities, initialSection, hasReviewPermission } from '../workspace/documentModel';
 import WorkspaceSettings from '../workspace/WorkspaceSettings';
+import ClosedEdition from '../workspace/ClosedEdition';
+import {editionsForScreen,selectedEdition,isClosedEdition} from '../workspace/editionState.mjs';
 import DraftExitDialog from '../workspace/DraftExitDialog';
 import Notifications from '../workspace/Notifications';
 import { DocumentContext } from '../workspace/DocumentContext';
@@ -53,7 +55,7 @@ export default function Workspace({ previewMode = false }) {
   const demoState = useRef(null), imageDemoModule=useRef(null);
   const lapisPreview=previewMode && import.meta.env.DEV && new URLSearchParams(location.search).get('lapis-preview')==='1';
   const viewDemo=(state,person,id)=>({...workflowDemoData(state,person,id),images:lapisPreview&&imageDemoModule.current?imageDemoModule.current.imageDemoBundle(state,person,id):{enabled:false}});
-  if (previewMode && !demoState.current) demoState.current = createWorkflowDemo();
+  if (previewMode && !demoState.current) { demoState.current = createWorkflowDemo(); if(import.meta.env.DEV && new URLSearchParams(location.search).get('closed-preview')==='1')demoState.current.projects[0].status='closed'; }
   const actor = DEMO_ACTORS[demoActorKey];
   const generation = useRef(0);
   const userId = previewMode ? actor.id : user?.id;
@@ -63,14 +65,14 @@ export default function Workspace({ previewMode = false }) {
   const task = data.tasks.find(item => item.id === selectedId && item.project_id === projectId);
   const disabled = busy || loading;
 
-  async function load(background = false) {
+  async function load(background = false, requestedScreen = screen) {
     const seq = ++generation.current;
     if (!background) setLoading(true);
     try {
       if (previewMode) {
         if(lapisPreview){imageDemoModule.current ||= await import('../workspace/images/imageDemo');await imageDemoModule.current.initializeImageDemo(demoState.current);}
         if(seq!==generation.current)return;
-        const id = demoState.current.projects.find(item => item.id === projectId && !item.deleted_at && actor.projects.includes(item.id))?.id || demoState.current.projects.find(item=>!item.deleted_at && actor.projects.includes(item.id))?.id || '';
+        const id = selectedEdition(demoState.current.projects.filter(item=>actor.projects.includes(item.id)),projectId,requestedScreen);
         setContext({ units: [{ id: 'gimg-demo', name: 'GIMG' }], platform_owner: actor.platformOwner === true, keynotes_access: actor.keynotesAccess === true });
         setUnitId('gimg-demo'); setProjectId(id);
         const next = viewDemo(demoState.current, actor, id);
@@ -97,7 +99,7 @@ export default function Workspace({ previewMode = false }) {
       }));
       if (seq !== generation.current) return;
       const next = Object.fromEntries(results);
-      const id = next.projects.find(item => item.id === projectId)?.id || next.projects[0]?.id || '';
+      const id = selectedEdition(next.projects,projectId,requestedScreen);
       const contextualTask = next.tasks.find(item => item.id === selectedId && item.project_id === id) || next.tasks.find(item => item.project_id === id);
       const area = contextualTask?.area_id || next.areas.find(item => item.project_id === id)?.id || null;
       const [unitPerm, directoryPerm, workPermissions, approvedDocuments, referenceBundle, removed, opal, support, team, images, deadlines] = await Promise.all([
@@ -146,7 +148,7 @@ export default function Workspace({ previewMode = false }) {
     else action();
   }
 
-  function selectScreen(id) { if (id !== screen) navigate(() => setScreen(id)); }
+  function selectScreen(id) { if (id !== screen) navigate(() => { setScreen(id); if(['editions','closed'].includes(id)){const target=selectedEdition(data.projects,projectId,id);if(target!==projectId)changeProject(target);} }); }
   function selectSection(id) { if (id !== visibleSection) navigate(() => {setNotificationTarget(null);setSection(id);}); }
 
   function selectProject(id) {
@@ -194,11 +196,14 @@ export default function Workspace({ previewMode = false }) {
       if (previewMode) {
         const out = runWorkflowDemo(demoState.current, actor, action, { unit_id: unitId, project_id: projectId, ...payload }, revision);
         demoState.current = out.state; setData(viewDemo(out.state, actor, projectId));
+        if(action==='project.save'){const group=isClosedEdition(out.result)?'closed':'editions';setScreen(group);}
         setNotice(savedMessage(action,payload)+' Demostración local.');
         return out.result;
       }
       const result = await rpc('workspace_command', { p_action: action, p_data: { unit_id: unitId, project_id: projectId, ...payload }, p_revision: revision });
-      await load(true);
+      const nextScreen=action==='project.save'?(isClosedEdition(result)?'closed':'editions'):screen;
+      if(action==='project.save')setScreen(nextScreen);
+      await load(true,nextScreen);
       setNotice(savedMessage(action,payload));
       return result;
     } catch (error) { setNotice(error.message); return null; }
@@ -315,10 +320,10 @@ export default function Workspace({ previewMode = false }) {
   function openNotification(resolveTarget, item) {
     navigate(()=>void (async()=>{
       const target=await resolveTarget();if(!target)return;
-      if(target.delivery_id){setScreen('editions');setNotificationTarget(target);setSection('work');return;}
+      if(target.delivery_id){const destination=target.project_id||projectId;if(destination!==projectId)changeProject(destination);setScreen(isClosedEdition(data.projects.find(p=>p.id===destination))?'closed':'editions');setNotificationTarget(target);setSection('work');return;}
       if(!target.project_id){setScreen('settings');return;}
       if(target.project_id!==projectId)changeProject(target.project_id);
-      setScreen('editions');setNotificationTarget(target);
+      setScreen(isClosedEdition(data.projects.find(p=>p.id===target.project_id))?'closed':'editions');setNotificationTarget(target);
       if(target.image_version_id||target.image_note_id){setSelectedId(target.deliverable_id);const imageTask=data.tasks.find(t=>t.id===target.deliverable_id);setSection(imageTask&&taskIsMine(imageTask,userId)?'work':'reviews');return;}
       if(item.event_type==='mention'){setNotificationTarget({...target,id:item.id});setSection('mention');return;}
       if(target.support_id){setSelectedSupportId(target.support_id);setSection('work');return;}
@@ -339,7 +344,7 @@ export default function Workspace({ previewMode = false }) {
     const scopedPermissions = data.taskPermissions?.[item.id] || {};
     const nextSection = target || (taskIsMine(item, userId) ? 'work' : canReviewTask(item, data.taskPermissions?.[item.id] || {}, data.areas.find(area => area.id === item.area_id)) || (!scopedPermissions['task.assign'] && hasReviewPermission(scopedPermissions)) ? 'reviews' : scopedPermissions['task.assign'] ? 'assignments' : 'documents');
     if (item.id === selectedId && section === nextSection && screen === 'editions') return;
-    navigate(() => { if (item.project_id !== projectId) changeProject(item.project_id); setSelectedId(item.id); setSection(nextSection); setScreen('editions'); });
+    navigate(() => { if (item.project_id !== projectId) changeProject(item.project_id); setSelectedId(item.id); setSection(nextSection); setScreen(isClosedEdition(data.projects.find(p=>p.id===item.project_id))?'closed':'editions'); });
   }
   const candidateCache = useRef(new Map());
   const documentContext = {
@@ -371,15 +376,18 @@ export default function Workspace({ previewMode = false }) {
   const canWork = Boolean(context?.units?.length) || Boolean(data.support?.creation_areas?.length || data.support?.documents?.length) || data.tasks.some(item => item.project_id === projectId && taskIsMine(item, userId)) || Object.values(data.areaPermissions || {}).some(item => item['content.create'] || item['task.create']);
   const defaultSection = initialSection(data, projectId, userId);
   const visibleSection = section === 'auto' || section === 'assignments' && !canAssign || section === 'reviews' && !canReview ? defaultSection : section;
+  const visibleProjects=editionsForScreen(data.projects,screen);
+  const displayedProject=visibleProjects.some(p=>p.id===projectId)?project:null;
   const unitName = context?.units?.find(unit => unit.id === unitId)?.name || 'GBA';
 
   return <DocumentContext.Provider value={documentContext}><div className="gw gw-editions">
-    <WorkspaceNavigation screen={screen} onScreenChange={selectScreen} context={context} unitName={unitName} name={previewMode ? actor.name : user?.nombre_publico || user?.nombre || 'GBA ID'} loading={loading || busy} onRefresh={() => navigate(() => void load())} previewMode={previewMode} blocked={Boolean(pendingNavigation)} notifications={<Notifications key={userId} actorId={userId} previewMode={previewMode} previewItems={previewMode ? demoNotifications(demoState.current,actor) : []} onOpen={openNotification} blocked={busy || Boolean(pendingNavigation)}/>} />
+    <WorkspaceNavigation screen={screen} onScreenChange={selectScreen} context={context} unitName={unitName} name={previewMode ? actor.name : user?.nombre_publico || user?.nombre || 'GBA ID'} loading={loading || busy} onRefresh={() => navigate(() => void load())} previewMode={previewMode} blocked={Boolean(pendingNavigation)} closedCount={editionsForScreen(data.projects,'closed').length} notifications={<Notifications key={userId} actorId={userId} previewMode={previewMode} previewItems={previewMode ? demoNotifications(demoState.current,actor) : []} onOpen={openNotification} blocked={busy || Boolean(pendingNavigation)}/>} />
     <main className="gw-main" aria-hidden={Boolean(pendingNavigation) || undefined}>
       {previewMode && <div className="gw-demo-flow"><span>Demostración local · prueba el flujo sin modificar datos reales.</span><label>Ver como<select value={demoActorKey} disabled={busy} onChange={event => { const next = event.target.value; if (next === demoActorKey) return; navigate(() => { setDemoActorKey(next); setSection('auto'); setSelectedId(''); setLoading(true); setData(EMPTY); setNotice(''); }); }}>{Object.entries(DEMO_ACTORS).map(([key, value]) => <option key={key} value={key}>{value.name}</option>)}</select></label></div>}
       {screen === 'keynotes' && context?.keynotes_access ? <KeynotesWorkspace previewMode={previewMode} /> : screen === 'settings' ? <WorkspaceSettings context={context} data={data} permissions={permissions} command={command} busy={disabled || previewMode} loading={loading} unitId={unitId} projectId={projectId} onUnitChange={selectUnit} onProjectChange={selectProject} previewMode={previewMode} onNotice={setNotice} actorId={userId} peopleCommand={peopleCommand} removedEditions={removedEditions} onRemoveEdition={(...args)=>changeEditionRemoval('project.remove',...args)} onRestoreEdition={item=>changeEditionRemoval('project.restore',item)} /> : <>
-        {data.projects.length > 0 && <EditionTabs projects={data.projects} selectedId={projectId} onSelect={selectProject} busy={busy} />}
-        {loading ? <p className="gw-loading" role="status">Abriendo edición…</p> : !context?.units?.length ? <div className="gw-empty"><h2>Tu equipo está por comenzar.</h2><p>Dirección debe incorporar tu GBA ID y asignarte permisos para una unidad. Una licencia de escritorio no concede acceso editorial.</p></div> : !project ? <div className="gw-empty"><h2>Todavía no hay ediciones disponibles.</h2><p>Las ediciones aparecerán aquí cuando tengas acceso a ellas.</p>{permissions['project.create'] && <button type="button" onClick={() => setScreen('settings')}>Ir a Configuración</button>}</div> : <section role="tabpanel" id="workspace-edition-panel" aria-labelledby={`workspace-edition-${projectId}`} tabIndex={0}>
+        {visibleProjects.length > 0 && <EditionTabs projects={visibleProjects} selectedId={projectId} onSelect={selectProject} busy={busy} closed={screen==='closed'} />}
+        {loading ? <p className="gw-loading" role="status">Abriendo edición…</p> : !context?.units?.length ? <div className="gw-empty"><h2>Tu equipo está por comenzar.</h2><p>Dirección debe incorporar tu GBA ID y asignarte permisos para una unidad. Una licencia de escritorio no concede acceso editorial.</p></div> : !displayedProject ? <div className="gw-empty"><h2>{screen==='closed'?'Todavía no hay ediciones cerradas.':'No hay ediciones de trabajo disponibles.'}</h2><p>{screen==='closed'?'Las ediciones cerradas aparecerán aquí para consulta, según tus accesos.':'Las ediciones cerradas se conservan en la sección Cerradas.'}</p>{screen!=='closed' && editionsForScreen(data.projects,'closed').length>0 && <button type="button" onClick={()=>selectScreen('closed')}>Ver ediciones cerradas</button>}{permissions['project.create'] && <button type="button" onClick={() => setScreen('settings')}>Ir a Configuración</button>}</div> : <section role="tabpanel" id="workspace-edition-panel" aria-labelledby={`workspace-edition-${projectId}`} tabIndex={0}>
+          {isClosedEdition(project) ? <ClosedEdition key={`${project.id}-${notificationTarget?.id||notificationTarget?.reference_id||notificationTarget?.deliverable_id||notificationTarget?.support_id||notificationTarget?.delivery_id||''}`} unitId={unitId} inboxApi={previewMode?undefined:inboxApi} project={project} data={data} actorId={userId} permissions={permissions} imageApi={imageApi} workApi={workApi} initialTarget={notificationTarget} initialTaskId={notificationTarget?.deliverable_id} onSettings={()=>selectScreen('settings')}/> : <>
           <EditionNavigation section={visibleSection} onSelect={selectSection} canAssign={canAssign} canReview={canReview} canWork={canWork} canTeam={canTeam} />
           {visibleSection === 'work' && <PersonalWork key={`${project.id}-${userId}`} initialSupportId={selectedSupportId} initialDeliveryId={notificationTarget?.delivery_id} initialAnchorId={notificationTarget?.anchor_id} initialImageNoteId={notificationTarget?.image_note_id} initialImageVersionId={notificationTarget?.image_version_id} imageApi={imageApi} inboxApi={previewMode ? undefined : inboxApi} unitId={unitId} supportApi={supportApi} project={project} data={data} task={task} actorId={userId} command={command} api={workApi} previewMode={previewMode} busy={disabled} onPick={item => pick(item, 'work')} onDirtyChange={setHasDraft} onReference={() => selectSection('documents')} referenceApi={referenceApi} />}
           {visibleSection === 'team' && <TeamWorkspace project={project} data={data} actorId={userId} onOpenTask={item=>pick(item,taskIsMine(item,userId)?'work':data.taskPermissions?.[item.id]?.['task.assign']?'assignments':'reviews')} onOpenDocument={item=>navigate(()=>{if(item.document_kind){setSelectedSupportId(item.id);setSection('work');}else{setNotificationTarget({reference_id:item.id});setSection('documents');}})}/>}
@@ -388,6 +396,7 @@ export default function Workspace({ previewMode = false }) {
           {visibleSection === 'documents' && <EditionDocuments initialTaskId={notificationTarget?.deliverable_id || selectedId} initialReferenceId={notificationTarget?.reference_id} key={`${project.id}-${notificationTarget?.reference_id || notificationTarget?.deliverable_id || selectedId}`} project={project} data={data} actorId={userId} permissions={permissions} referenceApi={referenceApi} onDirtyChange={setHasDraft} busy={disabled} onOpenTask={item => pick(item, 'work')} />}
           {visibleSection === 'mention' && <MentionDocument target={notificationTarget} previewMode={previewMode} previewState={demoState.current} onOpenCurrent={target=>{setNotificationTarget(target);const current=data.tasks.find(item=>item.id===target.deliverable_id);if(target.reference_id)setSection('documents');else if(current)pick(current);else setSection('documents');}}/>}
           {visibleSection === 'calendar' && <EditionCalendar actorId={userId} project={project} data={data} permissions={permissions} command={command} busy={disabled} onPick={pick} />}
+          </>}
         </section>}
       </>}
     </main>
