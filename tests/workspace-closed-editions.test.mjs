@@ -6,13 +6,15 @@ export async function runClosedEditionAcceptance(db){
  const uid='86000000-0000-4000-8000-000000000001',sid='87000000-0000-4000-8000-000000000001';
  const admin=async()=>db.exec('reset role'),actor=async()=>{await admin();await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:uid,session_id:sid})]);await db.exec('set role authenticated');};
  await admin();await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261101183053_workspace_closed_editions.sql',import.meta.url),'utf8'));
+ await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261101184906_workspace_closed_project_content.sql',import.meta.url),'utf8'));
  const project=(await db.query("select * from public.workspace_projects where created_by=$1 and title='Phase3 · local A'",[uid])).rows[0];
  const image=(await db.query("select * from public.workspace_deliverables where project_id=$1 and kind='image' and current_version>0 limit 1",[project.id])).rows[0];
  // Existing local fixtures only. No acceptance test executes against production.
  await db.exec('update workspace_private.upload_policy set images_enabled=true,images_all_projects=true');
  await actor();const command=(a,d,r=null)=>scalar('select public.workspace_command($1,$2,$3)',[a,d,r]);
  const before=await scalar('select public.workspace_image_bundle($1)',[project.id]);eq(before.uploads_enabled,true);
- let closed=await command('project.save',{project_id:project.id,title:project.title,brief:project.brief,status:'closed',starts_at:project.starts_at,ends_at:project.ends_at},project.revision);eq(closed.status,'closed');
+ let closed=await command('project.save',{project_id:project.id,title:project.title,brief:project.brief,status:'closed',starts_at:project.starts_at,ends_at:project.ends_at},project.revision);eq(closed.status,'closed');await bad(command('project.save',{project_id:project.id,title:project.title,brief:'Changed closed concept',status:'closed'},closed.revision),/reabrirla/);
+ await admin();await bad(db.query("update public.workspace_projects set title='Changed' where id=$1",[project.id]),/reabrirla/);await actor();
  const after=await scalar('select public.workspace_image_bundle($1)',[project.id]);eq(after.uploads_enabled,false);eq(after.versions,before.versions);eq(after.assets,before.assets);
  await admin();await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:uid.replace(/1$/,'4'),session_id:sid.replace(/1$/,'4')})]);await db.exec('set role authenticated');await bad(scalar('select public.workspace_image_bundle($1)',[project.id]),/acceso/);await bad(command('project.save',{project_id:project.id,title:project.title,status:'active'},closed.revision),/permiso|acceso/i);await actor();
  for(const action of ['spec.save','draft.save','version.submit','note.add','note.reply','note.resolve','review.approve'])await bad(scalar('select public.workspace_image_command($1,$2,$3,null)',[action,image.id,{}]));

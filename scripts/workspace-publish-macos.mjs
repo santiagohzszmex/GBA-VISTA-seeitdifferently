@@ -27,6 +27,7 @@ for(const m of acceptance.migrations){if(!/^supabase\/migrations\/\d+_workspace_
 if(release.version==='1.7.1.2'){
  const correction=acceptance.closedEditionCorrection;
  if(!correction || correction.migration?.file!=='supabase/migrations/20261101183053_workspace_closed_editions.sql' || sha(await fs.readFile(correction.migration.file))!==correction.migration.sha256 || correction.productionSchemaVerified!==true || correction.localSqlAssertions<68 || correction.liveTestWrites!==false || correction.changedProjectStatuses!==false)throw Error('Reviewed closed-edition migration and production verification required');
+ if(correction.projectContentMigration?.file!=='supabase/migrations/20261101184906_workspace_closed_project_content.sql' || sha(await fs.readFile(correction.projectContentMigration.file))!==correction.projectContentMigration.sha256)throw Error('Closed project concept migration evidence required');
 }
 if(Date.now()-Date.parse(acceptance.verifiedAt)>86400000||!Number.isFinite(Date.parse(acceptance.verifiedAt)))throw Error('Fresh deployment evidence required');
 const key=path.join(os.homedir(),'.tauri/workspace-updates.key');
