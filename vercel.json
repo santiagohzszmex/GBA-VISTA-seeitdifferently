@@ -1,6 +1,18 @@
 {
   "routes": [
     {
+      "src": "^/(?:gba/)?sepia/conectar/?$",
+      "dest": "/gba/sepia/conectar/index.html"
+    },
+    {
+      "src": "^/(?:gba/)?sepia/?$",
+      "dest": "/gba/sepia/index.html"
+    },
+    {
+      "src": "^/(?:gba/)?ultramar/?$",
+      "dest": "/gba/ultramar/index.html"
+    },
+    {
       "src": "^/(?:mothership|vista|keynotes)/?$",
       "dest": "/index.html"
     },
