@@ -11,6 +11,14 @@
     "updater:allow-check",
     "updater:allow-download",
     "updater:allow-install",
-    "process:allow-restart"
+    "process:allow-restart",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://gba.software/workspace/web/?device-notifications=1"
+        }
+      ]
+    }
   ]
 }

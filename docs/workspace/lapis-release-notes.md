@@ -1,3 +1,10 @@
+## 1.7.1.4 · Avisos y lectura
+
+- «Marcar como leída» por aviso y «Marcar todas como leídas» con confirmación del servidor. Una consulta anterior ya no restaura el contador viejo.
+- Avisos del dispositivo, incluso con Workspace cerrado. Actívalos desde la campana e inicia sesión en el navegador; en Mac usa Safari para recibirlos también con el navegador cerrado.
+- Controles para probar y retirar dispositivos, mensajes discretos y permisos revalidados antes de enviar.
+- No cambia la base de descarga 1.5.0 ni la cadena de revisión. La integración con Ultramar para 1.7.5 se encuentra en planificación.
+
 # Workspace 1.7.1.3 Lapislázuli
 
 Edición de video, Animación 2D y Animación 3D se añaden al catálogo de funciones de colaboradores de GIMG. Se muestran con su nombre en Integrantes y Equipo. Usan el área visual asignada y los mismos permisos de colaborador; se conserva la revisión de área → QA → Dirección.

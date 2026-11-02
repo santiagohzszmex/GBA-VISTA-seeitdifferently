@@ -320,18 +320,19 @@ export default function Workspace({ previewMode = false }) {
   function openNotification(resolveTarget, item) {
     navigate(()=>void (async()=>{
       const target=await resolveTarget();if(!target)return;
+      const eventType=item?.event_type||target.event_type;
       if(target.delivery_id){const destination=target.project_id||projectId;if(destination!==projectId)changeProject(destination);setScreen(isClosedEdition(data.projects.find(p=>p.id===destination))?'closed':'editions');setNotificationTarget(target);setSection('work');return;}
       if(!target.project_id){setScreen('settings');return;}
       if(target.project_id!==projectId)changeProject(target.project_id);
       setScreen(isClosedEdition(data.projects.find(p=>p.id===target.project_id))?'closed':'editions');setNotificationTarget(target);
       if(target.image_version_id||target.image_note_id){setSelectedId(target.deliverable_id);const imageTask=data.tasks.find(t=>t.id===target.deliverable_id);setSection(imageTask&&taskIsMine(imageTask,userId)?'work':'reviews');return;}
-      if(item.event_type==='mention'){setNotificationTarget({...target,id:item.id});setSection('mention');return;}
+      if(eventType==='mention'){setNotificationTarget({...target,id:item.id});setSection('mention');return;}
       if(target.support_id){setSelectedSupportId(target.support_id);setSection('work');return;}
-      if(target.reference_id || ['document.accepted','reference.updated','publication.completed'].includes(item.event_type)){setSection('documents');return;}
-      if(item.event_type==='calendar.updated'){setSection('calendar');return;}
+      if(target.reference_id || ['document.accepted','reference.updated','publication.completed'].includes(eventType)){setSection('documents');return;}
+      if(eventType==='calendar.updated'){setSection('calendar');return;}
       const t=data.tasks.find(row=>row.id===target.deliverable_id);
       setSelectedId(target.deliverable_id || '');
-      setSection(t && taskIsMine(t,userId) ? 'work' : ['review.requested','qa.requested','publication.requested','publication.authorized'].includes(item.event_type) ? 'reviews' : 'assignments');
+      setSection(t && taskIsMine(t,userId) ? 'work' : ['review.requested','qa.requested','publication.requested','publication.authorized'].includes(eventType) ? 'reviews' : 'assignments');
     })());
   }
   async function peopleCommand(action, value) {
@@ -381,7 +382,7 @@ export default function Workspace({ previewMode = false }) {
   const unitName = context?.units?.find(unit => unit.id === unitId)?.name || 'GBA';
 
   return <DocumentContext.Provider value={documentContext}><div className="gw gw-editions">
-    <WorkspaceNavigation screen={screen} onScreenChange={selectScreen} context={context} unitName={unitName} name={previewMode ? actor.name : user?.nombre_publico || user?.nombre || 'GBA ID'} loading={loading || busy} onRefresh={() => navigate(() => void load())} previewMode={previewMode} blocked={Boolean(pendingNavigation)} closedCount={editionsForScreen(data.projects,'closed').length} notifications={<Notifications key={userId} actorId={userId} previewMode={previewMode} previewItems={previewMode ? demoNotifications(demoState.current,actor) : []} onOpen={openNotification} blocked={busy || Boolean(pendingNavigation)}/>} />
+    <WorkspaceNavigation screen={screen} onScreenChange={selectScreen} context={context} unitName={unitName} name={previewMode ? actor.name : user?.nombre_publico || user?.nombre || 'GBA ID'} loading={loading || busy} onRefresh={() => navigate(() => void load())} previewMode={previewMode} blocked={Boolean(pendingNavigation)} closedCount={editionsForScreen(data.projects,'closed').length} notifications={<Notifications key={userId} actorId={userId} previewMode={previewMode} previewItems={previewMode ? demoNotifications(demoState.current,actor) : []} onOpen={openNotification} blocked={loading || busy || Boolean(pendingNavigation)}/>} />
     <main className="gw-main" aria-hidden={Boolean(pendingNavigation) || undefined}>
       {previewMode && <div className="gw-demo-flow"><span>Demostración local · prueba el flujo sin modificar datos reales.</span><label>Ver como<select value={demoActorKey} disabled={busy} onChange={event => { const next = event.target.value; if (next === demoActorKey) return; navigate(() => { setDemoActorKey(next); setSection('auto'); setSelectedId(''); setLoading(true); setData(EMPTY); setNotice(''); }); }}>{Object.entries(DEMO_ACTORS).map(([key, value]) => <option key={key} value={key}>{value.name}</option>)}</select></label></div>}
       {screen === 'keynotes' && context?.keynotes_access ? <KeynotesWorkspace previewMode={previewMode} /> : screen === 'settings' ? <WorkspaceSettings context={context} data={data} permissions={permissions} command={command} busy={disabled || previewMode} loading={loading} unitId={unitId} projectId={projectId} onUnitChange={selectUnit} onProjectChange={selectProject} previewMode={previewMode} onNotice={setNotice} actorId={userId} peopleCommand={peopleCommand} removedEditions={removedEditions} onRemoveEdition={(...args)=>changeEditionRemoval('project.remove',...args)} onRestoreEdition={item=>changeEditionRemoval('project.restore',item)} /> : <>

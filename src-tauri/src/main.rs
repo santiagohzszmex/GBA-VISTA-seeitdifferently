@@ -13,6 +13,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![image_cache::workspace_image_cache_get,image_cache::workspace_image_cache_put,image_cache::workspace_image_cache_remove,image_cache::workspace_image_cache_clear])
         .run(tauri::generate_context!())
         .expect("No se pudo iniciar Workspace");
