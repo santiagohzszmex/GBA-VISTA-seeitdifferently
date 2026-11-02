@@ -41,4 +41,18 @@ Desactivar primero `workspace-device-notifications` en cron. Retirar el endpoint
 - `node tests/notification-delivery.test.mjs`: carreras del marcado, nuevos avisos después del corte, descarte al salir, autorización y transporte push, origen seguro del worker.
 - `npm run test:desktop`: aprobado. `npm run build`: aprobado.
 - Vista local de demostración: marcado individual deja «Estás al día», desactiva marcado global y conserva el documento abierto. No hubo suscripciones ni mensajes reales en producción.
-- Clave VAPID de producción: NO CONFIGURADA. La revisión automática exige autorización explícita para guardarla en el proyecto Vercel gba-vista-seeitdifferently. Migraciones y publicación aún pendientes.
+- Santiago autorizó expresamente guardar las claves VAPID en el proyecto de producción `gba-vista-seeitdifferently`, aplicar ambas migraciones y publicar web y macOS. Configuración Vercel realizada: pública como Config, privada como Sensitive, sólo producción.
+- Ambas migraciones aplicadas en `wgihpztgwsovhykboyru`. Confirmado RLS de las tres tablas privadas, sin lectura de authenticated; funciones de drenaje sólo service_role y tarea privada. Hash de matriz antes/después: `48d27bf1ebdff19ede7fe1f56f58cfed`, sin cambios de rangos.
+- Cron activo cada minuto; ejecuciones con estado `succeeded`. Drenaje real servidor a servidor con cola vacía: HTTP 200, cero procesados, enviados y fallidos. Sin cuentas, ediciones ni suscripciones ficticias en producción.
+- Web de producción READY: `dpl_5v5vG53RqonTcZ3mN4P61AimgfhJ`, código `2494f0b4e7c1dff7d83bd1238cb40082c5c6bb88`. GET de configuración habilitado, POST sin credencial rechazado con 401, worker servido idéntico al fuente. La clave privada no se devuelve al navegador.
+- Advisors: las tres tablas privadas sin políticas de lectura son intencionales y están revocadas a clientes; el RPC de preferencias SECURITY DEFINER es intencional y exige sesión y propiedad. No se abrió ninguna tabla ni se modificaron las advertencias heredadas ajenas a esta actualización.
+- Recepción física en un dispositivo: NO VERIFICADA; requiere que su dueño active y permita las notificaciones y use Probar. El ensayo del servidor no se presenta como recepción física.
+
+## Publicación de escritorio
+
+- Código publicado: `2494f0b4e7c1dff7d83bd1238cb40082c5c6bb88`. [CI 41386362878](https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/actions/runs/41386362878) completó validación y candidatos de Mac Apple Silicon, Mac Intel y Windows.
+- [Workspace 1.7.1.4 para macOS](https://github.com/santiagohzszmex/GBA-VISTA-seeitdifferently/releases/tag/workspace-v1.7.1.4-beta.1) publicado con ambos instaladores y paquetes firmados para el actualizador. Firma del actualizador y firma/notarización de distribución son distintas; se conserva el estado ad hoc de los instaladores.
+- Canal macOS: versión técnica `1.7.104`, visible `1.7.1.4`. Feed compartido y Windows permanecen `1.6.603`; Windows sólo tiene candidato compilado, sin publicación de Lapislázuli.
+- La base pública sigue en `1.5.0`, idéntica al archivo fuente. No se instaló ni abrió la actualización en la Mac del usuario.
+- Activación: campana → Avisos en el dispositivo → configurar en el navegador; en Mac, Safari para recibir también con el navegador cerrado. Cada persona debe permitir los avisos.
+- La propuesta de 1.7.5 con Ultramar está en `1.7.5-ultramar-plan.md`; «Azurita» es un nombre propuesto. El adaptador real sigue pendiente y no se anuncia como disponible.
