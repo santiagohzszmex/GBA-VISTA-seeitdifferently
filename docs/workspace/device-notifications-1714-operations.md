@@ -55,4 +55,4 @@ Desactivar primero `workspace-device-notifications` en cron. Retirar el endpoint
 - Canal macOS: versión técnica `1.7.104`, visible `1.7.1.4`. Feed compartido y Windows permanecen `1.6.603`; Windows sólo tiene candidato compilado, sin publicación de Lapislázuli.
 - La base pública sigue en `1.5.0`, idéntica al archivo fuente. No se instaló ni abrió la actualización en la Mac del usuario.
 - Activación: campana → Avisos en el dispositivo → configurar en el navegador; en Mac, Safari para recibir también con el navegador cerrado. Cada persona debe permitir los avisos.
-- La propuesta de 1.7.5 con Ultramar está en `1.7.5-ultramar-plan.md`; «Azurita» es un nombre propuesto. El adaptador real sigue pendiente y no se anuncia como disponible.
+- La propuesta de 1.7.5 con Ultramar está en `1.7.5-ultramar-plan.md`; El nombre inicialmente propuesto fue descartado: Santiago confirmó que 1.7.5 conserva Lapislázuli. El adaptador real sigue pendiente y no se anuncia como disponible.
