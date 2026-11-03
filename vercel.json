@@ -1,6 +1,18 @@
 {
   "routes": [
     {
+      "src": "^/api/sepia/v1/?$",
+      "dest": "/api/sepia/v1/index"
+    },
+    {
+      "src": "^/api/sepia/v1/(admin-session|offline-keys|admin)/?$",
+      "dest": "/api/sepia/v1/$1"
+    },
+    {
+      "src": "^/(?:gba/)?sepia/administrar/?$",
+      "dest": "/gba/sepia/administrar/index.html"
+    },
+    {
       "src": "^/(?:gba/)?sepia/conectar/?$",
       "dest": "/gba/sepia/conectar/index.html"
     },
