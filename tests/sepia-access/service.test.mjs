@@ -32,7 +32,7 @@ try{
  const env={NODE_ENV:'test',SEPIA_ACCESS_ENABLED:'1',SEPIA_AUTH_POLICY_VERIFIED:'1',SEPIA_AUTH_TIMEBOX_SECONDS:'0',SEPIA_AUTH_INACTIVITY_SECONDS:'0',SEPIA_AUTH_SINGLE_SESSION:'0',SUPABASE_URL:url,SUPABASE_SERVICE_ROLE_KEY:'synthetic-service',SUPABASE_ANON_KEY:'synthetic-publishable',SEPIA_OFFLINE_PRIVATE_JWK:JSON.stringify(privateKey.export({format:'jwk'})),SEPIA_OFFLINE_PUBLIC_JWKS:JSON.stringify({keys:[pub]}),SEPIA_OFFLINE_KID:pub.kid};
  const makeClient=(_url,key,opts)=>createClient(bridge,key,opts);
  const identityFactory=()=>async(req,res)=>res.status(200).json({session:{access_token:jwt(Number(req.body.handle.replace(/^test/,''))),refresh_token:'not-exposed'}});
- const handlers=Object.fromEntries(['native','admin-session','offline-keys','admin'].map(route=>[route,createSepiaHandler(route,{env,makeClient,identityFactory})]));
+ const handlers=Object.fromEntries(['native','admin-session','offline-keys','admin','config'].map(route=>[route,createSepiaHandler(route,{env,makeClient,identityFactory})]));
  const base=await listen(createServer((req,res)=>{const route=req.url==='/api/sepia/v1'?'native':req.url.split('/').pop();(handlers[route]||handlers.native)(req,wrap(res));}));
  const request=async(route,b,opts={})=>{
   const headers={'Content-Type':'application/json',...(opts.cookie?{Cookie:opts.cookie}:{}),...(opts.csrf?{'X-Sepia-CSRF':opts.csrf}:{}),...(route!=='native'&&route!=='offline-keys'?{Origin:ORIGIN}:{}),...opts.headers};
@@ -118,6 +118,8 @@ try{
  const mfaSession=await native('session.create',nativeInput,jwt(8,{aal:'aal2'}));eq(mfaSession.status,200);
  await f.db.query("update auth.sessions set not_after=now()-interval '1 second' where id=$1",[sid(8)]);
  eq((await native('session.status',{},mfaSession.b.tokenAplicacion)).status,401);
+ env.SUPABASE_ANON_KEY='sb_publishable_SyntheticPublic123';const publicConfig=await request('config',null,{method:'GET'});eq(publicConfig.status,200);eq(publicConfig.b.auth.url,url);eq(JSON.stringify(publicConfig.b).includes('synthetic-service'),false);
+ env.SUPABASE_ANON_KEY='sb_secret_SyntheticPrivate123';eq((await request('config',null,{method:'GET'})).status,503);
  // No private grants or foreign principals introduced into existing editorial tables.
  eq(await f.scalar("select count(*)::integer from pg_tables where schemaname='sepia_private' and not rowsecurity"),0);
  console.log(`PASS: ${count} isolated HTTP/SDK/PostgreSQL assertions. Auth fixture, NOT production/GoTrue; native client and real multi-session contention NOT VERIFIED.`);

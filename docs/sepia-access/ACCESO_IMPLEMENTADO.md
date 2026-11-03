@@ -4,7 +4,7 @@
 
 ## Estado real
 
-Backend implementado localmente. **NO DESPLEGADO**. No hay claves públicas de producción de Sepia ni un `kid` de producción asignado. No probar las rutas propuestas contra GBA suponiendo que ya existen.
+Backend implementado; ensayo aislado de Auth real completado. Publicación de producción autorizada y en preparación; ver el acta final de despliegue. No hay claves públicas de producción de Sepia ni un `kid` de producción asignado. No probar las rutas propuestas contra GBA suponiendo que ya existen.
 
 | Ruta propuesta | Implementación | Validación | Producción |
 |---|---|---|---|
@@ -61,9 +61,9 @@ Errores: `400 invalid_request/contract_unsupported`; `401 session_invalid`; `403
 ## Verificado y pendiente
 
 - Prueba del protocolo: revisión 2 obligatoria, rechazo del flujo anterior, normalización ASCII, firmas y límite exacto de siete días.
-- **119 comprobaciones locales** con HTTP, SDK real de Supabase y PostgreSQL/PGlite: conexión nativa, tipos de token, licencia, cuenta, revocación, sesión de origen, MFA incompleto, compatibilidad y permisos directos denegados.
-- El Auth de esa prueba es una fixture firmada: **NO acredita GoTrue real ni contención de dos conexiones PostgreSQL reales**.
+- **125 comprobaciones locales** con HTTP, SDK real de Supabase y PostgreSQL/PGlite: conexión nativa, tipos de token, licencia, cuenta, revocación, sesión de origen, MFA incompleto, compatibilidad y permisos directos denegados.
+- El arnés local usa Auth firmado de fixture. Además se completaron **62 comprobaciones con GoTrue y PostgreSQL reales** en el proyecto aislado: MFA, canje concurrente, recuperación, refresh y revocación; ver REAL_AUTH_RESULTS.json.
 - El prototipo previo de revisión 1 se ensayó en el Supabase aislado y se apagó; **no acredita esta revisión 2**. Se retiraron permisos temporales y sesiones de las tres identidades ficticias.
-- **NO VERIFICADO:** revisión 2 en Supabase remoto, paridad de políticas reales de Auth, despliegue Vercel, cliente/llavero/reloj nativo y Windows. El CLI de configuración omitió campos de políticas; no marcar `SEPIA_AUTH_POLICY_VERIFIED=1` en producción hasta comprobarlos.
+- Políticas actuales de ambos proyectos comprobadas directamente por Management API; ver AUTH_NATIVO.md y AUTH_POLICY_VERIFIED.json. **Pendientes del cliente:** UI, llavero, reloj nativo y Windows. El acta de publicación informa el estado real de Vercel.
 
 El contrato original corregido y los anexos públicos están en esta carpeta. Los vectores adjuntos son sintéticos, con fecha pasada y clave pública de prueba; no autorizan ninguna cuenta real. El paquete no contiene claves privadas, sesiones ni códigos de licencia reales.

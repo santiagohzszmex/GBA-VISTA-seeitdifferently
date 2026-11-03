@@ -24,13 +24,13 @@ La segunda necesita permiso de escucha loopback. No usa producción. Para revisa
 
 ## Migración
 
-`20261102233258_sepia_access_service.sql` es la **migración inicial de revisión 2** para un entorno sin Sepia. No volver a ejecutarla sobre el prototipo de revisión 1 que quedó en el proyecto aislado. Ese entorno requiere una actualización revisada por separado antes del nuevo ensayo remoto; producción no recibió el prototipo.
+`20261102233258_sepia_access_service.sql` es la **migración inicial de revisión 2** para un entorno sin Sepia. No volver a ejecutarla sobre el prototipo de revisión 1 que quedó en el proyecto aislado. El prototipo aislado se actualizó con 20261103044623_sepia_native_revision2_upgrade.sql; producción no recibió el prototipo.
 
 Esquema privado con RLS forzada, propietario sin login, sin grants de tablas a anon/authenticated/service_role. Sólo service_role puede invocar el gateway. Dos lectores estrechos de Auth, propiedad de postgres y sin acceso de clientes, devuelven únicamente la validez de cuenta/sesión; evitan conceder acceso directo al esquema Auth al rol nuevo. Funciones con search_path fijo, sin SQL del cliente. Los permisos editoriales de personas no cambian.
 
 ## Activación futura
 
-Primero completar el ensayo remoto de revisión 2 y revisar la política de sesiones. Generar la clave mediante `scripts/sepia-access/generate-signing-key.mjs`, que exige un archivo privado fuera del repo y no imprime claves. Publicar sólo su clave pública y `kid` al cliente; conservar la privada en el servidor. No ejecutar el generador durante build/startup ni generar otra clave al reiniciar.
+El ensayo remoto de revisión 2 pasó 62 comprobaciones y la política real está documentada en AUTH_NATIVO.md. Generar la clave mediante `scripts/sepia-access/generate-signing-key.mjs`, que exige un archivo privado fuera del repo y no imprime claves. Publicar sólo su clave pública y `kid` al cliente; conservar la privada en el servidor. No ejecutar el generador durante build/startup ni generar otra clave al reiniciar.
 
 Después del resultado revisable y la autorización de despliegue, aplicar la migración, configurar los secretos y publicar rutas con los interruptores apagados. Habilitar sólo el entorno concreto aprobado. La UI nativa requiere su propia implementación; compilar este backend no la sustituye.
 

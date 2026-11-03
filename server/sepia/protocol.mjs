@@ -29,6 +29,7 @@ export function signOffline(values,key,kid){
 }
 // Reference verifier for the handoff vectors. Native clients must implement secure time/storage separately.
 export function validateOffline(token,keys,expected,now){
+ if(!Number.isFinite(now)||!Number.isSafeInteger(now)||now<0)throw Error('Invalid clock');
  if(typeof token!=='string'||token.length>8192)throw Error('Invalid JWS');
  const parts=token.split('.');if(parts.length!==3||parts.some(p=>!/^[A-Za-z0-9_-]+$/.test(p)))throw Error('Invalid JWS');
  const [h,p,s]=parts,header=JSON.parse(Buffer.from(h,'base64url')),claims=JSON.parse(Buffer.from(p,'base64url'));

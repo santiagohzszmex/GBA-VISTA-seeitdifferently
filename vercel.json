@@ -5,7 +5,7 @@
       "dest": "/api/sepia/v1/index"
     },
     {
-      "src": "^/api/sepia/v1/(admin-session|offline-keys|admin)/?$",
+      "src": "^/api/sepia/v1/(admin-session|offline-keys|config|admin)/?$",
       "dest": "/api/sepia/v1/$1"
     },
     {

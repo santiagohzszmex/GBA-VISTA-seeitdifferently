@@ -43,6 +43,13 @@ export function createSepiaHandler(route,{env=process.env,makeClient=createClien
    if(env.SEPIA_ACCESS_ENABLED!=='1'||IMPLEMENTED_ACCESS_REVISION!==2)fail('service_unavailable',503);
    const authPolicy=policy(env),url=env.SUPABASE_URL||env.VITE_SUPABASE_URL,secret=env.SUPABASE_SERVICE_ROLE_KEY,anon=env.SUPABASE_ANON_KEY||env.VITE_SUPABASE_ANON_KEY;
    if(!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(url||'')||!secret||!anon)fail('service_unavailable',503);
+   if(route==='config'){
+    if(req.method!=='GET')fail('invalid_request',405);
+    let publicKey=typeof anon==='string'&&/^sb_publishable_[A-Za-z0-9_-]+$/.test(anon);
+    if(!publicKey){try{publicKey=JSON.parse(Buffer.from(anon.split('.')[1],'base64url')).role==='anon';}catch{}}
+    if(!publicKey)fail('service_unavailable',503);
+    return res.status(200).json({contrato:CONTRACT,revision:2,modoInicio:'nativo',auth:{url,publicKey:anon,gbaIdEndpoint:ORIGIN+'/api/gba-id',refreshEndpoint:url+'/auth/v1/token?grant_type=refresh_token',logoutEndpoint:url+'/auth/v1/logout?scope=local',mfa:'totp'},api:ORIGIN+'/api/sepia/v1',offlineKeys:ORIGIN+'/api/sepia/v1/offline-keys'});
+   }
    const keys=signing(env);
    const db=makeClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
    async function call(op,data){const r=await db.rpc('sepia_access_gateway',{p_op:op,p_data:data});if(r.error||r.data===null)fail('service_unavailable',503);if(r.data?.error){const code=Object.hasOwn(STATUS,r.data.error)?r.data.error:'service_unavailable';fail(code,STATUS[code]);}return r.data;}

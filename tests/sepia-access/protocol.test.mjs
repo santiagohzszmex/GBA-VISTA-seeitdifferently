@@ -18,6 +18,7 @@ for(const seconds of [86400,604800,1209600]){
  assert.equal(JSON.parse(Buffer.from(head,'base64url')).alg,'Ed25519');
  assert.equal(verify(null,Buffer.from(head+'.'+payload),createPublicKey({key:jwk,format:'jwk'}),Buffer.from(sig,'base64url')),true);
  assert.throws(()=>validateOffline(token,[jwk],bindings,claims.exp));
+ for(const clock of [undefined,NaN,Infinity,-Infinity,'0',null,now-1])assert.throws(()=>validateOffline(token,[jwk],bindings,clock));
  assert.throws(()=>validateOffline(token,[jwk],{...bindings,aplicacion:'workspace'},now));
  assert.throws(()=>validateOffline(token,[],bindings,now));
  const changed=Buffer.from(JSON.stringify({...claims,exp:now+9999999})).toString('base64url');
