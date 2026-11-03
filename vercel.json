@@ -2,11 +2,11 @@
   "routes": [
     {
       "src": "^/api/sepia/v1/?$",
-      "dest": "/api/sepia/v1/index"
+      "dest": "/api/sepia?route=native"
     },
     {
       "src": "^/api/sepia/v1/(admin-session|offline-keys|config|admin)/?$",
-      "dest": "/api/sepia/v1/$1"
+      "dest": "/api/sepia?route=$1"
     },
     {
       "src": "^/(?:gba/)?sepia/administrar/?$",
