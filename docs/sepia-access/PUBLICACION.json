@@ -1,0 +1,19 @@
+{
+  "deployed": true,
+  "enabled": true,
+  "contract": "gba.sepia.acceso/1.0",
+  "revision": 2,
+  "deploymentId": "dpl_6od1nwwELZad7pMkAF63swZAjom6",
+  "sourceCommit": "638105b7f17ef53e054793012786022597b5c497",
+  "api": "https://gba.software/api/sepia/v1",
+  "configuration": "https://gba.software/api/sepia/v1/config",
+  "offlineKeys": "https://gba.software/api/sepia/v1/offline-keys",
+  "admin": "https://gba.software/sepia/administrar/",
+  "kid": "sepia-prod-20261103-01",
+  "realAuthIsolatedChecks": 62,
+  "localHttpChecks": 125,
+  "workspaceBase": "1.5.0 unchanged",
+  "desktopInstallerPublished": false,
+  "nativeClientImplementedHere": false,
+  "productionFakeRecordsCreated": false
+}

@@ -1,0 +1,13 @@
+{
+  "contrato": "gba.sepia.acceso/1.0",
+  "keys": [
+    {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "ps7JsRMSE0utiX0uU6TxHXLxdgarlcAjIRwBFyLkxII",
+      "kid": "sepia-prod-20261103-01",
+      "alg": "Ed25519",
+      "use": "sig"
+    }
+  ]
+}

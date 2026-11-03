@@ -1,0 +1,15 @@
+{
+  "contrato": "gba.sepia.acceso/1.0",
+  "revision": 2,
+  "modoInicio": "nativo",
+  "auth": {
+    "url": "https://wgihpztgwsovhykboyru.supabase.co",
+    "publicKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnaWhwenRnd3Nvdmh5a2JveXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NTU1MjYsImV4cCI6MjA4MjQzMTUyNn0.rAqgARyCBMdxaPQlP1WUMeD3o83HA_gnx7la5wjF9T0",
+    "gbaIdEndpoint": "https://gba.software/api/gba-id",
+    "refreshEndpoint": "https://wgihpztgwsovhykboyru.supabase.co/auth/v1/token?grant_type=refresh_token",
+    "logoutEndpoint": "https://wgihpztgwsovhykboyru.supabase.co/auth/v1/logout?scope=local",
+    "mfa": "totp"
+  },
+  "api": "https://gba.software/api/sepia/v1",
+  "offlineKeys": "https://gba.software/api/sepia/v1/offline-keys"
+}

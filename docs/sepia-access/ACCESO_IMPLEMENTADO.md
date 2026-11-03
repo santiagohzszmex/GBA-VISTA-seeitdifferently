@@ -4,15 +4,15 @@
 
 ## Estado real
 
-Backend implementado; ensayo aislado de Auth real completado. Publicación de producción autorizada y en preparación; ver el acta final de despliegue. No hay claves públicas de producción de Sepia ni un `kid` de producción asignado. No probar las rutas propuestas contra GBA suponiendo que ya existen.
+Backend **DESPLEGADO Y ACTIVO** en GBA. Fuente de producción: `638105b7f17ef53e054793012786022597b5c497`; despliegue `dpl_6od1nwwELZad7pMkAF63swZAjom6`. Claves y configuración pública verificadas desde el dominio real: PUBLIC_AUTH_CONFIG.json y PUBLIC_OFFLINE_KEYS.json. `kid`: `sepia-prod-20261103-01`.
 
 | Ruta propuesta | Implementación | Validación | Producción |
 |---|---|---|---|
-| `POST https://gba.software/api/sepia/v1` | `session.create`, `session.status`, `license.activate`, `session.logout` | HTTP + SDK + PostgreSQL local | No desplegada |
-| `GET https://gba.software/api/sepia/v1/offline-keys` | Sólo claves públicas del entorno | Local | No desplegada |
-| `POST https://gba.software/api/sepia/v1/admin` | Emisión, consulta y revocación de Sepia | Local, requiere `platform.manage` actual | No desplegada |
-| `GET/POST https://gba.software/api/sepia/v1/admin-session` | Sesión web administrativa, CSRF y gestión de conexiones | Local | No desplegada |
-| `https://gba.software/sepia/administrar/` | Administración web; no es login de Ultramar | Código preparado | No desplegada |
+| `POST https://gba.software/api/sepia/v1` | `session.create`, `session.status`, `license.activate`, `session.logout` | HTTP + SDK + PostgreSQL local | Publicada |
+| `GET https://gba.software/api/sepia/v1/offline-keys` | Sólo claves públicas del entorno | Local | Publicada |
+| `POST https://gba.software/api/sepia/v1/admin` | Emisión, consulta y revocación de Sepia | Local, requiere `platform.manage` actual | Publicada |
+| `GET/POST https://gba.software/api/sepia/v1/admin-session` | Sesión web administrativa, CSRF y gestión de conexiones | Local | Publicada |
+| `https://gba.software/sepia/administrar/` | Administración web; no es login de Ultramar | Código preparado | Publicada |
 
 No hay `pairing.*`, consentimiento web ni URL de verificación en el protocolo nativo. La petición incluye `revision: 2`; revisión 1 u omitida recibe `400 contract_unsupported`.
 

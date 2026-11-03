@@ -28,11 +28,11 @@ La segunda necesita permiso de escucha loopback. No usa producción. Para revisa
 
 Esquema privado con RLS forzada, propietario sin login, sin grants de tablas a anon/authenticated/service_role. Sólo service_role puede invocar el gateway. Dos lectores estrechos de Auth, propiedad de postgres y sin acceso de clientes, devuelven únicamente la validez de cuenta/sesión; evitan conceder acceso directo al esquema Auth al rol nuevo. Funciones con search_path fijo, sin SQL del cliente. Los permisos editoriales de personas no cambian.
 
-## Activación futura
+## Activación de producción
 
 El ensayo remoto de revisión 2 pasó 62 comprobaciones y la política real está documentada en AUTH_NATIVO.md. Generar la clave mediante `scripts/sepia-access/generate-signing-key.mjs`, que exige un archivo privado fuera del repo y no imprime claves. Publicar sólo su clave pública y `kid` al cliente; conservar la privada en el servidor. No ejecutar el generador durante build/startup ni generar otra clave al reiniciar.
 
-Después del resultado revisable y la autorización de despliegue, aplicar la migración, configurar los secretos y publicar rutas con los interruptores apagados. Habilitar sólo el entorno concreto aprobado. La UI nativa requiere su propia implementación; compilar este backend no la sustituye.
+Producción publicada tras el ensayo aislado: migración inicial aplicada, clave privada guardada sólo como secreto de Vercel, políticas verificadas y ambas puertas habilitadas. El fallo inicial del límite Hobby se resolvió consolidando las rutas en una función; no se contrató otro plan. La UI nativa requiere su propia implementación; compilar este backend no la sustituye.
 
 ## Desactivar y revertir
 
