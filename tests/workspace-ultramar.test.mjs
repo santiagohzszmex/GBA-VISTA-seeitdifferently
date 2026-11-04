@@ -82,6 +82,7 @@ export async function runUltramarAcceptance(db){
  await actor(41,sid(49));await bad(scalar('select public.workspace_ultramar_assignments()'),/Sesión|Conecta Ultramar/);
 
  await actor(41);
+ const config=await scalar('select public.workspace_ultramar_config()');eq([config.contrato,config.limites.ultramar,config.limites.previewLado],['gba.workspace.ultramar/1',94371840,4096]);
  const list=await scalar('select public.workspace_ultramar_assignments()');
  eq(list.map(x=>[x.asignacionId,x.instantanea.version]),[[layoutId,'1']]);
 

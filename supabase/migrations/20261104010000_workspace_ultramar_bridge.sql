@@ -89,6 +89,18 @@ begin
   raise exception 'Necesitas una licencia vigente de Sepia ’01 para usar Ultramar con Workspace' using errcode='42501';end if;
 end;$$;
 
+-- Configuración pública del puente para Ultramar (sin secretos): pasarela y límites por archivo.
+create function public.workspace_ultramar_config() returns jsonb
+language plpgsql stable security definer set search_path=pg_catalog,pg_temp as $$
+declare pol workspace_private.upload_policy;
+begin
+ perform workspace_private.ultramar_gate();
+ select * into pol from workspace_private.upload_policy limit 1;
+ return jsonb_build_object('contrato','gba.workspace.ultramar/1',
+  'pasarela',(select gateway_url from workspace_private.original_limits where enabled limit 1),
+  'limites',jsonb_build_object('ultramar',pol.ultramar_package_max_bytes,'pdf',pol.ultramar_pdf_max_bytes,'preview',pol.ultramar_preview_max_bytes,'previewLado',4096));
+end;$$;
+
 -- Asignación de maquetación accesible para quien la realiza.
 create function workspace_private.ultramar_task(p_deliverable_id uuid,p_for_update boolean default false) returns public.workspace_deliverables
 language plpgsql security definer set search_path=pg_catalog,pg_temp as $$
@@ -352,8 +364,8 @@ revoke all on function workspace_private.ultramar_canonical(jsonb),workspace_pri
 revoke all on function public.workspace_ultramar_prepare(uuid,jsonb,integer),public.workspace_ultramar_assignments(),public.workspace_ultramar_snapshot(uuid,uuid),
  public.workspace_ultramar_original(uuid,uuid,uuid),public.workspace_ultramar_reserve(uuid,uuid,integer,text,jsonb),public.workspace_ultramar_submit(uuid,text),
  public.workspace_ultramar_version_files(uuid),public.workspace_ultramar_bundle(uuid),public.workspace_ultramar_upload_gate(uuid,text,text),
- public.workspace_ultramar_file_verified(uuid,text,jsonb,text),public.workspace_ultramar_file_access(uuid,text,text) from public,anon;
+ public.workspace_ultramar_file_verified(uuid,text,jsonb,text),public.workspace_ultramar_file_access(uuid,text,text),public.workspace_ultramar_config() from public,anon;
 grant execute on function public.workspace_ultramar_prepare(uuid,jsonb,integer),public.workspace_ultramar_assignments(),public.workspace_ultramar_snapshot(uuid,uuid),
  public.workspace_ultramar_original(uuid,uuid,uuid),public.workspace_ultramar_reserve(uuid,uuid,integer,text,jsonb),public.workspace_ultramar_submit(uuid,text),
  public.workspace_ultramar_version_files(uuid),public.workspace_ultramar_bundle(uuid),public.workspace_ultramar_upload_gate(uuid,text,text),
- public.workspace_ultramar_file_verified(uuid,text,jsonb,text),public.workspace_ultramar_file_access(uuid,text,text) to authenticated;
+ public.workspace_ultramar_file_verified(uuid,text,jsonb,text),public.workspace_ultramar_file_access(uuid,text,text),public.workspace_ultramar_config() to authenticated;
