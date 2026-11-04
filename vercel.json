@@ -1,6 +1,30 @@
 {
   "routes": [
     {
+      "src": "^/api/sepia/v1/?$",
+      "dest": "/api/sepia?route=native"
+    },
+    {
+      "src": "^/api/sepia/v1/(admin-session|offline-keys|config|admin)/?$",
+      "dest": "/api/sepia?route=$1"
+    },
+    {
+      "src": "^/(?:gba/)?sepia/administrar/?$",
+      "dest": "/gba/sepia/administrar/index.html"
+    },
+    {
+      "src": "^/(?:gba/)?sepia/conectar/?$",
+      "dest": "/gba/sepia/conectar/index.html"
+    },
+    {
+      "src": "^/(?:gba/)?sepia/?$",
+      "dest": "/gba/sepia/index.html"
+    },
+    {
+      "src": "^/(?:gba/)?ultramar/?$",
+      "dest": "/gba/ultramar/index.html"
+    },
+    {
       "src": "^/(?:mothership|vista|keynotes)/?$",
       "dest": "/index.html"
     },
