@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Workspace con comprobaci\u00f3n y actualizaci\u00f3n firmada; sin acceso general al sistema de archivos ni shell",
+  "description": "Workspace con comprobaci\u00f3n y actualizaci\u00f3n firmada; sin acceso general al sistema de archivos ni shell; abre s\u00f3lo enlaces de asignaci\u00f3n de Ultramar",
   "windows": [
     "main"
   ],
@@ -17,6 +17,9 @@
       "allow": [
         {
           "url": "https://gba.software/workspace/web/?device-notifications=1"
+        },
+        {
+          "url": "ultramar://workspace/asignacion/*"
         }
       ]
     }

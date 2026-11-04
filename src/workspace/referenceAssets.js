@@ -24,3 +24,12 @@ export async function readReferenceOriginal(gateway, asset, download = false) {
   if (blob.size !== asset.size_bytes || digest !== asset.sha256) throw Error('El original no coincide con su registro de integridad.');
   return blob;
 }
+// 1.7.5 · Archivos de una entrega de Ultramar (PDF, vista previa o .ultramar), con integridad verificada.
+export async function downloadUltramarFile(gateway, version, file) {
+  const response = await authorizedFetch(gateway, `/ultramar/files/${version.id}/${file.rol}`);
+  const blob = await response.blob();
+  const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()))].map(byte => byte.toString(16).padStart(2, '0')).join('');
+  if (blob.size !== file.bytes || digest !== file.sha256) throw Error('El archivo no coincide con su registro de integridad.');
+  const address = URL.createObjectURL(blob), anchor = document.createElement('a');
+  anchor.href = address; anchor.download = file.nombre; anchor.click(); setTimeout(() => URL.revokeObjectURL(address), 1000);
+}

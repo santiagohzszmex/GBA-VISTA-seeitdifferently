@@ -1,4 +1,5 @@
 import {createImageGateway} from './images/gateway.mjs';
+import {createUltramarGateway} from './ultramar.mjs';
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 export function detectMime(bytes) {
   const text = String.fromCharCode(...bytes.subarray(0, 32));
@@ -45,7 +46,7 @@ async function peekAndStream(request, expectedSize) {
 }
 const hex = buffer => buffer ? [...new Uint8Array(buffer)].map(byte => byte.toString(16).padStart(2,'0')).join('') : '';
 export function createGateway(fetcher = fetch, logger = console, fixedLength = length => new FixedLengthStream(length)) {
-  const images=createImageGateway({fetcher,logger,fixedLength});
+  const images=createImageGateway({fetcher,logger,fixedLength}),ultramar=createUltramarGateway({fetcher,logger,fixedLength});
   return {
     scheduled:(controller,env,ctx)=>images.scheduled(controller,env,ctx),
     async fetch(request, env) {
@@ -58,6 +59,7 @@ export function createGateway(fetcher = fetch, logger = console, fixedLength = l
       if (origin && !origins.includes(origin)) return json({error:'Origen no autorizado.'},403);
       if (request.method === 'OPTIONS') return new Response(null, {status:204,headers});
       if (!env.ORIGINALS || !env.GATEWAY_KEY || !env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({error:'Almacenamiento privado pendiente de conexión.'},503);
+      if (/^\/ultramar\//.test(new URL(request.url).pathname)) return ultramar.fetch(request, env, headers);
       const bearer = request.headers.get('authorization');
       if (!bearer?.startsWith('Bearer ')) return json({error:'Inicia sesión para acceder a los archivos.'},401);
       const connector = /^Bearer wsc_[a-f0-9]{64}$/.test(bearer);

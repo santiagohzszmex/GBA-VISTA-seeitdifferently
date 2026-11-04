@@ -4,9 +4,9 @@
 
 alter table workspace_private.upload_policy
  add column if not exists ultramar_enabled boolean not null default false,
- add column if not exists ultramar_package_max_bytes bigint not null default 262144000 check(ultramar_package_max_bytes>0),
- add column if not exists ultramar_pdf_max_bytes bigint not null default 104857600 check(ultramar_pdf_max_bytes>0),
- add column if not exists ultramar_preview_max_bytes bigint not null default 20971520 check(ultramar_preview_max_bytes>0);
+ add column if not exists ultramar_package_max_bytes bigint not null default 94371840 check(ultramar_package_max_bytes between 1 and 94371840),
+ add column if not exists ultramar_pdf_max_bytes bigint not null default 94371840 check(ultramar_pdf_max_bytes between 1 and 94371840),
+ add column if not exists ultramar_preview_max_bytes bigint not null default 20971520 check(ultramar_preview_max_bytes between 1 and 94371840);
 
 create table workspace_private.ultramar_snapshots(
  id uuid primary key default gen_random_uuid(),
@@ -235,17 +235,53 @@ begin
  return jsonb_build_object('id',r.id,'estado',r.state,'expira',r.expires_at,'archivos',(select jsonb_agg(jsonb_build_object('rol',role,'bytes',size_bytes,'verificado',false) order by role) from workspace_private.ultramar_files where reservation_id=r.id));
 end;$$;
 
--- Sólo la pasarela (service_role) marca un archivo como recibido y validado (ZIP V1, PDF, PNG).
-create function public.workspace_ultramar_file_verified(p_reservation_id uuid,p_role text,p_object_key text,p_sha256 text,p_size_bytes bigint,p_validation jsonb) returns jsonb
+-- Pasarela R2 (Worker): mismo patrón que los originales. La persona autentica con su sesión y el Worker
+-- añade la clave de pasarela; la ruta del objeto la decide el servidor, nunca el cliente.
+create function public.workspace_ultramar_upload_gate(p_reservation_id uuid,p_role text,p_gateway_key text) returns jsonb
 language plpgsql security definer set search_path=pg_catalog,pg_temp as $$
-declare f workspace_private.ultramar_files;
+declare r workspace_private.ultramar_reservations;f workspace_private.ultramar_files;
 begin
- select * into f from workspace_private.ultramar_files where reservation_id=p_reservation_id and role=p_role for update;
+ perform workspace_private.ultramar_gate();
+ perform workspace_private.original_gateway(p_gateway_key);
+ select * into r from workspace_private.ultramar_reservations where id=p_reservation_id and author_id=auth.uid();
+ if r.id is null or r.state<>'reserved' or r.expires_at<=now() then raise exception 'Envío fuera de tu acceso o vencido' using errcode='42501';end if;
+ perform workspace_private.ultramar_task(r.deliverable_id);
+ select * into f from workspace_private.ultramar_files where reservation_id=r.id and role=p_role;
  if f.reservation_id is null then raise exception 'Archivo no reservado';end if;
- if f.sha256<>lower(p_sha256) or f.size_bytes<>p_size_bytes then raise exception 'El archivo recibido no coincide con la reserva';end if;
+ if f.verified_at is not null then raise exception 'Este archivo ya se recibió';end if;
+ return jsonb_build_object('object_key','ultramar/'||r.id::text||'/'||f.role,'role',f.role,'size_bytes',f.size_bytes,'sha256',f.sha256,'file_name',f.file_name);
+end;$$;
+
+create function public.workspace_ultramar_file_verified(p_reservation_id uuid,p_role text,p_validation jsonb,p_gateway_key text) returns jsonb
+language plpgsql security definer set search_path=pg_catalog,pg_temp as $$
+declare r workspace_private.ultramar_reservations;f workspace_private.ultramar_files;
+begin
+ perform workspace_private.ultramar_gate();
+ perform workspace_private.original_gateway(p_gateway_key);
+ select * into r from workspace_private.ultramar_reservations where id=p_reservation_id and author_id=auth.uid();
+ if r.id is null or r.state<>'reserved' then raise exception 'Envío fuera de tu acceso' using errcode='42501';end if;
+ select * into f from workspace_private.ultramar_files where reservation_id=r.id and role=p_role for update;
+ if f.reservation_id is null then raise exception 'Archivo no reservado';end if;
  if coalesce(p_validation->>'ok','false')<>'true' then raise exception 'El archivo no pasó la validación';end if;
- update workspace_private.ultramar_files set object_key=p_object_key,verified_at=now(),validation=p_validation where reservation_id=p_reservation_id and role=p_role;
+ update workspace_private.ultramar_files set object_key='ultramar/'||r.id::text||'/'||f.role,verified_at=now(),validation=p_validation-'ok'
+ where reservation_id=r.id and role=p_role;
  return jsonb_build_object('rol',p_role,'verificado',true);
+end;$$;
+
+-- Descarga para revisión: quien ya puede leer la asignación (task.read), por la pasarela.
+create function public.workspace_ultramar_file_access(p_version_id uuid,p_role text,p_gateway_key text) returns jsonb
+language plpgsql stable security definer set search_path=pg_catalog,pg_temp as $$
+declare uv workspace_private.ultramar_versions;t public.workspace_deliverables;f workspace_private.ultramar_files;
+begin
+ perform workspace_private.original_gateway(p_gateway_key);
+ select * into uv from workspace_private.ultramar_versions where version_id=p_version_id;
+ if uv.version_id is null then raise exception 'Archivo fuera de tu acceso' using errcode='42501';end if;
+ select d.* into t from public.workspace_deliverables d join public.workspace_versions v on v.deliverable_id=d.id where v.id=p_version_id;
+ perform workspace_private.require('task.read',t.unit_id,t.project_id,t.area_id,t.id);
+ select * into f from workspace_private.ultramar_files where reservation_id=uv.reservation_id and role=p_role and verified_at is not null;
+ if f.reservation_id is null then raise exception 'Archivo fuera de tu acceso' using errcode='42501';end if;
+ return jsonb_build_object('object_key',f.object_key,'size_bytes',f.size_bytes,'sha256',f.sha256,'file_name',f.file_name,
+  'mime_type',case f.role when 'pdf' then 'application/pdf' when 'preview' then 'image/png' else 'application/zip' end);
 end;$$;
 
 -- Confirmar: crea la nueva versión (área → QA → Dirección sin cambios). Idempotente.
@@ -286,12 +322,38 @@ begin
   'archivos',(select jsonb_agg(jsonb_build_object('rol',role,'nombre',file_name,'bytes',size_bytes,'sha256',sha256) order by role) from workspace_private.ultramar_files where reservation_id=uv.reservation_id));
 end;$$;
 
+-- Resumen para la interfaz de Workspace: sólo asignaciones de maquetación que la persona ya puede leer.
+create function public.workspace_ultramar_bundle(p_project_id uuid) returns jsonb
+language plpgsql stable security definer set search_path=pg_catalog,pg_temp as $$
+declare enabled boolean;snaps jsonb;versions jsonb;
+begin
+ if not workspace_private.session_active() then raise exception 'Sesión no válida' using errcode='42501';end if;
+ enabled:=coalesce((select ultramar_enabled from workspace_private.upload_policy limit 1),false);
+ if not enabled then return jsonb_build_object('enabled',false,'snapshots','{}'::jsonb,'versions','{}'::jsonb);end if;
+ select coalesce(jsonb_object_agg(t.id::text,jsonb_build_object('version',s.version,'sha256',s.sha256,'created_at',s.created_at,
+   'textos',jsonb_array_length(s.payload->'textos'),'recursos',jsonb_array_length(s.payload->'recursos'),'pagina',s.payload->'especificaciones')),'{}'::jsonb)
+ into snaps
+ from public.workspace_deliverables t
+ join public.workspace_areas a on a.id=t.area_id and a.specialty='integration'
+ join lateral (select * from workspace_private.ultramar_snapshots x where x.deliverable_id=t.id order by x.version desc limit 1) s on true
+ where t.project_id=p_project_id and workspace_private.allowed('task.read',t.unit_id,t.project_id,t.area_id,t.id);
+ select coalesce(jsonb_object_agg(uv.version_id::text,jsonb_build_object('instantanea',s.version,
+   'archivos',(select jsonb_agg(jsonb_build_object('rol',f.role,'nombre',f.file_name,'bytes',f.size_bytes,'sha256',f.sha256) order by f.role) from workspace_private.ultramar_files f where f.reservation_id=uv.reservation_id))),'{}'::jsonb)
+ into versions
+ from workspace_private.ultramar_versions uv
+ join public.workspace_versions v on v.id=uv.version_id
+ join public.workspace_deliverables t on t.id=v.deliverable_id
+ join workspace_private.ultramar_snapshots s on s.id=uv.snapshot_id
+ where t.project_id=p_project_id and workspace_private.allowed('task.read',t.unit_id,t.project_id,t.area_id,t.id);
+ return jsonb_build_object('enabled',true,'snapshots',snaps,'versions',versions);
+end;$$;
+
 revoke all on function workspace_private.ultramar_canonical(jsonb),workspace_private.ultramar_sha(jsonb),workspace_private.ultramar_gate(),workspace_private.ultramar_task(uuid,boolean) from public,anon,authenticated;
 revoke all on function public.workspace_ultramar_prepare(uuid,jsonb,integer),public.workspace_ultramar_assignments(),public.workspace_ultramar_snapshot(uuid,uuid),
  public.workspace_ultramar_original(uuid,uuid,uuid),public.workspace_ultramar_reserve(uuid,uuid,integer,text,jsonb),public.workspace_ultramar_submit(uuid,text),
- public.workspace_ultramar_version_files(uuid),public.workspace_ultramar_file_verified(uuid,text,text,text,bigint,jsonb) from public,anon;
+ public.workspace_ultramar_version_files(uuid),public.workspace_ultramar_bundle(uuid),public.workspace_ultramar_upload_gate(uuid,text,text),
+ public.workspace_ultramar_file_verified(uuid,text,jsonb,text),public.workspace_ultramar_file_access(uuid,text,text) from public,anon;
 grant execute on function public.workspace_ultramar_prepare(uuid,jsonb,integer),public.workspace_ultramar_assignments(),public.workspace_ultramar_snapshot(uuid,uuid),
  public.workspace_ultramar_original(uuid,uuid,uuid),public.workspace_ultramar_reserve(uuid,uuid,integer,text,jsonb),public.workspace_ultramar_submit(uuid,text),
- public.workspace_ultramar_version_files(uuid) to authenticated;
-revoke all on function public.workspace_ultramar_file_verified(uuid,text,text,text,bigint,jsonb) from authenticated;
-grant execute on function public.workspace_ultramar_file_verified(uuid,text,text,text,bigint,jsonb) to service_role;
+ public.workspace_ultramar_version_files(uuid),public.workspace_ultramar_bundle(uuid),public.workspace_ultramar_upload_gate(uuid,text,text),
+ public.workspace_ultramar_file_verified(uuid,text,jsonb,text),public.workspace_ultramar_file_access(uuid,text,text) to authenticated;

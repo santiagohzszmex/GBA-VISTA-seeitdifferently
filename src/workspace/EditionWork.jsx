@@ -11,6 +11,7 @@ import WorkConversation from './WorkConversation';
 import WorkOperations from './WorkOperations';
 import { taskIsMine, canReviewTask, nextStep, hasReviewPermission } from './documentModel';
 import TaskMaterials from './TaskMaterials';
+import { UltramarPrepare, UltramarOpen } from './UltramarPanel';
 import ReferenceSplit from './ReferenceSplit';
 import SupportDocuments from './SupportDocuments';
 import DocumentInbox from './DocumentInbox';
@@ -52,7 +53,7 @@ const WORK_GROUPS = [
 ];
 const groupOf = state => (WORK_GROUPS.find(([, , states]) => states.includes(state))?.[0]) || 'closed';
 
-export function PersonalWork({ project, data, task, actorId, command, api, busy, onPick, previewMode, onDirtyChange, onReference, referenceApi, supportApi, inboxApi, unitId, initialSupportId, initialDeliveryId, initialAnchorId, imageApi, initialImageNoteId, initialImageVersionId }) {
+export function PersonalWork({ project, data, task, actorId, command, api, busy, onPick, previewMode, onDirtyChange, onReference, referenceApi, supportApi, inboxApi, unitId, initialSupportId, initialDeliveryId, initialAnchorId, imageApi, initialImageNoteId, initialImageVersionId, ultramarApi }) {
   const [filter, setFilter] = useState(() => task && deliveryGroup(task)==='delivered' ? 'sent' : 'active');
   const [focus, setFocus] = useState(false);
   const [split, setSplit] = useState(false);
@@ -101,7 +102,7 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
         {!tasks.length && <p className="gw-wk-rail-empty">{filter === 'active' && mine.length ? 'No tienes entregas pendientes. Cambia a «Entregado» para ver lo enviado a revisión y lo aprobado.' : 'Aquí aparecerán tus entregas asignadas.'}</p>}
       </aside>
       {selected
-        ? <div className="gw-deadline-editor"><TaskDates task={withDeadlineFacts(selected,data)}/>{selected.kind==='image' ? <ImageDelivery key={selected.id} task={selected} data={data} actorId={actorId} api={imageApi} command={command} busy={busy} onDirtyChange={setWorkDirty} initialNoteId={initialImageNoteId} initialVersionId={initialImageVersionId}/> : <WorkEditor key={selected.id} task={selected} data={data} actorId={actorId} api={api} command={command} previewMode={previewMode} busy={busy} onDirtyChange={setWorkDirty} onReference={onReference} focus={focus} onFocusChange={setFocus} onSplitChange={setSplit} referenceApi={referenceApi} />}</div>
+        ? <div className="gw-deadline-editor"><TaskDates task={withDeadlineFacts(selected,data)}/><UltramarOpen task={selected} data={data} previewMode={previewMode}/>{selected.kind==='image' ? <ImageDelivery key={selected.id} task={selected} data={data} actorId={actorId} api={imageApi} command={command} busy={busy} onDirtyChange={setWorkDirty} initialNoteId={initialImageNoteId} initialVersionId={initialImageVersionId}/> : <WorkEditor key={selected.id} task={selected} data={data} actorId={actorId} api={api} command={command} previewMode={previewMode} busy={busy} onDirtyChange={setWorkDirty} onReference={onReference} focus={focus} onFocusChange={setFocus} onSplitChange={setSplit} referenceApi={referenceApi} />}</div>
         : <div className="gw-wk-empty"><FileText size={30} aria-hidden="true" /><h2>No tienes entregas pendientes en esta edición.</h2><p>Puedes crear un documento ahora, escribir en privado y enviarlo a otra persona. Tus asignaciones aparecerán en esta pestaña cuando las recibas.</p><div className="gw-mywork-actions"><button type="button" className="gw-wk-btn gw-wk-btn-primary" disabled={busy || !data.support?.creation_areas?.length} onClick={newDocument}><Plus size={16}/>Nuevo documento</button><button type="button" className="gw-wk-btn" onClick={onReference}>Consultar referencias de la edición</button></div></div>}
     </div>}{pendingNavigation && <DraftExitDialog onStay={() => setPendingNavigation(null)} onDiscard={() => { const navigate=pendingNavigation; setPendingNavigation(null); setWorkDirty(false); setSupportDirty(false); onDirtyChange?.(false); navigate(); }} />}
   </section>;
@@ -109,7 +110,7 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
 
 const FILTERS = [['all','Todo'],['late','Vencidas'],['soon','Vencen pronto'],['unassigned','Sin responsable'],['blocked','Bloqueado']];
 
-export function AreaAssignments({ project, data, task, command, busy, onPick, onReview, referenceApi, imageApi }) {
+export function AreaAssignments({ project, data, task, command, busy, onPick, onReview, referenceApi, imageApi, ultramarApi }) {
   const [query, setQuery] = useState('');
   const [referenceTarget,setReferenceTarget] = useState(null);
   const [filter, setFilter] = useState('all');
@@ -166,6 +167,7 @@ export function AreaAssignments({ project, data, task, command, busy, onPick, on
               {editable ? <CommandForm key={selected.id + selected.revision} initial={selected} busy={busy} fields={{ title: 'Título de la asignación', description: { label: 'Indicaciones para la persona', type: 'richtext', scope:{kind:'assignment',taskId:selected.id,projectId:project.id,areaId:selected.area_id} }, responsible_id: { label: 'Responsable', options: choices(data.members, 'display_name'), optional: true } }} button="Guardar asignación" onSave={values => command('task.save', { ...values, deliverable_id: selected.id, collaborator_ids: selected.collaborator_ids || [] }, selected.revision)} /> : <p className="gw-wk-note">La versión está aceptada. Su contenido y asignación se conservan.</p>}
             </section>
             {data.images?.enabled&&<ImageSpecForm key={`spec-${selected.id}-${selected.revision}`} task={selected} spec={data.images.specs?.[selected.id]} api={imageApi} busy={busy} editable={Boolean(editable)&&(data.images.uploads_enabled??data.images.policy?.images_enabled)}/>}
+            {ultramarApi&&<UltramarPrepare key={`ultramar-${selected.id}-${selected.revision}`} task={selected} data={data} api={ultramarApi} busy={busy} editable={Boolean(editable)}/>}
             <TaskMaterials task={selected} data={data} editable={Boolean(editable)} referenceApi={referenceApi} onOpen={row=>setReferenceTarget(row.reference_id)}/><WorkConversation task={selected} data={data} command={command} busy={busy} />
           </div>
           <div className="gw-wk-col gw-wk-side">
