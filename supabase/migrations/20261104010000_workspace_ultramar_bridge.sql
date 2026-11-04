@@ -150,7 +150,7 @@ begin
  -- Originales: los ligados a los materiales del encargo, ya verificados en R2.
  select coalesce(jsonb_agg(jsonb_build_object(
    'referencia',jsonb_build_object('id',o.id::text,'version','1','revision','1','sha256',o.sha256),
-   'nombre',o.file_name,'mime',o.mime_type,'bytes',o.size_bytes) order by o.created_at,o.id),'[]'::jsonb)
+   'nombre',o.file_name,'mime',o.mime_type,'tamano',o.size_bytes) order by o.created_at,o.id),'[]'::jsonb)
  into recursos from workspace_private.reference_originals o
  where o.status='ready' and o.id in(select unnest(r.original_ids) from workspace_private.task_references r where r.deliverable_id=t.id);
  select coalesce(max(version),0)+1 into v from workspace_private.ultramar_snapshots where deliverable_id=t.id;

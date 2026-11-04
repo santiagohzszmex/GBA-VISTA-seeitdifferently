@@ -93,7 +93,7 @@ export async function runUltramarAcceptance(db){
  eq(snapshot.especificaciones,{unidad:'pt',colorModel:'RGB',ancho:612,alto:792,sangrado:{arriba:9,derecha:9,abajo:9,izquierda:9}});
  eq(snapshot.textos[0].bloques,doc.content);
  eq(snapshot.textos[0].referencia.sha256,sha({titulo:'Texto de apertura',bloques:doc.content}));
- eq(snapshot.recursos.map(r=>[r.referencia.id,r.nombre,r.bytes]),[[original,'portada.png',70]]);
+ eq(snapshot.recursos.map(r=>[r.referencia.id,r.nombre,r.mime,r.tamano]),[[original,'portada.png','image/png',70]]);
  eq(JSON.stringify(snapshot).includes('object_key')||JSON.stringify(snapshot).includes('local/ultramar'),false);
  const descriptor=await scalar('select public.workspace_ultramar_original($1,$2,$3)',[layoutId,referencia.id,original]);
  eq(descriptor.ruta,'/originals/'+original);
