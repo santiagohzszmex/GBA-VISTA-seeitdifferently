@@ -1,3 +1,8 @@
+## 1.7.2.1 · Diseño anterior restaurado
+
+- Workspace vuelve al diseño de la versión 1.7.1.4: pestañas de edición y secciones como antes.
+- Se retira la interfaz de 1.7.2. Tu trabajo, borradores, permisos, avisos y la cadena de revisión no cambian.
+
 ## 1.7.1.4 · Avisos y lectura
 
 - «Marcar como leída» por aviso y «Marcar todas como leídas» con confirmación del servidor. Una consulta anterior ya no restaura el contador viejo.
