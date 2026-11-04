@@ -1,4 +1,4 @@
-import {deadlineStatus,deliveryGroup,withDeadlineFacts} from './deadlines.mjs';
+import {deadlineStatus,deliveryGroup,withDeadlineFacts,dayNumber,DEADLINE_ZONE} from './deadlines.mjs';
 import {DeliverySummary,DeliveryGroups,TaskDates} from './DeadlineViews';
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, CalendarClock, FileText, Inbox, Plus, Search } from 'lucide-react';
@@ -83,7 +83,7 @@ export function PersonalWork({ project, data, task, actorId, command, api, busy,
     {focus && <h1 className="gw-sr-only">Mi trabajo</h1>}
     <div className="gw-wk-head"><div><h1>Mi trabajo</h1><p>Crea documentos, continúa tus entregas y consulta lo que te enviaron.</p></div>{view === 'deliveries' && <CreateWork project={project} data={data} actorId={actorId} personal command={command} busy={busy} onCreated={openTask} />}</div>
     <div className="gw-opal-inbox-tabs" role="group" aria-label="Cambiar vista de Mi trabajo"><button type="button" aria-pressed={view === 'deliveries'} onClick={() => changeView('deliveries')}>Entregas</button><button type="button" aria-pressed={view === 'support'} onClick={() => changeView('support')}>Documentos <span>{data.support?.documents?.filter(row => row.author_id === actorId || row.share_scope !== 'private').length || 0}</span></button><button type="button" aria-pressed={view === 'inbox'} onClick={() => changeView('inbox')}>Bandeja de entrada</button></div>
-    {view==='deliveries'&&<DeliverySummary tasks={mine} personal/>}
+    {view==='deliveries'&&<DeliverySummary tasks={mine} personal onOpen={onPick}/>}
     {view === 'inbox' ? <DocumentInbox unitId={unitId} inboxApi={inboxApi} initialDeliveryId={initialDeliveryId} anchorId={initialAnchorId} /> : view === 'support' ? <SupportDocuments createRequest={createRequest} inboxApi={inboxApi} initialAnchorId={initialAnchorId} project={project} data={data} actorId={actorId} supportApi={supportApi} busy={busy} onDirtyChange={setSupportDirty} onOpenTask={openTask} initialSupportId={initialSupportId} /> : <div className="gw-wk-mine-layout">
       <aside className="gw-wk-rail" aria-label="Lista de mi trabajo">
         <div className="gw-wk-seg" role="group" aria-label="Mostrar mi trabajo">
@@ -179,11 +179,49 @@ export function AreaAssignments({ project, data, task, command, busy, onPick, on
   </section>;
 }
 
+const EVENT_KINDS = { milestone: 'Hito', review: 'Revisión', editorial: 'Fecha editorial', deadline: 'Entrega' };
+const agendaFormat = options => new Intl.DateTimeFormat('es-MX', { timeZone: DEADLINE_ZONE, ...options });
+function agendaMonth(value) { const text = agendaFormat({ month: 'long', year: 'numeric' }).format(new Date(value)); return text.charAt(0).toLocaleUpperCase('es-MX') + text.slice(1); }
+function agendaDay(value) { const date = new Date(value); return { day: agendaFormat({ day: 'numeric' }).format(date), weekday: agendaFormat({ weekday: 'short' }).format(date).replaceAll('.', '') }; }
+
 export function EditionCalendar({ actorId, project, data, permissions, command, busy, onPick }) {
   const events = data.events.filter(event => event.project_id === project.id).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
   return <section className="gw-work-section"><h2>Calendario de la edición</h2><p>Entregas, revisiones y fechas editoriales de {project.title}.</p>
     {permissions['task.update_schedule'] && <details className="gw-disclosure"><summary>Añadir fecha</summary><CommandForm busy={busy} button="Añadir hito" fields={{ title: 'Título', kind: { label: 'Tipo', options: { milestone: 'Hito', review: 'Revisión', editorial: 'Fecha editorial' } }, starts_at: { label: 'Inicio', type: 'datetime-local' }, ends_at: { label: 'Fin', type: 'datetime-local', optional: true } }} onSave={values => command('event.save', values)} /></details>}
     {!events.length && <p className="gw-empty">Todavía no hay fechas registradas para esta edición.</p>}
-    <div className="gw-list">{events.map(event => <article key={event.id}><h3>{event.title}</h3><p>{dateLabel(event.starts_at)}{event.ends_at && ` → ${dateLabel(event.ends_at)}`} · {{ milestone: 'Hito', review: 'Revisión', editorial: 'Fecha editorial', deadline: 'Entrega' }[event.kind] || event.kind}</p>{event.kind==='deadline'&&data.tasks.find(t=>t.id===event.deliverable_id)&&<TaskDates task={withDeadlineFacts(data.tasks.find(t=>t.id===event.deliverable_id),data)}/>}<span className="gw-sr-only">Las fechas límite usan Ciudad de México.</span>{event.deliverable_id && data.tasks.some(task => task.id === event.deliverable_id && (taskIsMine(task, actorId) || data.taskPermissions?.[task.id]?.['task.assign'] || hasReviewPermission(data.taskPermissions?.[task.id] || {}) || data.approvedDocuments?.some(document => document.deliverable_id === task.id))) && <button type="button" onClick={() => onPick(data.tasks.find(task => task.id === event.deliverable_id))}>Abrir trabajo</button>}{permissions['task.update_schedule'] && event.kind !== 'deadline' && <details className="gw-disclosure"><summary>Modificar fecha</summary><CommandForm key={`${event.id}-${event.revision}`} initial={event} busy={busy} fields={{ title: 'Título', starts_at: { label: 'Inicio', type: 'datetime-local' }, ends_at: { label: 'Fin', type: 'datetime-local', optional: true } }} button="Guardar fecha" onSave={values => command('event.save', { ...values, id: event.id, kind: event.kind }, event.revision)} /></details>}</article>)}</div>
+    {/* 1.7.2: agenda. Atrasadas primero, después las próximas por mes; las pasadas quedan plegadas. */}
+    {(() => {
+      const taskOf = event => event.deliverable_id && data.tasks.find(t => t.id === event.deliverable_id);
+      const statusOf = event => { const t = event.kind === 'deadline' && taskOf(event); return t ? deadlineStatus(withDeadlineFacts(t, data)) : null; };
+      const today = dayNumber(new Date());
+      const late = [], upcoming = [], past = [];
+      for (const event of events) {
+        const status = statusOf(event);
+        if (status?.key === 'late') late.push(event);
+        else if (dayNumber(event.ends_at || event.starts_at) >= today) upcoming.push(event);
+        else past.push(event);
+      }
+      const months = [];
+      for (const event of upcoming) { const label = agendaMonth(event.starts_at); const last = months[months.length - 1]; if (last?.label === label) last.events.push(event); else months.push({ label, events: [event] }); }
+      const row = event => {
+        const status = statusOf(event), task = taskOf(event), day = agendaDay(event.starts_at);
+        const canOpen = task && (taskIsMine(task, actorId) || data.taskPermissions?.[task.id]?.['task.assign'] || hasReviewPermission(data.taskPermissions?.[task.id] || {}) || data.approvedDocuments?.some(document => document.deliverable_id === task.id));
+        return <li key={event.id} className="gw-agenda-row" data-tone={status?.tone || undefined}>
+          <time className="gw-agenda-day" dateTime={event.starts_at}><strong>{day.day}</strong><span>{day.weekday}</span></time>
+          <div className="gw-agenda-body">
+            <h3>{event.title}</h3>
+            <p><span className="gw-agenda-kind" data-kind={event.kind}>{EVENT_KINDS[event.kind] || event.kind}</span>{dateLabel(event.starts_at)}{event.ends_at && ` → ${dateLabel(event.ends_at)}`}{status && status.key !== 'none' && <span className="gw-deadline-status" data-tone={status.tone || undefined}>{status.text}</span>}</p>
+            {permissions['task.update_schedule'] && event.kind !== 'deadline' && <details className="gw-disclosure"><summary>Modificar fecha</summary><CommandForm key={`${event.id}-${event.revision}`} initial={event} busy={busy} fields={{ title: 'Título', starts_at: { label: 'Inicio', type: 'datetime-local' }, ends_at: { label: 'Fin', type: 'datetime-local', optional: true } }} button="Guardar fecha" onSave={values => command('event.save', { ...values, id: event.id, kind: event.kind }, event.revision)} /></details>}
+          </div>
+          {canOpen && <button type="button" className="gw-agenda-open" onClick={() => onPick(task)}>Abrir trabajo<ArrowRight size={15} aria-hidden="true" /></button>}
+        </li>;
+      };
+      return <div className="gw-agenda"><span className="gw-sr-only">Las fechas límite usan Ciudad de México.</span>
+        {late.length > 0 && <section aria-label="Entregas atrasadas"><h3 className="gw-agenda-group" data-tone="late">Atrasadas <span>{late.length}</span></h3><ul>{late.map(row)}</ul></section>}
+        {months.map(month => <section key={month.label} aria-label={month.label}><h3 className="gw-agenda-group">{month.label} <span>{month.events.length}</span></h3><ul>{month.events.map(row)}</ul></section>)}
+        {events.length > 0 && !late.length && !months.length && <p className="gw-agenda-empty">No hay fechas próximas en esta edición.</p>}
+        {past.length > 0 && <details className="gw-agenda-past"><summary>Fechas pasadas · {past.length}</summary><ul>{[...past].reverse().map(row)}</ul></details>}
+      </div>;
+    })()}
   </section>;
 }

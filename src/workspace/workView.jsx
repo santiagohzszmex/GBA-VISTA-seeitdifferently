@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserRound } from 'lucide-react';
+import { UserRound, Circle, CircleDashed, CircleDot, PenLine, Eye, RotateCcw, BadgeCheck, ScanSearch, ShieldCheck, Globe2, Archive, AlertOctagon } from 'lucide-react';
 import {deadlineDate,deadlineStatus} from './deadlines.mjs';
 import { STATES } from './gimgModel';
 
@@ -30,19 +30,38 @@ export function savedLabel(value, now = new Date()) {
 
 export const isFinished = state => FINISHED_STATES.includes(state);
 
+// 1.7.2: cada estado tiene icono y color propios (data-state), además del tono anterior.
+export const STATE_ICONS = { pending: CircleDashed, assigned: CircleDot, in_progress: PenLine, review: Eye, changes_requested: RotateCcw, area_approved: BadgeCheck, in_qa: ScanSearch, qa_approved: ShieldCheck, published: Globe2, archived: Archive, blocked: AlertOctagon };
+export const stateLabel = (state, kind) => kind === 'image' && state === 'area_approved' ? 'Aprobada por el área' : STATES[state] || state;
+
 export function Status({ state,kind }) {
-  return <span className="gw-wk-status" data-tone={TONES[state] || 'idle'}><i aria-hidden="true" />{kind==='image'&&state==='area_approved'?'Aprobada por el área':STATES[state] || state}</span>;
+  const Icon = STATE_ICONS[state] || Circle;
+  return <span className="gw-wk-status" data-tone={TONES[state] || 'idle'} data-state={state}><i aria-hidden="true" /><Icon className="gw-state-icon" size={14} aria-hidden="true" />{stateLabel(state, kind)}</span>;
+}
+
+/** Chip compacto de estado para listas (fondo de color). */
+export function StateChip({ state, kind }) {
+  const Icon = STATE_ICONS[state] || Circle;
+  return <span className="gw-state-chip" data-state={state}><Icon size={13} aria-hidden="true" />{stateLabel(state, kind)}</span>;
 }
 
 export const initials = name => (name || '').trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
 
+// Tono estable (0–7) a partir de un nombre: la misma persona o área conserva su color.
+export function hueOf(value) { let hash = 0; for (const char of String(value || '')) hash = (hash * 31 + char.codePointAt(0)) >>> 0; return hash % 8; }
+
 export function Avatar({ name }) {
   return name
-    ? <span className="gw-wk-avatar" aria-hidden="true">{initials(name)}</span>
+    ? <span className="gw-wk-avatar" data-hue={hueOf(name)} aria-hidden="true">{initials(name)}</span>
     : <span className="gw-wk-avatar gw-wk-avatar-empty" aria-hidden="true"><UserRound size={14} /></span>;
+}
+
+export function AreaTag({ name }) {
+  if (!name) return null;
+  return <span className="gw-area-tag" data-hue={hueOf(name)}><i aria-hidden="true" />{name}</span>;
 }
 
 export function DueLabel({ task }) {
   const due = deadlineStatus(task);
-  return <span className="gw-wk-due" data-tone={due.tone || undefined}>{due.label}{due.relative && <small>{due.relative}</small>}<small>{due.text}</small></span>;
+  return <span className="gw-wk-due" data-tone={due.tone || undefined}>{due.label}{due.relative && due.key !== 'late' && <small>{due.relative}</small>}<small>{due.text}</small></span>;
 }

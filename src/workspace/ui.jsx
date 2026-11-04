@@ -4,6 +4,8 @@ import { documentText } from './documentModel';
 const RichDocument = React.lazy(() => import('./RichDocument'));
 import {DeadlineField} from './DeadlineViews';
 import { STATES, dateLabel, inputDate, isoDate } from './gimgModel';
+import { Image as ImageIcon } from 'lucide-react';
+import { StateChip, AreaTag, Avatar } from './workView';
 export const choices=(items,label='title')=>Object.fromEntries(items.map(x=>[x.id||x.user_id,x[label]||x.display_name]));
 export async function rpc(name,args){const {data,error}=await supabase.rpc(name,args);if(error)throw error;return data;}
 export function CommandForm({fields,onSave,initial={},button='Guardar',busy=false,resetOnSuccess=Object.keys(initial).length === 0}){
@@ -35,5 +37,6 @@ export function CommandForm({fields,onSave,initial={},button='Guardar',busy=fals
  })}<button className="gw-primary" disabled={busy}>{button}</button></form>;
 }
 
-export function TaskList({tasks,onPick,selectedId}){return <div className="gw-list">{tasks.map(t=><button key={t.id} className={selectedId===t.id?'gw-selected':''} onClick={()=>onPick(t)}><div className="gw-row"><strong>{t.title}</strong><span className="gw-badge">{t.kind==='image'&&t.state==='area_approved'?'Aprobada por el área':STATES[t.state]}</span></div><p>{dateLabel(t.due_at)}{t.kind==='image'&&` · Imagen · ${t.current_version?`v${t.current_version}`:'Sin entregar'}`}</p>{t.block_reason&&<p className="gw-error">{t.block_reason}</p>}</button>)}{!tasks.length&&<p className="gw-empty">No hay trabajos en esta lista.</p>}</div>;}
+// 1.7.2: filas con estado en color, área, responsable y fecha. `data` es opcional (áreas y personas).
+export function TaskList({tasks,onPick,selectedId,data}){return <div className="gw-list gw-task-list">{tasks.map(t=>{const area=data?.areas?.find(a=>a.id===t.area_id)?.name,person=data?.members?.find(m=>m.user_id===t.responsible_id)?.display_name;return <button key={t.id} className={selectedId===t.id?'gw-selected':''} aria-current={selectedId===t.id||undefined} onClick={()=>onPick(t)}><div className="gw-row"><strong>{t.title}</strong></div><div className="gw-task-list-meta"><StateChip state={t.state} kind={t.kind}/>{area&&<AreaTag name={area}/>}{t.kind==='image'&&<span className="gw-task-list-kind"><ImageIcon size={12} aria-hidden="true"/>Imagen · {t.current_version?`v${t.current_version}`:'Sin entregar'}</span>}</div><p>{person&&<><Avatar name={person}/><span>{person}</span><span aria-hidden="true">·</span></>}<span>{dateLabel(t.due_at)}</span></p>{t.block_reason&&<p className="gw-error">{t.block_reason}</p>}</button>;})}{!tasks.length&&<p className="gw-empty">No hay trabajos en esta lista.</p>}</div>;}
 export function Activity({rows}){return <div className="gw-list">{rows.map(r=><article key={r.id}><strong>{r.action}</strong><p>{dateLabel(r.created_at)}</p><small>Actor: {r.actor_id} · Objeto: {r.entity_id||'Unidad'}</small>{r.context?.reason&&<p>{r.context.reason}</p>}</article>)}{!rows.length&&<p className="gw-empty">Sin actividad nueva en tu alcance.</p>}</div>;}

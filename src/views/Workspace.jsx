@@ -1,4 +1,4 @@
-import {withDeadlineFacts} from '../workspace/deadlines.mjs';
+import {withDeadlineFacts,deliveryGroup,deadlineStatus} from '../workspace/deadlines.mjs';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -16,13 +16,16 @@ import Notifications from '../workspace/Notifications';
 import { DocumentContext } from '../workspace/DocumentContext';
 import MentionDocument from '../workspace/MentionDocument';
 import SaveNotice from '../workspace/SaveNotice';
+import CommandPalette from '../workspace/CommandPalette';
+import EditionHero from '../workspace/EditionHero';
 import { originalMime } from '../workspace/referenceModel';
 import { uploadReferenceOriginal } from '../workspace/referenceAssets';
-import { WorkspaceNavigation, EditionTabs, EditionNavigation } from '../workspace/WorkspaceNavigation';
+import { WorkspaceNavigation, EditionTabs, EditionNavigation, editionSections } from '../workspace/WorkspaceNavigation';
 import { DEMO_ACTORS, createWorkflowDemo, demoPermissions, workflowDemoData, runWorkflowDemo, demoNotifications } from '../workspace/workflowDemo';
 import { rpc } from '../workspace/ui';
 import '../workspace/workspace.css';
 import '../workspace/images/images.css';
+import '../workspace/workspace-refresh.css';
 import {imageStorageApi} from '../workspace/images/imageApi';
 import {clearImageCache} from '../workspace/images/originalCache.mjs';
 
@@ -52,6 +55,13 @@ export default function Workspace({ previewMode = false }) {
   const [hasDraft, setHasDraft] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [demoActorKey, setDemoActorKey] = useState('researcher');
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  // Barra lateral: 'auto' se compacta sola en ventanas medianas; la persona puede fijarla.
+  const [sidebarPreference, setSidebarPreference] = useState(() => { try { return localStorage.getItem('gba-workspace-sidebar') || 'auto'; } catch { return 'auto'; } });
+  const [narrowWindow, setNarrowWindow] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(max-width: 1279px)').matches);
+  useEffect(() => { const query = window.matchMedia?.('(max-width: 1279px)'); if (!query) return undefined; const update = () => setNarrowWindow(query.matches); query.addEventListener?.('change', update); return () => query.removeEventListener?.('change', update); }, []);
+  const sidebarCollapsed = sidebarPreference === 'collapsed' || (sidebarPreference === 'auto' && narrowWindow);
+  function toggleSidebar() { const next = sidebarCollapsed ? 'expanded' : 'collapsed'; setSidebarPreference(next); try { localStorage.setItem('gba-workspace-sidebar', next); } catch { /* sin almacenamiento local */ } }
   const demoState = useRef(null), imageDemoModule=useRef(null);
   const lapisPreview=previewMode && import.meta.env.DEV && new URLSearchParams(location.search).get('lapis-preview')==='1';
   const viewDemo=(state,person,id)=>({...workflowDemoData(state,person,id),images:lapisPreview&&imageDemoModule.current?imageDemoModule.current.imageDemoBundle(state,person,id):{enabled:false}});
@@ -380,16 +390,45 @@ export default function Workspace({ previewMode = false }) {
   const visibleProjects=editionsForScreen(data.projects,screen);
   const displayedProject=visibleProjects.some(p=>p.id===projectId)?project:null;
   const unitName = context?.units?.find(unit => unit.id === unitId)?.name || 'GBA';
+  const SECTION_TITLES = { work: 'Mi trabajo', assignments: 'Asignaciones', reviews: 'Revisión', documents: 'Documentos', team: 'Equipo', calendar: 'Calendario', mention: 'Mención' };
+  const crumbs = screen === 'settings' ? [unitName, 'Configuración'] : screen === 'keynotes' ? [unitName, 'Keynotes'] : [unitName, screen === 'closed' ? 'Cerradas' : 'Ediciones', displayedProject?.title, displayedProject && !isClosedEdition(project) ? SECTION_TITLES[visibleSection] : displayedProject ? 'Consulta' : null];
+  // Contadores de la barra de secciones (1.7.2). Se calculan con los mismos datos y permisos que ya cargó la edición.
+  const editionTasks = data.tasks.filter(item => item.project_id === projectId);
+  const myPending = editionTasks.filter(item => taskIsMine(item, userId) && deliveryGroup(item) === 'pending' && item.state !== 'archived');
+  const reviewQueue = editionTasks.filter(item => canReviewTask(item, data.taskPermissions?.[item.id] || {}, data.areas.find(area => area.id === item.area_id)));
+  const lateAssignments = editionTasks.filter(item => data.taskPermissions?.[item.id]?.['task.assign'] && deadlineStatus(item).key === 'late');
+  const sectionCounts = {
+    work: { value: myPending.length, label: 'por entregar', tone: myPending.some(item => deadlineStatus(item).key === 'late') ? 'late' : undefined },
+    reviews: { value: reviewQueue.length, label: 'por atender', tone: 'attention' },
+    assignments: { value: lateAssignments.length, label: lateAssignments.length === 1 ? 'vencida' : 'vencidas', tone: 'late' }
+  };
+  const sectionOrder = editionSections({ canAssign, canReview, canWork, canTeam });
+  const shortcutState = useRef({});
+  shortcutState.current = { sectionOrder, selectSection, openPalette: () => setPaletteOpen(open => !open), paletteAllowed: !pendingNavigation && !loading && Boolean(context?.units?.length), enabled: ['editions', 'closed'].includes(screen) && Boolean(displayedProject) && !isClosedEdition(project) && !pendingNavigation && !loading };
+  useEffect(() => {
+    // ⌘1…⌘6 (Ctrl en Windows) cambia de sección. Respeta el aviso de borrador sin guardar.
+    const onKey = event => {
+      const state = shortcutState.current;
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') { if (state.paletteAllowed) { event.preventDefault(); state.openPalette(); } return; }
+      if (!state.enabled || event.altKey || event.shiftKey || !(event.metaKey || event.ctrlKey) || !/^[1-6]$/.test(event.key)) return;
+      const target = state.sectionOrder[Number(event.key) - 1];
+      if (!target) return;
+      event.preventDefault();
+      state.selectSection(target);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
-  return <DocumentContext.Provider value={documentContext}><div className="gw gw-editions">
-    <WorkspaceNavigation screen={screen} onScreenChange={selectScreen} context={context} unitName={unitName} name={previewMode ? actor.name : user?.nombre_publico || user?.nombre || 'GBA ID'} loading={loading || busy} onRefresh={() => navigate(() => void load())} previewMode={previewMode} blocked={Boolean(pendingNavigation)} closedCount={editionsForScreen(data.projects,'closed').length} notifications={<Notifications key={userId} actorId={userId} previewMode={previewMode} previewItems={previewMode ? demoNotifications(demoState.current,actor) : []} onOpen={openNotification} blocked={loading || busy || Boolean(pendingNavigation)}/>} />
+  return <DocumentContext.Provider value={documentContext}><div className="gw gw-editions" data-sidebar={sidebarCollapsed ? 'collapsed' : 'expanded'}>
+    <WorkspaceNavigation screen={screen} onScreenChange={selectScreen} context={context} unitName={unitName} name={previewMode ? actor.name : user?.nombre_publico || user?.nombre || 'GBA ID'} role={previewMode ? 'Vista de demostración' : unitName} collapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} crumbs={crumbs} onSearch={context?.units?.length ? () => setPaletteOpen(true) : undefined} editions={['editions','closed'].includes(screen) && visibleProjects.length > 0 ? <EditionTabs projects={visibleProjects} selectedId={projectId} onSelect={selectProject} busy={busy} closed={screen==='closed'} /> : null} loading={loading || busy} onRefresh={() => navigate(() => void load())} previewMode={previewMode} blocked={Boolean(pendingNavigation)} closedCount={editionsForScreen(data.projects,'closed').length} notifications={<Notifications key={userId} actorId={userId} previewMode={previewMode} previewItems={previewMode ? demoNotifications(demoState.current,actor) : []} onOpen={openNotification} blocked={loading || busy || Boolean(pendingNavigation)}/>} />
     <main className="gw-main" aria-hidden={Boolean(pendingNavigation) || undefined}>
       {previewMode && <div className="gw-demo-flow"><span>Demostración local · prueba el flujo sin modificar datos reales.</span><label>Ver como<select value={demoActorKey} disabled={busy} onChange={event => { const next = event.target.value; if (next === demoActorKey) return; navigate(() => { setDemoActorKey(next); setSection('auto'); setSelectedId(''); setLoading(true); setData(EMPTY); setNotice(''); }); }}>{Object.entries(DEMO_ACTORS).map(([key, value]) => <option key={key} value={key}>{value.name}</option>)}</select></label></div>}
       {screen === 'keynotes' && context?.keynotes_access ? <KeynotesWorkspace previewMode={previewMode} /> : screen === 'settings' ? <WorkspaceSettings context={context} data={data} permissions={permissions} command={command} busy={disabled || previewMode} loading={loading} unitId={unitId} projectId={projectId} onUnitChange={selectUnit} onProjectChange={selectProject} previewMode={previewMode} onNotice={setNotice} actorId={userId} peopleCommand={peopleCommand} removedEditions={removedEditions} onRemoveEdition={(...args)=>changeEditionRemoval('project.remove',...args)} onRestoreEdition={item=>changeEditionRemoval('project.restore',item)} /> : <>
-        {visibleProjects.length > 0 && <EditionTabs projects={visibleProjects} selectedId={projectId} onSelect={selectProject} busy={busy} closed={screen==='closed'} />}
         {loading ? <p className="gw-loading" role="status">Abriendo edición…</p> : !context?.units?.length ? <div className="gw-empty"><h2>Tu equipo está por comenzar.</h2><p>Dirección debe incorporar tu GBA ID y asignarte permisos para una unidad. Una licencia de escritorio no concede acceso editorial.</p></div> : !displayedProject ? <div className="gw-empty"><h2>{screen==='closed'?'Todavía no hay ediciones cerradas.':'No hay ediciones de trabajo disponibles.'}</h2><p>{screen==='closed'?'Las ediciones cerradas aparecerán aquí para consulta, según tus accesos.':'Las ediciones cerradas se conservan en la sección Cerradas.'}</p>{screen!=='closed' && editionsForScreen(data.projects,'closed').length>0 && <button type="button" onClick={()=>selectScreen('closed')}>Ver ediciones cerradas</button>}{permissions['project.create'] && <button type="button" onClick={() => setScreen('settings')}>Ir a Configuración</button>}</div> : <section role="tabpanel" id="workspace-edition-panel" aria-labelledby={`workspace-edition-${projectId}`} tabIndex={0}>
           {isClosedEdition(project) ? <ClosedEdition key={`${project.id}-${notificationTarget?.id||notificationTarget?.reference_id||notificationTarget?.deliverable_id||notificationTarget?.support_id||notificationTarget?.delivery_id||''}`} unitId={unitId} inboxApi={previewMode?undefined:inboxApi} project={project} data={data} actorId={userId} permissions={permissions} imageApi={imageApi} workApi={workApi} initialTarget={notificationTarget} initialTaskId={notificationTarget?.deliverable_id} onSettings={()=>selectScreen('settings')}/> : <>
-          <EditionNavigation section={visibleSection} onSelect={selectSection} canAssign={canAssign} canReview={canReview} canWork={canWork} canTeam={canTeam} />
+          <EditionHero project={project} tasks={editionTasks} actorId={userId} />
+          <EditionNavigation section={visibleSection} onSelect={selectSection} canAssign={canAssign} canReview={canReview} canWork={canWork} canTeam={canTeam} counts={sectionCounts} />
           {visibleSection === 'work' && <PersonalWork key={`${project.id}-${userId}`} initialSupportId={selectedSupportId} initialDeliveryId={notificationTarget?.delivery_id} initialAnchorId={notificationTarget?.anchor_id} initialImageNoteId={notificationTarget?.image_note_id} initialImageVersionId={notificationTarget?.image_version_id} imageApi={imageApi} inboxApi={previewMode ? undefined : inboxApi} unitId={unitId} supportApi={supportApi} project={project} data={data} task={task} actorId={userId} command={command} api={workApi} previewMode={previewMode} busy={disabled} onPick={item => pick(item, 'work')} onDirtyChange={setHasDraft} onReference={() => selectSection('documents')} referenceApi={referenceApi} />}
           {visibleSection === 'team' && <TeamWorkspace project={project} data={data} actorId={userId} onOpenTask={item=>pick(item,taskIsMine(item,userId)?'work':data.taskPermissions?.[item.id]?.['task.assign']?'assignments':'reviews')} onOpenDocument={item=>navigate(()=>{if(item.document_kind){setSelectedSupportId(item.id);setSection('work');}else{setNotificationTarget({reference_id:item.id});setSection('documents');}})}/>}
           {visibleSection === 'assignments' && <AreaAssignments imageApi={imageApi} project={project} data={data} task={task} command={command} busy={disabled} onPick={item => pick(item, 'assignments')} onReview={item => pick(item, 'reviews')} referenceApi={referenceApi} />}
@@ -402,6 +441,11 @@ export default function Workspace({ previewMode = false }) {
       </>}
     </main>
     <SaveNotice message={notice} onDismiss={() => setNotice('')} />
+    {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} sections={['editions','closed'].includes(screen) && displayedProject && !isClosedEdition(project) ? sectionOrder : []} counts={sectionCounts} editions={data.projects.filter(item => !item.deleted_at)} currentEditionId={projectId} tasks={editionTasks} data={data} actorId={userId}
+      onSection={selectSection}
+      onEdition={item => { if (busy) return; navigate(() => { setScreen(isClosedEdition(item) ? 'closed' : 'editions'); if (item.id !== projectId) changeProject(item.id); }); }}
+      onTask={item => pick(item)}
+      onScreen={selectScreen} />}
     {pendingNavigation && <DraftExitDialog onStay={() => setPendingNavigation(null)} onDiscard={() => { const next = pendingNavigation; setPendingNavigation(null); setHasDraft(false); next(); }} />}
   </div></DocumentContext.Provider>;
 }

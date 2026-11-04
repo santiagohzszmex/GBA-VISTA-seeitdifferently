@@ -1,9 +1,9 @@
 {
-  "version": "1.7.1.4",
-  "nativeVersion": "1.7.104",
+  "version": "1.7.2",
+  "nativeVersion": "1.7.200",
   "codename": "Lapislázuli",
   "minimumNativeVersion": "0.1.401",
   "mandatory": false,
-  "noticeTitle": "Lapislázuli · Avisos en tu dispositivo",
-  "notice": "Marcado de lectura confirmado y avisos por dispositivo, incluso con Workspace cerrado. Actívalos desde la campana; en Mac, configura Safari para recibirlos también con el navegador cerrado."
+  "noticeTitle": "Lapislázuli · Interfaz renovada",
+  "notice": "Secciones con contadores y atajos (⌘1–⌘6), aviso directo de entregas atrasadas, fechas más claras y un calendario en forma de agenda. Tus permisos y tu trabajo no cambian."
 }
