@@ -13,7 +13,8 @@ const sha=v=>createHash('sha256').update(canonical(v),'utf8').digest('hex');
 
 export async function runUltramarAcceptance(db){
  let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++;};
- const bad=async(p,re)=>{await assert.rejects(p,re);checks++;};
+ // Un código (UM0xx/40001) se compara exacto con el `code` que verá Ultramar; una expresión, con el mensaje.
+ const bad=async(p,re)=>{await assert.rejects(p,typeof re==='string'?e=>{assert.equal(e.code,re,e.message);return true;}:re);checks++;};
  const scalar=async(q,p=[])=>Object.values((await db.query(q,p)).rows[0])[0];
  const uid=n=>`86000000-0000-4000-8000-${String(n).padStart(12,'0')}`,sid=n=>`87000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
  const admin=()=>db.exec('reset role');
@@ -30,6 +31,9 @@ export async function runUltramarAcceptance(db){
  const sample={z:1,a:[{b:'ñandú “x”',a:612},{c:595.276,d:null,e:true}],m:{y:'\u0007',x:''}};
  eq(await scalar('select workspace_private.ultramar_canonical($1::jsonb)',[JSON.stringify(sample)]),canonical(sample));
  eq(await scalar('select workspace_private.ultramar_sha($1::jsonb)',[JSON.stringify(sample)]),sha(sample));
+ // Vectores publicados para Ultramar (docs/workspace/ultramar-vectores.json): el servidor debe dar exactamente lo mismo.
+ const vectors=JSON.parse(fs.readFileSync(new URL('../docs/workspace/ultramar-vectores.json',import.meta.url),'utf8'));
+ for(const v of vectors.vectores){eq(await scalar('select workspace_private.ultramar_canonical($1::jsonb)',[JSON.stringify(v.entrada)]),v.canonico);eq(await scalar('select workspace_private.ultramar_sha($1::jsonb)',[JSON.stringify(v.entrada)]),v.sha256);eq(sha(v.entrada),v.sha256);}
 
  // Fixture: personas propias (41 Dirección, 44 sin acceso), edición abierta nueva y asignación de maquetación.
  const unit=await scalar("select id from public.workspace_units where slug='gimg'");
@@ -59,24 +63,24 @@ export async function runUltramarAcceptance(db){
  // Apagado por defecto: nadie prepara ni lee.
  await actor(41);
  const page={ancho:612,alto:792,sangrado:{arriba:9,derecha:9,abajo:9,izquierda:9},unidad:'pt',colorModel:'RGB'};
- await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:page},(await task()).revision]),/no está disponible/);
+ await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:page},(await task()).revision]),'UM001');
  await admin();await db.exec('update workspace_private.upload_policy set ultramar_enabled=true');
 
  // Preparar: sólo áreas de maquetación, página válida y revisión vigente.
  await actor(41);
- await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[textId,{pagina:page},1]),/integración y maquetación/);
- await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:{...page,unidad:'mm'}},(await task()).revision]),/puntos/);
- await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:{...page,sangrado:{arriba:-1,derecha:0,abajo:0,izquierda:0}}},(await task()).revision]),/sangrado/);
- await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:page},999]),/cambió/);
+ await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[textId,{pagina:page},1]),'UM006');
+ await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:{...page,unidad:'mm'}},(await task()).revision]),'UM009');
+ await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:{...page,sangrado:{arriba:-1,derecha:0,abajo:0,izquierda:0}}},(await task()).revision]),'UM009');
+ await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:page},999]),'40001');
  const snap=await scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:page},(await task()).revision]);
  eq([snap.version,snap.textos,snap.recursos],[1,1,1]);
  // Una persona sin acceso a la asignación no puede prepararla.
- current=44;await actor(44);await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:page},(await task()).revision]),/permiso|acceso|Sesión/i);current=41;
+ current=44;await actor(44);await bad(scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:page},(await task()).revision]),'UM005');current=41;
 
  // Puerta Sepia: sin licencia ni conexión de Ultramar no hay catálogo.
- await actor(41);await bad(scalar('select public.workspace_ultramar_assignments()'),/Conecta Ultramar/);
+ await actor(41);await bad(scalar('select public.workspace_ultramar_assignments()'),'UM003');
  await admin();await db.query("insert into sepia_private.connections(user_id,app,auth_session_id) values($1,'ultramar',$2)",[uid(41),sid(41)]);
- await actor(41);await bad(scalar('select public.workspace_ultramar_assignments()'),/licencia vigente/);
+ await actor(41);await bad(scalar('select public.workspace_ultramar_assignments()'),'UM004');
  await admin();await db.query("insert into sepia_private.licenses(user_id,starts_at,expires_at) values($1,now()-interval '1 day',now()+interval '30 days')",[uid(41)]);
  // Una conexión de Workspace o de otra sesión no abre el puente.
  await actor(41,sid(49));await bad(scalar('select public.workspace_ultramar_assignments()'),/Sesión|Conecta Ultramar/);
@@ -97,7 +101,7 @@ export async function runUltramarAcceptance(db){
  eq(JSON.stringify(snapshot).includes('object_key')||JSON.stringify(snapshot).includes('local/ultramar'),false);
  const descriptor=await scalar('select public.workspace_ultramar_original($1,$2,$3)',[layoutId,referencia.id,original]);
  eq(descriptor.ruta,'/originals/'+original);
- await bad(scalar('select public.workspace_ultramar_original($1,$2,$3)',[layoutId,referencia.id,reference]),/fuera de esta instantánea/);
+ await bad(scalar('select public.workspace_ultramar_original($1,$2,$3)',[layoutId,referencia.id,reference]),'UM011');
 
  // Instantáneas inmutables: preparar otra vez crea la versión 2 y conserva la 1.
  const snap2=await scalar('select public.workspace_ultramar_prepare($1,$2,$3)',[layoutId,{pagina:{...page,ancho:595.276,alto:841.89},instrucciones:'Usa la paleta.'},(await task()).revision]);
@@ -107,23 +111,23 @@ export async function runUltramarAcceptance(db){
  // Reserva idempotente y validación de archivos.
  const files=[{role:'ultramar',file_name:'portada.ultramar',size_bytes:4096,sha256:'b'.repeat(64)},{role:'pdf',file_name:'portada.pdf',size_bytes:2048,sha256:'c'.repeat(64)},{role:'preview',file_name:'portada.png',size_bytes:1024,sha256:'d'.repeat(64)}];
  const key='mac-local-0000000001';const rev=(await task()).revision;
- await bad(scalar('select public.workspace_ultramar_reserve($1,$2,$3,$4,$5)',[layoutId,referencia.id,rev,key,JSON.stringify(files.slice(0,2))]),/vista previa/);
- await bad(scalar('select public.workspace_ultramar_reserve($1,$2,$3,$4,$5)',[layoutId,referencia.id,rev,key,JSON.stringify([{...files[0],file_name:'portada.zip'},files[1],files[2]])]),/no permitido/);
- await bad(scalar('select public.workspace_ultramar_reserve($1,$2,$3,$4,$5)',[layoutId,referencia.id,rev+1,key,JSON.stringify(files)]),/cambió/);
+ await bad(scalar('select public.workspace_ultramar_reserve($1,$2,$3,$4,$5)',[layoutId,referencia.id,rev,key,JSON.stringify(files.slice(0,2))]),'UM014');
+ await bad(scalar('select public.workspace_ultramar_reserve($1,$2,$3,$4,$5)',[layoutId,referencia.id,rev,key,JSON.stringify([{...files[0],file_name:'portada.zip'},files[1],files[2]])]),'UM014');
+ await bad(scalar('select public.workspace_ultramar_reserve($1,$2,$3,$4,$5)',[layoutId,referencia.id,rev+1,key,JSON.stringify(files)]),'40001');
  const reservation=await scalar('select public.workspace_ultramar_reserve($1,$2,$3,$4,$5)',[layoutId,referencia.id,rev,key,JSON.stringify(files)]);
  const again=await scalar('select public.workspace_ultramar_reserve($1,$2,$3,$4,$5)',[layoutId,referencia.id,rev,key,JSON.stringify(files)]);
  eq(again.id,reservation.id);
- await bad(scalar('select public.workspace_ultramar_submit($1,$2)',[reservation.id,'Primera maqueta']),/Faltan archivos/);
+ await bad(scalar('select public.workspace_ultramar_submit($1,$2)',[reservation.id,'Primera maqueta']),'UM019');
  // Pasarela: sólo con la clave de la pasarela; la ruta del objeto la decide el servidor.
  await admin();await db.query("update workspace_private.original_limits set enabled=true,gateway_url=coalesce(gateway_url,'https://originals.local.invalid'),gateway_key_hash=encode(extensions.digest('ultramar-local-gateway','sha256'),'hex') where singleton");
  await actor(41);const gw='ultramar-local-gateway';
  await bad(scalar('select public.workspace_ultramar_upload_gate($1,$2,$3)',[reservation.id,'pdf','wrong-key']),/Almacenamiento privado/);
  const gate=await scalar('select public.workspace_ultramar_upload_gate($1,$2,$3)',[reservation.id,'pdf',gw]);
  eq([gate.object_key,gate.size_bytes,gate.sha256],[`ultramar/${reservation.id}/pdf`,2048,'c'.repeat(64)]);
- await bad(scalar('select public.workspace_ultramar_file_verified($1,$2,$3,$4)',[reservation.id,'ultramar',{ok:false,reason:'zip'},gw]),/validación/);
+ await bad(scalar('select public.workspace_ultramar_file_verified($1,$2,$3,$4)',[reservation.id,'ultramar',{ok:false,reason:'zip'},gw]),'UM018');
  current=44;await actor(44);await bad(scalar('select public.workspace_ultramar_upload_gate($1,$2,$3)',[reservation.id,'pdf',gw]),/acceso|Conecta|licencia|Sesión/i);current=41;await actor(41);
  for(const f of files)await scalar('select public.workspace_ultramar_file_verified($1,$2,$3,$4)',[reservation.id,f.role,{ok:true,checks:['firma']},gw]);
- await bad(scalar('select public.workspace_ultramar_upload_gate($1,$2,$3)',[reservation.id,'pdf',gw]),/ya se recibió/);
+ await bad(scalar('select public.workspace_ultramar_upload_gate($1,$2,$3)',[reservation.id,'pdf',gw]),'UM017');
 
  // Confirmar crea una sola versión en revisión de área; repetir no duplica.
  await actor(41);
@@ -135,7 +139,7 @@ export async function runUltramarAcceptance(db){
  const filesView=await scalar('select public.workspace_ultramar_version_files($1)',[submitted.version_id]);
  eq(filesView.archivos.map(f=>f.rol),['pdf','preview','ultramar']);
  // Con la asignación en revisión ya no se envía otra versión ni se prepara una nueva instantánea.
- await bad(scalar('select public.workspace_ultramar_reserve($1,$2,$3,$4,$5)',[layoutId,referencia.id,after.revision,'mac-local-0000000002',JSON.stringify(files)]),/revisión o cerrada/);
+ await bad(scalar('select public.workspace_ultramar_reserve($1,$2,$3,$4,$5)',[layoutId,referencia.id,after.revision,'mac-local-0000000002',JSON.stringify(files)]),'UM007');
 
  // Resumen para la interfaz: última instantánea y archivos de la versión; nada para quien no lee la edición.
  const bundle=await scalar('select public.workspace_ultramar_bundle($1)',[projectId]);
@@ -146,11 +150,11 @@ export async function runUltramarAcceptance(db){
  // Descarga para revisión: quien puede leer la asignación, por la pasarela; nadie más.
  const access=await scalar('select public.workspace_ultramar_file_access($1,$2,$3)',[submitted.version_id,'pdf','ultramar-local-gateway']);
  eq([access.object_key,access.mime_type],[`ultramar/${reservation.id}/pdf`,'application/pdf']);
- current=44;await actor(44);await bad(scalar('select public.workspace_ultramar_file_access($1,$2,$3)',[submitted.version_id,'pdf','ultramar-local-gateway']),/permiso|acceso|Sesión/i);current=41;await actor(41);
+ current=44;await actor(44);await bad(scalar('select public.workspace_ultramar_file_access($1,$2,$3)',[submitted.version_id,'pdf','ultramar-local-gateway']),'UM020');current=41;await actor(41);
 
  // Revocar la conexión de Ultramar corta el puente aunque la sesión siga activa.
  await admin();await db.query("update sepia_private.connections set revoked_at=now() where user_id=$1 and app='ultramar'",[uid(41)]);
- await actor(41);await bad(scalar('select public.workspace_ultramar_snapshot($1,null)',[layoutId]),/Conecta Ultramar/);
+ await actor(41);await bad(scalar('select public.workspace_ultramar_snapshot($1,null)',[layoutId]),'UM003');
 
  // Privilegios mínimos y matriz de permisos sin cambios.
  await admin();

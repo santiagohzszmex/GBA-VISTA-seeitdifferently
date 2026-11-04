@@ -1,0 +1,192 @@
+{
+  "contrato": "gba.workspace.ultramar/1",
+  "convencion": "JSON con claves ordenadas (orden de Object.keys().sort()), compacto, UTF-8; SHA-256 en hexadecimal minúsculo",
+  "vectores": [
+    {
+      "nombre": "generico",
+      "descripcion": "Unicode, control, números enteros y decimales, null, booleanos y anidación",
+      "entrada": {
+        "z": 1,
+        "a": [
+          {
+            "b": "ñandú “x”",
+            "a": 612
+          },
+          {
+            "c": 595.276,
+            "d": null,
+            "e": true
+          }
+        ],
+        "m": {
+          "y": "\u0007",
+          "x": ""
+        }
+      },
+      "canonico": "{\"a\":[{\"a\":612,\"b\":\"ñandú “x”\"},{\"c\":595.276,\"d\":null,\"e\":true}],\"m\":{\"x\":\"\",\"y\":\"\\u0007\"},\"z\":1}",
+      "sha256": "861d5bf66da9603125bb742112745f52bfeda21c18a70b36e361cdb75661691d"
+    },
+    {
+      "nombre": "texto",
+      "descripcion": "{titulo, bloques} de un texto en forma de cable (nodos del editor web)",
+      "entrada": {
+        "titulo": "Texto de apertura",
+        "bloques": [
+          {
+            "type": "heading",
+            "attrs": {
+              "level": 2
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Día de Muertos"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Érase una vez en "
+              },
+              {
+                "type": "text",
+                "text": "Oaxaca",
+                "marks": [
+                  {
+                    "type": "bold"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": ". "
+              },
+              {
+                "type": "mention",
+                "attrs": {
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "label": "Ana"
+                }
+              },
+              {
+                "type": "hardBreak"
+              },
+              {
+                "type": "text",
+                "text": "Fin “x”."
+              }
+            ]
+          }
+        ]
+      },
+      "canonico": "{\"bloques\":[{\"attrs\":{\"level\":2},\"content\":[{\"text\":\"Día de Muertos\",\"type\":\"text\"}],\"type\":\"heading\"},{\"content\":[{\"text\":\"Érase una vez en \",\"type\":\"text\"},{\"marks\":[{\"type\":\"bold\"}],\"text\":\"Oaxaca\",\"type\":\"text\"},{\"text\":\". \",\"type\":\"text\"},{\"attrs\":{\"id\":\"00000000-0000-4000-8000-000000000001\",\"label\":\"Ana\"},\"type\":\"mention\"},{\"type\":\"hardBreak\"},{\"text\":\"Fin “x”.\",\"type\":\"text\"}],\"type\":\"paragraph\"}],\"titulo\":\"Texto de apertura\"}",
+      "sha256": "82fdd9f078a30d8a690095e42fe43a2876ee04bc48071d909b8c13577cb89b05"
+    },
+    {
+      "nombre": "instantanea",
+      "descripcion": "Instantánea completa sin referencia",
+      "entrada": {
+        "edicion": {
+          "id": "00000000-0000-4000-8000-0000000000e1",
+          "titulo": "Halloween"
+        },
+        "asignacion": {
+          "id": "00000000-0000-4000-8000-0000000000a1",
+          "titulo": "Maquetar portada"
+        },
+        "instrucciones": "Usa la paleta.",
+        "especificaciones": {
+          "unidad": "pt",
+          "colorModel": "RGB",
+          "ancho": 595.276,
+          "alto": 841.89,
+          "sangrado": {
+            "arriba": 9,
+            "derecha": 9,
+            "abajo": 9,
+            "izquierda": 9
+          }
+        },
+        "textos": [
+          {
+            "referencia": {
+              "id": "00000000-0000-4000-8000-0000000000d1",
+              "version": "1",
+              "revision": "1",
+              "sha256": "82fdd9f078a30d8a690095e42fe43a2876ee04bc48071d909b8c13577cb89b05"
+            },
+            "titulo": "Texto de apertura",
+            "bloques": [
+              {
+                "type": "heading",
+                "attrs": {
+                  "level": 2
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Día de Muertos"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Érase una vez en "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Oaxaca",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": ". "
+                  },
+                  {
+                    "type": "mention",
+                    "attrs": {
+                      "id": "00000000-0000-4000-8000-000000000001",
+                      "label": "Ana"
+                    }
+                  },
+                  {
+                    "type": "hardBreak"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Fin “x”."
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "recursos": [
+          {
+            "referencia": {
+              "id": "00000000-0000-4000-8000-0000000000f1",
+              "version": "1",
+              "revision": "1",
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "nombre": "portada.png",
+            "mime": "image/png",
+            "tamano": 70
+          }
+        ]
+      },
+      "canonico": "{\"asignacion\":{\"id\":\"00000000-0000-4000-8000-0000000000a1\",\"titulo\":\"Maquetar portada\"},\"edicion\":{\"id\":\"00000000-0000-4000-8000-0000000000e1\",\"titulo\":\"Halloween\"},\"especificaciones\":{\"alto\":841.89,\"ancho\":595.276,\"colorModel\":\"RGB\",\"sangrado\":{\"abajo\":9,\"arriba\":9,\"derecha\":9,\"izquierda\":9},\"unidad\":\"pt\"},\"instrucciones\":\"Usa la paleta.\",\"recursos\":[{\"mime\":\"image/png\",\"nombre\":\"portada.png\",\"referencia\":{\"id\":\"00000000-0000-4000-8000-0000000000f1\",\"revision\":\"1\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1\"},\"tamano\":70}],\"textos\":[{\"bloques\":[{\"attrs\":{\"level\":2},\"content\":[{\"text\":\"Día de Muertos\",\"type\":\"text\"}],\"type\":\"heading\"},{\"content\":[{\"text\":\"Érase una vez en \",\"type\":\"text\"},{\"marks\":[{\"type\":\"bold\"}],\"text\":\"Oaxaca\",\"type\":\"text\"},{\"text\":\". \",\"type\":\"text\"},{\"attrs\":{\"id\":\"00000000-0000-4000-8000-000000000001\",\"label\":\"Ana\"},\"type\":\"mention\"},{\"type\":\"hardBreak\"},{\"text\":\"Fin “x”.\",\"type\":\"text\"}],\"type\":\"paragraph\"}],\"referencia\":{\"id\":\"00000000-0000-4000-8000-0000000000d1\",\"revision\":\"1\",\"sha256\":\"82fdd9f078a30d8a690095e42fe43a2876ee04bc48071d909b8c13577cb89b05\",\"version\":\"1\"},\"titulo\":\"Texto de apertura\"}]}",
+      "sha256": "4a500cc46bf1359bd4805b4e210ac2e1206c7cfd2c507c90d7bae8aca6cde6ae"
+    }
+  ]
+}

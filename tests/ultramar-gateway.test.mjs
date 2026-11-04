@@ -71,6 +71,7 @@ const files={ultramar:base(),pdf,preview:png(800,600)};
 const calls=[];
 const fetcher=async(url,init)=>{const name=url.split('/rpc/')[1],args=JSON.parse(init.body);calls.push({name,args,auth:init.headers.Authorization});
  if(args.p_gateway_key!=='gw-secret')return new Response(JSON.stringify({message:'Almacenamiento privado no disponible'}),{status:403});
+ if(args.p_reservation_id==='99999999-2222-4333-8444-555555555555')return new Response(JSON.stringify({message:'Envío fuera de tu acceso',code:'UM016'}),{status:400});
  if(name==='workspace_ultramar_upload_gate'){const b=files[args.p_role];return Response.json({object_key:`ultramar/${args.p_reservation_id}/${args.p_role}`,size_bytes:b.length,sha256:sha(b),file_name:'x'});}
  if(name==='workspace_ultramar_file_verified')return Response.json({rol:args.p_role,verificado:true});
  if(name==='workspace_ultramar_file_access'){const b=files[args.p_role];return Response.json({object_key:`ultramar/${reservation}/${args.p_role}`,size_bytes:b.length,sha256:sha(b),file_name:'portada.pdf',mime_type:'application/pdf'});}
@@ -79,9 +80,9 @@ const r2=fakeR2(),env={ORIGINALS:r2,GATEWAY_KEY:'gw-secret',SUPABASE_URL:'https:
 const gateway=createUltramarGateway({fetcher,logger:{error(){}},fixedLength:()=>new TransformStream()});
 const send=(role,bytes,{hash=sha(bytes),size=bytes.length,auth='Bearer jwt'}={})=>gateway.fetch(new Request(`https://g.local/ultramar/uploads/${reservation}/${role}`,{method:'POST',headers:{Authorization:auth,'X-File-Size':String(size),'X-File-Sha256':hash},body:bytes,duplex:'half'}),env,{});
 
-eq((await send('pdf',pdf,{auth:''})).status,401);
-eq((await send('pdf',pdf,{hash:'f'.repeat(64)})).status,409);
-eq((await send('pdf',pdf,{size:pdf.length+1})).status,413);
+{const r=await send('pdf',pdf,{auth:''});eq([r.status,(await r.json()).code],[401,'UM030']);}
+{const r=await send('pdf',pdf,{hash:'f'.repeat(64)});eq([r.status,(await r.json()).code],[409,'UM032']);}
+{const r=await send('pdf',pdf,{size:pdf.length+1});eq([r.status,(await r.json()).code],[413,'UM031']);}
 const accepted=await send('ultramar',files.ultramar);eq(accepted.status,201);
 eq((await accepted.json()).validacion.embedded,1);
 const verified=calls.filter(c=>c.name==='workspace_ultramar_file_verified');
@@ -92,7 +93,7 @@ eq((await send('ultramar',files.ultramar)).status,201);
 // Un archivo inválido se borra y no se marca verificado.
 files.pdf=new Uint8Array(Buffer.from('<html>'+'x'.repeat(100)));
 const before=calls.filter(c=>c.name==='workspace_ultramar_file_verified').length;
-const refused=await send('pdf',files.pdf);eq(refused.status,422);
+const refused=await send('pdf',files.pdf);eq([refused.status,(await refused.json()).code],[422,'UM033']);
 eq([r2.store.has(`ultramar/${reservation}/pdf`),calls.filter(c=>c.name==='workspace_ultramar_file_verified').length],[false,before]);
 files.pdf=pdf;eq((await send('pdf',pdf)).status,201);
 // Descarga para revisión con integridad verificada.
@@ -101,5 +102,6 @@ eq([got.status,got.headers.get('content-type'),new Uint8Array(await got.arrayBuf
 r2.store.get(`ultramar/${reservation}/pdf`).sha='0'.repeat(64);
 eq((await gateway.fetch(new Request(`https://g.local/ultramar/files/${version}/pdf`,{headers:{Authorization:'Bearer reviewer'}}),env,{})).status,502);
 // Sin clave de pasarela correcta, nada pasa.
-eq((await gateway.fetch(new Request(`https://g.local/ultramar/uploads/${reservation}/pdf`,{method:'POST',headers:{Authorization:'Bearer jwt','X-File-Size':String(pdf.length),'X-File-Sha256':sha(pdf)},body:pdf,duplex:'half'}),{...env,GATEWAY_KEY:'otra'},{})).status,403);
+{const r=await gateway.fetch(new Request(`https://g.local/ultramar/uploads/${reservation}/pdf`,{method:'POST',headers:{Authorization:'Bearer jwt','X-File-Size':String(pdf.length),'X-File-Sha256':sha(pdf)},body:pdf,duplex:'half'}),{...env,GATEWAY_KEY:'otra'},{});eq([r.status,(await r.json()).code],[403,'UM035']);}
+{const r=await gateway.fetch(new Request('https://g.local/ultramar/uploads/99999999-2222-4333-8444-555555555555/pdf',{method:'POST',headers:{Authorization:'Bearer jwt','X-File-Size':'1','X-File-Sha256':'a'.repeat(64)},body:new Uint8Array(1),duplex:'half'}),env,{});eq([r.status,(await r.json()).code],[400,'UM016']);}
 console.log(`PASS: ${checks} Ultramar gateway checks: V1 container rules, path/encryption/ZIP64/bomb/entry limits, unknown entries kept, PDF and PNG structure, hash/size binding, retry, invalid deletion and verified downloads.`);

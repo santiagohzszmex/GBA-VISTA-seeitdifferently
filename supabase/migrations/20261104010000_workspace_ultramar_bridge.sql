@@ -80,13 +80,13 @@ create function workspace_private.ultramar_gate() returns void
 language plpgsql stable security definer set search_path=pg_catalog,pg_temp as $$
 declare sid uuid;
 begin
- if not coalesce((select ultramar_enabled from workspace_private.upload_policy limit 1),false) then raise exception 'La conexión con Ultramar no está disponible todavía' using errcode='42501';end if;
- if not workspace_private.session_active() then raise exception 'Sesión no válida. Vuelve a iniciar sesión' using errcode='42501';end if;
+ if not coalesce((select ultramar_enabled from workspace_private.upload_policy limit 1),false) then raise exception 'La conexión con Ultramar no está disponible todavía' using errcode='UM001';end if;
+ if not workspace_private.session_active() then raise exception 'Sesión no válida. Vuelve a iniciar sesión' using errcode='UM002';end if;
  begin sid:=(auth.jwt()->>'session_id')::uuid;exception when others then sid:=null;end;
  if sid is null or not exists(select 1 from sepia_private.connections c where c.user_id=auth.uid() and c.app='ultramar' and c.auth_session_id=sid and c.revoked_at is null and c.expires_at>now()) then
-  raise exception 'Conecta Ultramar con tu GBA ID para continuar' using errcode='42501';end if;
+  raise exception 'Conecta Ultramar con tu GBA ID para continuar' using errcode='UM003';end if;
  if not exists(select 1 from sepia_private.licenses l where l.user_id=auth.uid() and l.revoked_at is null and l.starts_at<=now() and l.expires_at>now()) then
-  raise exception 'Necesitas una licencia vigente de Sepia ’01 para usar Ultramar con Workspace' using errcode='42501';end if;
+  raise exception 'Necesitas una licencia vigente de Sepia ’01 para usar Ultramar con Workspace' using errcode='UM004';end if;
 end;$$;
 
 -- Configuración pública del puente para Ultramar (sin secretos): pasarela y límites por archivo.
@@ -108,10 +108,12 @@ declare t public.workspace_deliverables;
 begin
  if p_for_update then select * into t from public.workspace_deliverables where id=p_deliverable_id for update;
  else select * into t from public.workspace_deliverables where id=p_deliverable_id;end if;
- if t.id is null or not exists(select 1 from public.workspace_areas a where a.id=t.area_id and a.specialty='integration') then raise exception 'Asignación fuera de tu acceso' using errcode='42501';end if;
- if not (t.responsible_id=auth.uid() or auth.uid()=any(t.collaborator_ids)) then raise exception 'Asignación fuera de tu acceso' using errcode='42501';end if;
- perform workspace_private.require('content.edit_assigned',t.unit_id,t.project_id,t.area_id,t.id);
- perform workspace_private.require_open_project(t.project_id);
+ if t.id is null or not exists(select 1 from public.workspace_areas a where a.id=t.area_id and a.specialty='integration') then raise exception 'Asignación fuera de tu acceso' using errcode='UM005';end if;
+ if not (t.responsible_id=auth.uid() or auth.uid()=any(t.collaborator_ids)) then raise exception 'Asignación fuera de tu acceso' using errcode='UM005';end if;
+ begin perform workspace_private.require('content.edit_assigned',t.unit_id,t.project_id,t.area_id,t.id);
+ exception when others then raise exception 'Asignación fuera de tu acceso' using errcode='UM005';end;
+ begin perform workspace_private.require_open_project(t.project_id);
+ exception when others then raise exception 'La edición está cerrada' using errcode='UM008';end;
  return t;
 end;$$;
 
@@ -122,19 +124,21 @@ language plpgsql security definer set search_path=pg_catalog,pg_temp as $$
 declare t public.workspace_deliverables;p jsonb:=coalesce(p_data->'pagina','{}'::jsonb);w float8;h float8;b jsonb;
  v integer;payload jsonb;textos jsonb;recursos jsonb;snap_id uuid:=gen_random_uuid();sha text;
 begin
- if not coalesce((select ultramar_enabled from workspace_private.upload_policy limit 1),false) then raise exception 'La conexión con Ultramar no está disponible todavía' using errcode='42501';end if;
- if not workspace_private.session_active() then raise exception 'Sesión no válida. Vuelve a iniciar sesión' using errcode='42501';end if;
+ if not coalesce((select ultramar_enabled from workspace_private.upload_policy limit 1),false) then raise exception 'La conexión con Ultramar no está disponible todavía' using errcode='UM001';end if;
+ if not workspace_private.session_active() then raise exception 'Sesión no válida. Vuelve a iniciar sesión' using errcode='UM002';end if;
  select * into t from public.workspace_deliverables where id=p_deliverable_id for update;
- if t.id is null then raise exception 'Asignación fuera de tu acceso' using errcode='42501';end if;
- perform workspace_private.require('task.assign',t.unit_id,t.project_id,t.area_id,t.id);
- perform workspace_private.require_open_project(t.project_id);
- if not exists(select 1 from public.workspace_areas a where a.id=t.area_id and a.specialty='integration') then raise exception 'Sólo las asignaciones de integración y maquetación se abren en Ultramar';end if;
- if t.state not in('pending','assigned','in_progress','changes_requested') then raise exception 'La asignación está en revisión o cerrada';end if;
+ if t.id is null then raise exception 'Asignación fuera de tu acceso' using errcode='UM005';end if;
+ begin perform workspace_private.require('task.assign',t.unit_id,t.project_id,t.area_id,t.id);
+ exception when others then raise exception 'Asignación fuera de tu acceso' using errcode='UM005';end;
+ begin perform workspace_private.require_open_project(t.project_id);
+ exception when others then raise exception 'La edición está cerrada' using errcode='UM008';end;
+ if not exists(select 1 from public.workspace_areas a where a.id=t.area_id and a.specialty='integration') then raise exception 'Sólo las asignaciones de integración y maquetación se abren en Ultramar' using errcode='UM006';end if;
+ if t.state not in('pending','assigned','in_progress','changes_requested') then raise exception 'La asignación está en revisión o cerrada' using errcode='UM007';end if;
  if p_revision is distinct from t.revision then raise exception 'La asignación cambió; actualiza la vista' using errcode='40001';end if;
- begin w:=(p->>'ancho')::float8;h:=(p->>'alto')::float8;exception when others then raise exception 'Revisa el tamaño de página';end;
+ begin w:=(p->>'ancho')::float8;h:=(p->>'alto')::float8;exception when others then raise exception 'Revisa el tamaño de página' using errcode='UM009';end;
  b:=coalesce(p->'sangrado',jsonb_build_object('arriba',0,'derecha',0,'abajo',0,'izquierda',0));
- if w is null or h is null or w<=0 or h<=0 or w>14400 or h>14400 or coalesce(p->>'unidad','pt')<>'pt' or coalesce(p->>'colorModel','RGB')<>'RGB' then raise exception 'Revisa el tamaño de página (puntos, RGB)';end if;
- if jsonb_typeof(b)<>'object' or exists(select 1 from (values('arriba'),('derecha'),('abajo'),('izquierda')) s(k) where (b->>s.k) is null or (b->>s.k)::float8<0 or (b->>s.k)::float8>720) then raise exception 'Revisa el sangrado';end if;
+ if w is null or h is null or w<=0 or h<=0 or w>14400 or h>14400 or coalesce(p->>'unidad','pt')<>'pt' or coalesce(p->>'colorModel','RGB')<>'RGB' then raise exception 'Revisa el tamaño de página (puntos, RGB)' using errcode='UM009';end if;
+ if jsonb_typeof(b)<>'object' or exists(select 1 from (values('arriba'),('derecha'),('abajo'),('izquierda')) s(k) where (b->>s.k) is null or (b->>s.k)::float8<0 or (b->>s.k)::float8>720) then raise exception 'Revisa el sangrado' using errcode='UM009';end if;
  -- Textos: documentos aceptados ligados como materiales (instantánea ya guardada por task_references).
  -- Un documento antiguo sin estructura se entrega como párrafos de su texto, sin interpretar Markdown.
  select coalesce(jsonb_agg(jsonb_build_object(
@@ -196,7 +200,7 @@ begin
  t:=workspace_private.ultramar_task(p_deliverable_id);
  if p_snapshot_id is null then select * into s from workspace_private.ultramar_snapshots where deliverable_id=t.id order by version desc limit 1;
  else select * into s from workspace_private.ultramar_snapshots where id=p_snapshot_id and deliverable_id=t.id;end if;
- if s.id is null then raise exception 'Esta asignación todavía no está preparada para Ultramar';end if;
+ if s.id is null then raise exception 'Esta asignación todavía no está preparada para Ultramar' using errcode='UM010';end if;
  return s.payload||jsonb_build_object('referencia',jsonb_build_object('id',s.id::text,'version',s.version::text,'revision',s.task_revision::text,'sha256',s.sha256));
 end;$$;
 
@@ -209,9 +213,9 @@ begin
  perform workspace_private.ultramar_gate();
  t:=workspace_private.ultramar_task(p_deliverable_id);
  select * into s from workspace_private.ultramar_snapshots where id=p_snapshot_id and deliverable_id=t.id;
- if s.id is null or not exists(select 1 from jsonb_array_elements(s.payload->'recursos') r where r->'referencia'->>'id'=p_resource_id::text) then raise exception 'Recurso fuera de esta instantánea' using errcode='42501';end if;
+ if s.id is null or not exists(select 1 from jsonb_array_elements(s.payload->'recursos') r where r->'referencia'->>'id'=p_resource_id::text) then raise exception 'Recurso fuera de esta instantánea' using errcode='UM011';end if;
  select * into o from workspace_private.reference_originals where id=p_resource_id and status='ready';
- if o.id is null then raise exception 'El original ya no está disponible';end if;
+ if o.id is null then raise exception 'El original ya no está disponible' using errcode='UM012';end if;
  return jsonb_build_object('id',o.id,'sha256',o.sha256,'bytes',o.size_bytes,'mime',o.mime_type,'ruta','/originals/'||o.id::text,'expira',now()+interval '5 minutes');
 end;$$;
 
@@ -223,25 +227,26 @@ begin
  perform workspace_private.ultramar_gate();
  select * into r from workspace_private.ultramar_reservations where author_id=auth.uid() and idempotency_key=p_idempotency_key;
  if r.id is not null then
-  if r.deliverable_id<>p_deliverable_id or r.snapshot_id<>p_snapshot_id then raise exception 'Esa clave de envío pertenece a otra asignación';end if;
+  if r.deliverable_id<>p_deliverable_id or r.snapshot_id<>p_snapshot_id then raise exception 'Esa clave de envío pertenece a otra asignación' using errcode='UM013';end if;
   return jsonb_build_object('id',r.id,'estado',r.state,'version_id',r.version_id,'archivos',(select jsonb_agg(jsonb_build_object('rol',role,'verificado',verified_at is not null) order by role) from workspace_private.ultramar_files where reservation_id=r.id));
  end if;
  t:=workspace_private.ultramar_task(p_deliverable_id,true);
- perform workspace_private.require('content.request_review',t.unit_id,t.project_id,t.area_id,t.id);
- if t.state not in('pending','assigned','in_progress','changes_requested') then raise exception 'La asignación está en revisión o cerrada';end if;
+ begin perform workspace_private.require('content.request_review',t.unit_id,t.project_id,t.area_id,t.id);
+ exception when others then raise exception 'Asignación fuera de tu acceso' using errcode='UM005';end;
+ if t.state not in('pending','assigned','in_progress','changes_requested') then raise exception 'La asignación está en revisión o cerrada' using errcode='UM007';end if;
  if p_base_revision is distinct from t.revision then raise exception 'La asignación cambió en Workspace; actualiza antes de enviar' using errcode='40001';end if;
- if not exists(select 1 from workspace_private.ultramar_snapshots where id=p_snapshot_id and deliverable_id=t.id) then raise exception 'Instantánea fuera de esta asignación' using errcode='42501';end if;
- if p_idempotency_key !~ '^[A-Za-z0-9._-]{16,80}$' then raise exception 'Clave de envío inválida';end if;
- if jsonb_typeof(p_files)<>'array' or jsonb_array_length(p_files)<>3 then raise exception 'Envía el archivo .ultramar, el PDF y la vista previa';end if;
+ if not exists(select 1 from workspace_private.ultramar_snapshots where id=p_snapshot_id and deliverable_id=t.id) then raise exception 'Instantánea fuera de esta asignación' using errcode='UM010';end if;
+ if p_idempotency_key !~ '^[A-Za-z0-9._-]{16,80}$' then raise exception 'Clave de envío inválida' using errcode='UM013';end if;
+ if jsonb_typeof(p_files)<>'array' or jsonb_array_length(p_files)<>3 then raise exception 'Envía el archivo .ultramar, el PDF y la vista previa' using errcode='UM014';end if;
  select array_agg(x->>'role' order by x->>'role') into roles from jsonb_array_elements(p_files) x;
- if roles is distinct from array['pdf','preview','ultramar'] then raise exception 'Envía el archivo .ultramar, el PDF y la vista previa';end if;
+ if roles is distinct from array['pdf','preview','ultramar'] then raise exception 'Envía el archivo .ultramar, el PDF y la vista previa' using errcode='UM014';end if;
  select * into pol from workspace_private.upload_policy limit 1;
  insert into workspace_private.ultramar_reservations(deliverable_id,snapshot_id,author_id,idempotency_key,base_revision)
  values(t.id,p_snapshot_id,auth.uid(),p_idempotency_key,t.revision) returning * into r;
  for f in select * from jsonb_array_elements(p_files) loop
   limit_bytes:=case f->>'role' when 'ultramar' then pol.ultramar_package_max_bytes when 'pdf' then pol.ultramar_pdf_max_bytes else pol.ultramar_preview_max_bytes end;
-  if (f->>'size_bytes')::bigint>limit_bytes then raise exception 'El archivo % supera el límite permitido',f->>'role';end if;
-  if (f->>'role'='ultramar' and lower(f->>'file_name') !~ '\.ultramar$') or (f->>'role'='pdf' and lower(f->>'file_name') !~ '\.pdf$') or (f->>'role'='preview' and lower(f->>'file_name') !~ '\.png$') then raise exception 'Tipo de archivo no permitido para %',f->>'role';end if;
+  if (f->>'size_bytes')::bigint>limit_bytes then raise exception 'El archivo % supera el límite permitido',f->>'role' using errcode='UM015';end if;
+  if (f->>'role'='ultramar' and lower(f->>'file_name') !~ '\.ultramar$') or (f->>'role'='pdf' and lower(f->>'file_name') !~ '\.pdf$') or (f->>'role'='preview' and lower(f->>'file_name') !~ '\.png$') then raise exception 'Tipo de archivo no permitido para %',f->>'role' using errcode='UM014';end if;
   insert into workspace_private.ultramar_files(reservation_id,role,file_name,size_bytes,sha256) values(r.id,f->>'role',f->>'file_name',(f->>'size_bytes')::bigint,lower(f->>'sha256'));
  end loop;
  return jsonb_build_object('id',r.id,'estado',r.state,'expira',r.expires_at,'archivos',(select jsonb_agg(jsonb_build_object('rol',role,'bytes',size_bytes,'verificado',false) order by role) from workspace_private.ultramar_files where reservation_id=r.id));
@@ -256,11 +261,11 @@ begin
  perform workspace_private.ultramar_gate();
  perform workspace_private.original_gateway(p_gateway_key);
  select * into r from workspace_private.ultramar_reservations where id=p_reservation_id and author_id=auth.uid();
- if r.id is null or r.state<>'reserved' or r.expires_at<=now() then raise exception 'Envío fuera de tu acceso o vencido' using errcode='42501';end if;
+ if r.id is null or r.state<>'reserved' or r.expires_at<=now() then raise exception 'Envío fuera de tu acceso o vencido' using errcode='UM016';end if;
  perform workspace_private.ultramar_task(r.deliverable_id);
  select * into f from workspace_private.ultramar_files where reservation_id=r.id and role=p_role;
- if f.reservation_id is null then raise exception 'Archivo no reservado';end if;
- if f.verified_at is not null then raise exception 'Este archivo ya se recibió';end if;
+ if f.reservation_id is null then raise exception 'Archivo no reservado' using errcode='UM017';end if;
+ if f.verified_at is not null then raise exception 'Este archivo ya se recibió' using errcode='UM017';end if;
  return jsonb_build_object('object_key','ultramar/'||r.id::text||'/'||f.role,'role',f.role,'size_bytes',f.size_bytes,'sha256',f.sha256,'file_name',f.file_name);
 end;$$;
 
@@ -271,10 +276,10 @@ begin
  perform workspace_private.ultramar_gate();
  perform workspace_private.original_gateway(p_gateway_key);
  select * into r from workspace_private.ultramar_reservations where id=p_reservation_id and author_id=auth.uid();
- if r.id is null or r.state<>'reserved' then raise exception 'Envío fuera de tu acceso' using errcode='42501';end if;
+ if r.id is null or r.state<>'reserved' then raise exception 'Envío fuera de tu acceso' using errcode='UM016';end if;
  select * into f from workspace_private.ultramar_files where reservation_id=r.id and role=p_role for update;
- if f.reservation_id is null then raise exception 'Archivo no reservado';end if;
- if coalesce(p_validation->>'ok','false')<>'true' then raise exception 'El archivo no pasó la validación';end if;
+ if f.reservation_id is null then raise exception 'Archivo no reservado' using errcode='UM017';end if;
+ if coalesce(p_validation->>'ok','false')<>'true' then raise exception 'El archivo no pasó la validación' using errcode='UM018';end if;
  update workspace_private.ultramar_files set object_key='ultramar/'||r.id::text||'/'||f.role,verified_at=now(),validation=p_validation-'ok'
  where reservation_id=r.id and role=p_role;
  return jsonb_build_object('rol',p_role,'verificado',true);
@@ -287,11 +292,12 @@ declare uv workspace_private.ultramar_versions;t public.workspace_deliverables;f
 begin
  perform workspace_private.original_gateway(p_gateway_key);
  select * into uv from workspace_private.ultramar_versions where version_id=p_version_id;
- if uv.version_id is null then raise exception 'Archivo fuera de tu acceso' using errcode='42501';end if;
+ if uv.version_id is null then raise exception 'Archivo fuera de tu acceso' using errcode='UM020';end if;
  select d.* into t from public.workspace_deliverables d join public.workspace_versions v on v.deliverable_id=d.id where v.id=p_version_id;
- perform workspace_private.require('task.read',t.unit_id,t.project_id,t.area_id,t.id);
+ begin perform workspace_private.require('task.read',t.unit_id,t.project_id,t.area_id,t.id);
+ exception when others then raise exception 'Archivo fuera de tu acceso' using errcode='UM020';end;
  select * into f from workspace_private.ultramar_files where reservation_id=uv.reservation_id and role=p_role and verified_at is not null;
- if f.reservation_id is null then raise exception 'Archivo fuera de tu acceso' using errcode='42501';end if;
+ if f.reservation_id is null then raise exception 'Archivo fuera de tu acceso' using errcode='UM020';end if;
  return jsonb_build_object('object_key',f.object_key,'size_bytes',f.size_bytes,'sha256',f.sha256,'file_name',f.file_name,
   'mime_type',case f.role when 'pdf' then 'application/pdf' when 'preview' then 'image/png' else 'application/zip' end);
 end;$$;
@@ -303,13 +309,14 @@ declare r workspace_private.ultramar_reservations;t public.workspace_deliverable
 begin
  perform workspace_private.ultramar_gate();
  select * into r from workspace_private.ultramar_reservations where id=p_reservation_id and author_id=auth.uid() for update;
- if r.id is null then raise exception 'Envío fuera de tu acceso' using errcode='42501';end if;
+ if r.id is null then raise exception 'Envío fuera de tu acceso' using errcode='UM016';end if;
  if r.state='submitted' then return jsonb_build_object('estado','submitted','version_id',r.version_id,'repetido',true);end if;
- if r.state<>'reserved' or r.expires_at<=now() then raise exception 'La reserva venció; vuelve a enviar';end if;
+ if r.state<>'reserved' or r.expires_at<=now() then raise exception 'La reserva venció; vuelve a enviar' using errcode='UM016';end if;
  t:=workspace_private.ultramar_task(r.deliverable_id,true);
- perform workspace_private.require('content.request_review',t.unit_id,t.project_id,t.area_id,t.id);
+ begin perform workspace_private.require('content.request_review',t.unit_id,t.project_id,t.area_id,t.id);
+ exception when others then raise exception 'Asignación fuera de tu acceso' using errcode='UM005';end;
  if t.revision is distinct from r.base_revision then raise exception 'La asignación cambió en Workspace; actualiza antes de enviar' using errcode='40001';end if;
- if (select count(*) from workspace_private.ultramar_files where reservation_id=r.id and verified_at is not null)<>3 then raise exception 'Faltan archivos por subir o validar';end if;
+ if (select count(*) from workspace_private.ultramar_files where reservation_id=r.id and verified_at is not null)<>3 then raise exception 'Faltan archivos por subir o validar' using errcode='UM019';end if;
  select * into s from workspace_private.ultramar_snapshots where id=r.snapshot_id;
  result:=public.workspace_command('version.submit',jsonb_build_object('project_id',t.project_id,'deliverable_id',t.id,'editor_version',2,
   'content_markdown','Maquetación enviada desde Ultramar (instantánea '||s.version||').','credits','','asset_url',null,
@@ -325,7 +332,7 @@ create function public.workspace_ultramar_version_files(p_version_id uuid) retur
 language plpgsql stable security definer set search_path=pg_catalog,pg_temp as $$
 declare uv workspace_private.ultramar_versions;t public.workspace_deliverables;
 begin
- if not workspace_private.session_active() then raise exception 'Sesión no válida' using errcode='42501';end if;
+ if not workspace_private.session_active() then raise exception 'Sesión no válida' using errcode='UM002';end if;
  select * into uv from workspace_private.ultramar_versions where version_id=p_version_id;
  if uv.version_id is null then return null;end if;
  select d.* into t from public.workspace_deliverables d join public.workspace_versions v on v.deliverable_id=d.id where v.id=p_version_id;
@@ -339,7 +346,7 @@ create function public.workspace_ultramar_bundle(p_project_id uuid) returns json
 language plpgsql stable security definer set search_path=pg_catalog,pg_temp as $$
 declare enabled boolean;snaps jsonb;versions jsonb;
 begin
- if not workspace_private.session_active() then raise exception 'Sesión no válida' using errcode='42501';end if;
+ if not workspace_private.session_active() then raise exception 'Sesión no válida' using errcode='UM002';end if;
  enabled:=coalesce((select ultramar_enabled from workspace_private.upload_policy limit 1),false);
  if not enabled then return jsonb_build_object('enabled',false,'snapshots','{}'::jsonb,'versions','{}'::jsonb);end if;
  select coalesce(jsonb_object_agg(t.id::text,jsonb_build_object('version',s.version,'sha256',s.sha256,'created_at',s.created_at,
