@@ -1,3 +1,12 @@
+## 1.7.2 · Interfaz renovada
+
+- Nueva barra lateral con tus ediciones, buscador y menú; se compacta a iconos en ventanas medianas y puedes fijarla con «Compactar».
+- Secciones con icono, color y contadores: pendientes en Mi trabajo, por atender en Revisión y vencidas en Asignaciones. Atajos ⌘1–⌘6 y buscador ⌘K para saltar a cualquier entrega, sección o edición.
+- Encabezado de edición con avance, vencidas y cierre. Estados, personas y áreas con color propio.
+- Revisión con «anterior / siguiente» y comparación con referencias más visible. Calendario en forma de agenda.
+- Correcciones: la entrega atrasada ya aparece en Mi trabajo con acceso directo, fechas sin repeticiones, el indicador de guardado ya no tapa contenido y los avisos distinguen éxito y error.
+- No cambia permisos, datos ni la cadena de revisión. La integración con Ultramar sigue prevista para 1.7.5.
+
 ## 1.7.1.4 · Avisos y lectura
 
 - «Marcar como leída» por aviso y «Marcar todas como leídas» con confirmación del servidor. Una consulta anterior ya no restaura el contador viejo.
