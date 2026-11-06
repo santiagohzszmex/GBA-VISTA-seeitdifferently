@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { authenticateGbaId } from '../auth/identityGateway';
 import { workspaceIdentityRequest } from '../auth/workspaceIdentity.mjs';
-import workspaceIcon from '../../src-tauri/icons/128x128.png';
+import workspaceIcon from '../assets/workspace-icon-128.png';
 import './workspaceAuth.css';
 
 export default function WorkspaceAuth({productName = 'Workspace'}) {

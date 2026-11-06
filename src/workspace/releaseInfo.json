@@ -1,9 +1,0 @@
-{
-  "version": "1.7.1.4",
-  "nativeVersion": "1.7.104",
-  "codename": "Lapislázuli",
-  "minimumNativeVersion": "0.1.401",
-  "mandatory": false,
-  "noticeTitle": "Lapislázuli · Avisos en tu dispositivo",
-  "notice": "Marcado de lectura confirmado y avisos por dispositivo, incluso con Workspace cerrado. Actívalos desde la campana; en Mac, configura Safari para recibirlos también con el navegador cerrado."
-}
