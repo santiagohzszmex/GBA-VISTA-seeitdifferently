@@ -30,11 +30,11 @@
     },
     {
       "src": "^/workspace/web(/.*)?$",
-      "dest": "https://gba-workspace-santiagos-projects-1733013f.vercel.app/workspace/web$1"
+      "dest": "https://workspace.gba.software/workspace/web$1"
     },
     {
       "src": "^/workspace/(notification-worker\\.js|notification-icon\\.png)$",
-      "dest": "https://gba-workspace-santiagos-projects-1733013f.vercel.app/workspace/$1"
+      "dest": "https://workspace.gba.software/workspace/$1"
     },
     {
       "src": "^/workspace/?$",

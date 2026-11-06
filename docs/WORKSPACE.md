@@ -11,4 +11,4 @@ Aquí se quedan, por ahora:
 - `src/workspace/WorkspaceAuth.jsx` (acceso de Mothership) y `WorkspacePublications.jsx` (publicaciones de GIMG en VISTA), con `gimgModel.js` y sus estilos.
 - Las migraciones de Supabase de toda la base compartida. Las `workspace_*` se editan en gba-workspace.
 
-`gba.software/workspace/web` y el trabajador de avisos (`/workspace/notification-worker.js`) se enrutan al proyecto Vercel `gba-workspace` (ver `vercel.json`).
+`gba.software/workspace/web` y el trabajador de avisos (`/workspace/notification-worker.js`) se enrutan al proyecto Vercel `gba-workspace` por su dominio `workspace.gba.software` (ver `vercel.json`).
